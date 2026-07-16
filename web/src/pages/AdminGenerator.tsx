@@ -377,29 +377,40 @@ const AdminGenerator = () => {
   const handlePublish = async () => {
     if (!content) return;
     setPublishing(true);
-    try {
-      const fnUrl = import.meta.env.VITE_RORK_FUNCTIONS_URL
-        ?? import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL
-        ?? "https://mindduel-kqfozex-backend.rork.app";
-      const res = await fetch(`${fnUrl}/api/content/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, password: "minduel-admin" }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        addLog("error", `Publication échouée : ${(err as { error?: string }).error ?? res.status}`);
-        return;
+    const fnUrl = import.meta.env.VITE_RORK_FUNCTIONS_URL
+      ?? import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL
+      ?? "https://mindduel-kqfozex-backend.rork.app";
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        if (attempt > 1) {
+          addLog("warn", `Nouvelle tentative de publication (${attempt}/${maxAttempts})…`);
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+        const res = await fetch(`${fnUrl}/api/content/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, password: "minduel-admin" }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          addLog("error", `Publication échouée : ${(err as { error?: string }).error ?? res.status}`);
+          break;
+        }
+        const data = (await res.json()) as { version: number; questionCount: number };
+        setPublishedInfo(data);
+        addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne. L'app iOS les récupérera au prochain démarrage.`);
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (attempt >= maxAttempts) {
+          addLog("error", `Publication échouée après ${maxAttempts} tentatives : ${msg}. Vérifie ta connexion et réessaie.`);
+        } else {
+          addLog("warn", `Tentative ${attempt} échouée (${msg}), nouvel essai…`);
+        }
       }
-      const data = (await res.json()) as { version: number; questionCount: number };
-      setPublishedInfo(data);
-      addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne. L'app iOS les récupérera au prochain démarrage.`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      addLog("error", `Publication échouée : ${msg}`);
-    } finally {
-      setPublishing(false);
     }
+    setPublishing(false);
   };
 
   const handleCopyJson = async () => {
