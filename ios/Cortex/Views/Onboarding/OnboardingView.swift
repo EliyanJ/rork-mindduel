@@ -77,7 +77,7 @@ struct OnboardingView: View {
                         onSkip: skipDiagnostic
                     )
                 case .diagnosticQuiz:
-                    if let diagnosticSession {
+                    if !diagnosticQuestions.isEmpty {
                         OnboardingDiagnosticQuizStep(
                             items: diagnosticQuestions,
                             store: model.store,
