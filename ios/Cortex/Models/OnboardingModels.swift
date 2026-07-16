@@ -142,6 +142,7 @@ nonisolated struct OnboardingPreferences: Codable {
     var quizScore: Int?
     var commitmentText: String?
     var signedAt: Date?
+    var diagnostic: OnboardingDiagnostic?
 
     static let initial = OnboardingPreferences(
         nickname: "",
@@ -153,6 +154,68 @@ nonisolated struct OnboardingPreferences: Codable {
         screenTimeBracket: nil,
         quizScore: nil,
         commitmentText: nil,
-        signedAt: nil
+        signedAt: nil,
+        diagnostic: nil
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case nickname, goal, topicIds, dailyGoal, perceivedLevel, preferredLearningTime
+        case screenTimeBracket, quizScore, commitmentText, signedAt, diagnostic
+    }
+
+    init(
+        nickname: String,
+        goal: LearningGoal?,
+        topicIds: [String],
+        dailyGoal: Int,
+        perceivedLevel: PerceivedLevel?,
+        preferredLearningTime: PreferredLearningTime?,
+        screenTimeBracket: ScreenTimeBracket?,
+        quizScore: Int?,
+        commitmentText: String?,
+        signedAt: Date?,
+        diagnostic: OnboardingDiagnostic? = nil
+    ) {
+        self.nickname = nickname
+        self.goal = goal
+        self.topicIds = topicIds
+        self.dailyGoal = dailyGoal
+        self.perceivedLevel = perceivedLevel
+        self.preferredLearningTime = preferredLearningTime
+        self.screenTimeBracket = screenTimeBracket
+        self.quizScore = quizScore
+        self.commitmentText = commitmentText
+        self.signedAt = signedAt
+        self.diagnostic = diagnostic
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        nickname = try c.decode(String.self, forKey: .nickname)
+        goal = try c.decodeIfPresent(LearningGoal.self, forKey: .goal)
+        topicIds = try c.decode([String].self, forKey: .topicIds)
+        dailyGoal = try c.decode(Int.self, forKey: .dailyGoal)
+        perceivedLevel = try c.decodeIfPresent(PerceivedLevel.self, forKey: .perceivedLevel)
+        preferredLearningTime = try c.decodeIfPresent(PreferredLearningTime.self, forKey: .preferredLearningTime)
+        screenTimeBracket = try c.decodeIfPresent(ScreenTimeBracket.self, forKey: .screenTimeBracket)
+        quizScore = try c.decodeIfPresent(Int.self, forKey: .quizScore)
+        commitmentText = try c.decodeIfPresent(String.self, forKey: .commitmentText)
+        signedAt = try c.decodeIfPresent(Date.self, forKey: .signedAt)
+        diagnostic = try c.decodeIfPresent(OnboardingDiagnostic.self, forKey: .diagnostic)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(nickname, forKey: .nickname)
+        try c.encodeIfPresent(goal, forKey: .goal)
+        try c.encode(topicIds, forKey: .topicIds)
+        try c.encode(dailyGoal, forKey: .dailyGoal)
+        try c.encodeIfPresent(perceivedLevel, forKey: .perceivedLevel)
+        try c.encodeIfPresent(preferredLearningTime, forKey: .preferredLearningTime)
+        try c.encodeIfPresent(screenTimeBracket, forKey: .screenTimeBracket)
+        try c.encodeIfPresent(quizScore, forKey: .quizScore)
+        try c.encodeIfPresent(commitmentText, forKey: .commitmentText)
+        try c.encodeIfPresent(signedAt, forKey: .signedAt)
+        try c.encodeIfPresent(diagnostic, forKey: .diagnostic)
+    }
 }

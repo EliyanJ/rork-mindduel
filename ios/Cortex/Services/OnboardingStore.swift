@@ -27,6 +27,12 @@ final class OnboardingStore {
         UserDefaults.standard.set(data, forKey: Self.prefsKey)
     }
 
+    func saveDiagnostic(_ diagnostic: OnboardingDiagnostic) {
+        var updated = preferences
+        updated.diagnostic = diagnostic
+        save(updated)
+    }
+
     func complete() {
         isCompleted = true
         UserDefaults.standard.set(true, forKey: Self.completedKey)

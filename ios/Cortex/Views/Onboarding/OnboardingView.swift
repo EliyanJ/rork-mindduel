@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Ordered steps of the first-run onboarding flow (v3).
 private enum OnboardingStep: Int, CaseIterable {
-    case welcome, nickname, goal, topics, dailyGoal, qualification, screenTime, miniQuiz, quizResult, commitment, plan, paywall, account
+    case welcome, nickname, goal, topics, dailyGoal, qualification, screenTime, miniQuiz, quizResult, diagnosticPropose, diagnosticQuiz, diagnosticResult, commitment, plan, paywall, account
 }
 
 /// First-run onboarding: collects light preferences, a nickname, a qualification,
@@ -24,6 +24,10 @@ struct OnboardingView: View {
     @State private var preferredTime: PreferredLearningTime?
     @State private var screenTimeBracket: ScreenTimeBracket?
     @State private var quizScore: Int = 0
+    @State private var diagnosticQuestions: [LessonItem] = []
+    @State private var diagnosticSession: DiagnosticSession?
+    @State private var diagnosticScore: Int = 0
+    @State private var diagnosticResults: [DisciplineDiagnosticResult] = []
     @State private var commitmentText: String = ""
     @State private var isSigningIn = false
 
@@ -67,6 +71,37 @@ struct OnboardingView: View {
                     })
                 case .quizResult:
                     OnboardingQuizResultStep(score: quizScore, total: 5, onFinished: goNext)
+                case .diagnosticPropose:
+                    OnboardingDiagnosticProposeStep(
+                        onStart: startDiagnostic,
+                        onSkip: skipDiagnostic
+                    )
+                case .diagnosticQuiz:
+                    if let diagnosticSession {
+                        OnboardingDiagnosticQuizStep(
+                            items: diagnosticQuestions,
+                            store: model.store,
+                            onCompleted: { session in
+                                self.diagnosticSession = session
+                                self.diagnosticScore = session.wasCorrect.filter { $0 }.count
+                                self.diagnosticResults = DiagnosticGenerator.computeResults(session: session, catalog: model.catalog)
+                                goNext()
+                            }
+                        )
+                    }
+                case .diagnosticResult:
+                    OnboardingDiagnosticResultStep(
+                        results: diagnosticResults,
+                        score: diagnosticScore,
+                        total: diagnosticQuestions.count,
+                        onStartWeakest: { result in
+                            model.selectedDisciplineId = result.disciplineId
+                            goNext()
+                        },
+                        onViewFullPath: {
+                            goNext()
+                        }
+                    )
                 case .commitment:
                     OnboardingCommitmentStep(
                         nickname: nickname,
@@ -148,7 +183,7 @@ struct OnboardingView: View {
     }
 
     private var canGoBack: Bool {
-        step != .welcome && step != .quizResult && step != .miniQuiz
+        step != .welcome && step != .quizResult && step != .miniQuiz && step != .diagnosticResult
     }
 
     private func goBack() {
@@ -179,7 +214,36 @@ struct OnboardingView: View {
         }
     }
 
+    private func startDiagnostic() {
+        Haptics.medium()
+        diagnosticQuestions = DiagnosticGenerator.generateDiagnosticQuestions(catalog: model.catalog)
+            .map { question in
+                let disciplineId = model.catalog.disciplines.first { discipline in
+                    discipline.chapters.contains { chapter in
+                        chapter.allQuestions.contains { $0.id == question.id }
+                    }
+                }?.id ?? ""
+                return LessonItem(question: question, disciplineId: disciplineId)
+            }
+        goNext()
+    }
+
+    private func skipDiagnostic() {
+        Haptics.tap()
+        diagnosticResults = []
+        diagnosticScore = 0
+        let diagnostic = OnboardingDiagnostic(completed: false, skipped: true, completedAt: Date(), results: [])
+        store.saveDiagnostic(diagnostic)
+        goNext()
+    }
+
     private func finish() {
+        let diagnostic = OnboardingDiagnostic(
+            completed: diagnosticResults.isEmpty == false,
+            skipped: diagnosticResults.isEmpty && diagnosticScore == 0,
+            completedAt: diagnosticResults.isEmpty ? nil : Date(),
+            results: diagnosticResults
+        )
         let preferences = OnboardingPreferences(
             nickname: nickname,
             goal: goal,
@@ -190,7 +254,8 @@ struct OnboardingView: View {
             screenTimeBracket: screenTimeBracket,
             quizScore: quizScore,
             commitmentText: commitmentText,
-            signedAt: Date()
+            signedAt: Date(),
+            diagnostic: diagnostic
         )
         store.save(preferences)
         if selectedTopicIds.count == 1, let onlyTopic = selectedTopicIds.first {
