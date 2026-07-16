@@ -1,0 +1,122 @@
+import Foundation
+import Observation
+
+struct LessonItem: Identifiable, Hashable {
+    let question: Question
+    let disciplineId: String
+    var id: String { question.id }
+}
+
+/// Drives a lesson or a review session: question flow, answer checking,
+/// feedback, XP and spaced-repetition recording.
+@Observable
+final class LessonSession {
+    enum Phase: Equatable {
+        case answering
+        case feedback(correct: Bool)
+        case completed
+    }
+
+    let items: [LessonItem]
+    let chapterId: String?
+    let disciplineId: String?
+    let level: DifficultyLevel?
+    let chapterIdRaw: String?
+    private let store: ProgressStore
+
+    private(set) var index: Int = 0
+    private(set) var phase: Phase = .answering
+    var selection: String = ""
+    private(set) var currentOptions: [String] = []
+    private(set) var anagramLetters: [Character] = []
+    private(set) var correctCount: Int = 0
+    private(set) var xpEarned: Int = 0
+    private(set) var streakAfterCompletion: Int = 0
+
+    init(items: [LessonItem], chapterId: String?, store: ProgressStore,
+         disciplineId: String? = nil, level: DifficultyLevel? = nil, chapterIdRaw: String? = nil) {
+        self.items = items
+        self.chapterId = chapterId
+        self.store = store
+        self.disciplineId = disciplineId
+        self.level = level
+        self.chapterIdRaw = chapterIdRaw
+        prepareQuestion()
+    }
+
+    var current: LessonItem { items[min(index, max(items.count - 1, 0))] }
+    var progressValue: Double { items.isEmpty ? 0 : Double(index) / Double(items.count) }
+    var isLast: Bool { index >= items.count - 1 }
+    var accuracy: Double { items.isEmpty ? 0 : Double(correctCount) / Double(items.count) }
+
+    func submit() {
+        guard phase == .answering, !selection.isEmpty, !items.isEmpty else { return }
+        let question = current.question
+        let correct = selection.comparisonKey == question.answer.comparisonKey
+        if correct {
+            correctCount += 1
+            xpEarned += 10
+            Haptics.success()
+        } else {
+            Haptics.error()
+        }
+        store.recordAnswer(questionId: question.id, disciplineId: current.disciplineId, correct: correct)
+        phase = .feedback(correct: correct)
+    }
+
+    func advance() {
+        guard case .feedback = phase else { return }
+        if isLast {
+            complete()
+        } else {
+            index += 1
+            selection = ""
+            phase = .answering
+            prepareQuestion()
+        }
+    }
+
+    private func complete() {
+        if correctCount == items.count { xpEarned += 20 }
+        store.addXP(xpEarned)
+        store.registerActivity()
+        if let chapterId {
+            store.recordChapterResult(chapterId: chapterId, score: accuracy)
+        }
+        // Record multi-level progress for v2 chapters
+        if let disciplineId, let level, let chapterIdRaw {
+            let seenIds = items.map { $0.question.id }
+            store.recordChapterLevelSession(
+                disciplineId: disciplineId,
+                chapterId: chapterIdRaw,
+                level: level,
+                correct: correctCount,
+                answered: items.count,
+                seenIds: seenIds
+            )
+        }
+        streakAfterCompletion = store.currentStreak
+        phase = .completed
+        Haptics.medium()
+    }
+
+    private func prepareQuestion() {
+        guard !items.isEmpty else { return }
+        let question = current.question
+        switch question.type {
+        case .trueFalse:
+            currentOptions = ["Vrai", "Faux"]
+            anagramLetters = []
+        case .anagram:
+            currentOptions = []
+            var letters = Array(question.answer)
+            if letters.count > 1 {
+                repeat { letters.shuffle() } while String(letters) == question.answer
+            }
+            anagramLetters = letters
+        case .multipleChoice, .fillBlank:
+            currentOptions = (question.options ?? []).shuffled()
+            anagramLetters = []
+        }
+    }
+}

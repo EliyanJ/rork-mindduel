@@ -1,0 +1,52 @@
+{
+  "theme": {
+    "style": "A nocturnal arena of knowledge where deep charcoal and midnight indigo surfaces glow with warm amber and molten orange energy, like a trivia colosseum lit by trophy light. Textures feel like polished obsidian and brushed metal, with soft embers and light trails suggesting competitive momentum. The mood is confident, energetic and slightly gamified, never soft or pastel.",
+    "headlineFont": "'Plus Jakarta Sans', sans-serif — import via @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&display=swap')",
+    "headlineFontSize": 124,
+    "mockupIds": {
+      "iphone": "cosmic-orange",
+      "ipad": "space-gray"
+    },
+    "palette": {
+      "primary": "#14121F",
+      "secondary": "#2E1E3B",
+      "accent": "#FF8C32"
+    }
+  },
+  "slides": [
+    {
+      "label": "home_path",
+      "backgroundPrompt": "Rich cinematic dark indigo environment with sweeping diagonal arcs of molten amber and burnished orange light cutting across the frame, dramatic rim lighting from below illuminating floating translucent geometric shards, fine glowing particles drifting upward like embers, the upper 30% deep and calm for text overlay, 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/79871339-6cfc-41e8-8560-4abb810e2fa6.png"
+    },
+    {
+      "label": "2screens",
+      "backgroundPrompt": "Deep charcoal and midnight indigo base with a winding trail of soft warm amber light nodes curving through the frame like a glowing path, each node pulsing gently with orange light, subtle smoke wisps drifting between them, upper region darker and uncluttered, 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/edd5223b-e759-4929-9b54-8c4dfa30ac03.png"
+    },
+    {
+      "label": "screens3",
+      "backgroundPrompt": "Layered translucent planes of frosted dark violet glass stacked at steep angles, each edge catching a thin line of warm amber light, deep shadows between layers creating dramatic depth and a sense of returning cycles, upper portion fading to near-black, 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/b4007c45-07bd-429e-b797-9fcdc63b90c0.png"
+    },
+    {
+      "label": "screen4",
+      "backgroundPrompt": "Two opposing spheres of intense orange and deep magenta light colliding at the center of a vast dark indigo expanse, energetic streaks of amber light radiating outward from the impact point, dynamic motion blur suggesting speed and rivalry, upper area darker and calm, 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/c9556f7b-932e-4e4c-9ed3-e1b2683aa5d2.png"
+    },
+    {
+      "label": "screen5",
+      "backgroundPrompt": "Constellation of tiny warm golden dots ascending in a staggered vertical arrangement across a vast dark navy and charcoal expanse, connected by hair-thin luminous amber threads, a soft diffused orange glow pooling near the top third suggesting ascension and achievement, lower area open and uncluttered, 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/b20ae0a4-ce53-4aba-965a-63b62acd9ff3.png"
+    }
+  ],
+  "headlines": {
+    "fr": {
+      "home_path": "Apprends<br>en t'amusant",
+      "2screens": "Un chemin<br>plein de savoir",
+      "screens3": "Ta mémoire<br>toujours affûtée",
+      "screen4": "Défie le monde<br>en direct",
+      "screen5": "Grimpe<br>le classement"
+    }
+  }
+}

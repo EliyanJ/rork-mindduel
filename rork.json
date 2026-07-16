@@ -1,0 +1,20 @@
+{
+  "$schema": "https://rork.com/schema/rork.json",
+  "apps": [
+    {
+      "name": "Minduel",
+      "path": "ios",
+      "framework": "swift"
+    },
+    {
+      "name": "Functions",
+      "path": "functions",
+      "framework": "cloudflare"
+    },
+    {
+      "name": "Minduel Web",
+      "path": "web",
+      "framework": "web"
+    }
+  ]
+}

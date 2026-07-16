@@ -1,0 +1,40 @@
+{
+  "versionLocalizationId": "d14425be-409f-46e4-b5ae-51dae450c106",
+  "path": ".asc/reports/screenshots-upload/failures-1783639569468217054.json",
+  "deviceType": "IPHONE_65",
+  "displayType": "APP_IPHONE_65",
+  "setId": "8ad9abff-0543-4bb0-a136-30401db342f9",
+  "files": [
+    "/home/user/rork-app/screenshots/iphone/fr/01_home_path.png",
+    "/home/user/rork-app/screenshots/iphone/fr/02_2screens.png",
+    "/home/user/rork-app/screenshots/iphone/fr/03_screens3.png",
+    "/home/user/rork-app/screenshots/iphone/fr/04_screen4.png",
+    "/home/user/rork-app/screenshots/iphone/fr/05_screen5.png"
+  ],
+  "orderedIds": [
+    "0500f0fb-e13f-4a65-b596-0dab167dbeaa"
+  ],
+  "pendingFiles": [
+    "/home/user/rork-app/screenshots/iphone/fr/02_2screens.png",
+    "/home/user/rork-app/screenshots/iphone/fr/03_screens3.png",
+    "/home/user/rork-app/screenshots/iphone/fr/04_screen4.png",
+    "/home/user/rork-app/screenshots/iphone/fr/05_screen5.png"
+  ],
+  "results": [
+    {
+      "fileName": "01_home_path.png",
+      "filePath": "/home/user/rork-app/screenshots/iphone/fr/01_home_path.png",
+      "assetId": "0500f0fb-e13f-4a65-b596-0dab167dbeaa",
+      "state": "COMPLETE"
+    }
+  ],
+  "failures": [
+    {
+      "fileName": "02_2screens.png",
+      "filePath": "/home/user/rork-app/screenshots/iphone/fr/02_2screens.png",
+      "error": "asset be29c0f9-a3c7-4f36-bf5f-56c257e0d694 delivery failed: IMAGE_ALPHA_NOT_ALLOWED"
+    }
+  ],
+  "error": "asset be29c0f9-a3c7-4f36-bf5f-56c257e0d694 delivery failed: IMAGE_ALPHA_NOT_ALLOWED",
+  "generatedAt": "2026-07-09T23:26:09Z"
+}
