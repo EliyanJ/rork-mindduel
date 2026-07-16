@@ -234,7 +234,7 @@ struct OnboardingView: View {
         diagnosticScore = 0
         let diagnostic = OnboardingDiagnostic(completed: false, skipped: true, completedAt: Date(), results: [])
         store.saveDiagnostic(diagnostic)
-        goNext()
+        withAnimation(.spring(duration: 0.32)) { step = .commitment }
     }
 
     private func finish() {
