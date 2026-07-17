@@ -16,7 +16,7 @@ struct DuelThemePickerView: View {
                         .foregroundStyle(Theme.ink)
                         .padding(.top, 8)
 
-                    Text("Les questions du duel porteront sur ce thème")
+                    Text("Si ton adversaire choisit un autre thème, le duel mélangera les deux")
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(Theme.inkMuted)
                         .padding(.bottom, 8)

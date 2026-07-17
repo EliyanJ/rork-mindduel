@@ -37,6 +37,8 @@ nonisolated struct FriendsPayload: Codable {
 }
 
 /// Ticket delivered by the matchmaking queue once an opponent is found.
+/// `themes` contains both players' theme choices ("all" = every discipline),
+/// sorted server-side so both clients derive the same mixed question set.
 nonisolated struct MatchTicket: Codable {
     let matchId: String
     let seed: String
@@ -44,6 +46,7 @@ nonisolated struct MatchTicket: Codable {
     let roundDuration: Double
     let you: PlayerProfile
     let opponent: PlayerProfile
+    let themes: [String]?
 }
 
 nonisolated enum QueueStatus {

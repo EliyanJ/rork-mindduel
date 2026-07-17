@@ -138,11 +138,13 @@ final class OnlineDuelSession {
     private func beginMatch(ticket matchTicket: MatchTicket, service: MultiplayerService) async {
         ticket = matchTicket
         roundDuration = matchTicket.roundDuration
+        let averageElo = (matchTicket.you.elo + matchTicket.opponent.elo) / 2
         questions = MatchQuestionPicker.questions(
             from: catalog,
             seed: matchTicket.seed,
             count: matchTicket.questionCount,
-            disciplineId: disciplineId
+            themes: matchTicket.themes ?? disciplineId.map { [$0] },
+            averageElo: averageElo
         )
         phase = .found
         Haptics.success()

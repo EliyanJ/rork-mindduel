@@ -81,6 +81,13 @@ export class Hub extends DurableObject {
         discipline_id TEXT
       )
     `);
+    // Migration: the queue table may predate the discipline_id column
+    // (CREATE TABLE IF NOT EXISTS does not add new columns to existing tables).
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE queue ADD COLUMN discipline_id TEXT");
+    } catch {
+      // column already exists
+    }
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS content (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -462,8 +469,9 @@ export class Hub extends DurableObject {
     // ELO window widens the longer you wait: ±150 at 0s, +40 per second.
     const window = 150 + Math.floor(waitedSec * 40);
 
-    // Match players who selected the same discipline (or both selected "all").
-    const candidates = this.ctx.storage.sql
+    // Prefer an opponent who picked the same theme; otherwise take the closest
+    // ELO opponent regardless of theme — the duel then mixes both themes.
+    const sameTheme = this.ctx.storage.sql
       .exec<QueueRow>(
         `SELECT * FROM queue
          WHERE user_id != ? AND match_payload IS NULL
@@ -472,7 +480,18 @@ export class Hub extends DurableObject {
         userId, me.discipline_id, me.discipline_id, me.elo,
       )
       .toArray();
-    const opponent = candidates[0];
+    let opponent: QueueRow | null = sameTheme[0] ?? null;
+    if (!opponent || Math.abs(opponent.elo - me.elo) > window) {
+      const anyTheme = this.ctx.storage.sql
+        .exec<QueueRow>(
+          `SELECT * FROM queue
+           WHERE user_id != ? AND match_payload IS NULL
+           ORDER BY ABS(elo - ?) ASC LIMIT 1`,
+          userId, me.elo,
+        )
+        .toArray();
+      opponent = anyTheme[0] ?? null;
+    }
     if (!opponent) return;
     if (Math.abs(opponent.elo - me.elo) > window) return;
 
@@ -482,7 +501,10 @@ export class Hub extends DurableObject {
 
     const matchId = crypto.randomUUID();
     const seed = randomSeed();
-    const base = { status: "matched", matchId, seed, questionCount: 8, roundDuration: 15 };
+    // Both players receive the same sorted theme list so their clients derive
+    // an identical mixed question set from the shared seed.
+    const themes = [me.discipline_id ?? "all", opponent.discipline_id ?? "all"].sort();
+    const base = { status: "matched", matchId, seed, questionCount: 8, roundDuration: 15, themes };
     const forMe = JSON.stringify({ ...base, you: myProfile, opponent: oppProfile });
     const forOpp = JSON.stringify({ ...base, you: oppProfile, opponent: myProfile });
 
