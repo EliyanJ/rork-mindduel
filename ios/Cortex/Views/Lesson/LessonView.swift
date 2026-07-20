@@ -14,6 +14,7 @@ struct LessonView: View {
     let launch: LessonLaunch
     @Environment(\.dismiss) private var dismiss
     @Environment(StoreViewModel.self) private var store
+    @Environment(AppModel.self) private var model
     @State private var session: LessonSession
     @State private var isWatchingAd = false
     private let title: String
@@ -51,10 +52,12 @@ struct LessonView: View {
                         LessonCompleteView(
                             xp: session.xpEarned,
                             accuracy: session.accuracy,
-                            streak: session.streakAfterCompletion
-                        ) {
-                            dismiss()
-                        }
+                            streak: session.streakAfterCompletion,
+                            onDone: { dismiss() },
+                            sessionLabel: completionSessionLabel,
+                            needsAnotherSession: session.needsAnotherSession,
+                            levelJustValidated: session.levelJustValidated
+                        )
                     }
                 } else {
                     lessonContent
@@ -109,6 +112,18 @@ struct LessonView: View {
         )
     }
 
+    /// Short label shown on the completion screen for multi-session levels.
+    private var completionSessionLabel: String? {
+        guard session.isMultiSessionLevel else { return nil }
+        if session.needsAnotherSession {
+            return "Manche \(session.sessionNumber)/\(session.totalSessions)"
+        } else if session.levelJustValidated {
+            return "Niveau validé"
+        } else {
+            return "Manche \(session.sessionNumber)/\(session.totalSessions)"
+        }
+    }
+
     private var lessonContent: some View {
         VStack(spacing: 0) {
             topBar
@@ -124,35 +139,100 @@ struct LessonView: View {
     }
 
     private var topBar: some View {
-        HStack(spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(.body, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
-                    .frame(width: 40, height: 40)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.line)
-                    if session.progressValue > 0 {
-                        Capsule()
-                            .fill(Theme.success)
-                            .frame(width: max(14, geo.size.width * session.progressValue))
+        VStack(spacing: 6) {
+            HStack(spacing: 12) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(.body, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .frame(width: 40, height: 40)
+                }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.line)
+                        if session.progressValue > 0 {
+                            Capsule()
+                                .fill(Theme.success)
+                                .frame(width: max(14, geo.size.width * session.progressValue))
+                        }
                     }
                 }
+                .frame(height: 12)
+                .animation(.spring(duration: 0.4), value: session.progressValue)
+                Text("\(session.index + 1)/\(session.items.count)")
+                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.inkMuted)
+                    .lineLimit(1)
+                    .frame(minWidth: 32)
             }
-            .frame(height: 12)
-            .animation(.spring(duration: 0.4), value: session.progressValue)
-            Text("\(session.index + 1)/\(session.items.count)")
-                .font(.system(.caption, design: .rounded, weight: .heavy))
+            if session.isMultiSessionLevel {
+                HStack(spacing: 6) {
+                    Image(systemName: "flag.checkered.2.crossed")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("Manche \(session.sessionNumber)/\(session.totalSessions) · \(title)")
+                        .lineLimit(1)
+                }
+                .font(.system(.caption2, design: .rounded, weight: .bold))
                 .foregroundStyle(Theme.inkMuted)
-                .lineLimit(1)
-                .frame(minWidth: 32)
+                .frame(maxWidth: .infinity)
+            } else if isMixedLesson {
+                HStack(spacing: 6) {
+                    Image(systemName: "shuffle")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("Plusieurs thèmes mélangés")
+                        .lineLimit(1)
+                }
+                .font(.system(.caption2, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.inkMuted)
+                .frame(maxWidth: .infinity)
+            } else if let disciplineName = singleDisciplineName {
+                HStack(spacing: 6) {
+                    Image(systemName: singleDisciplineIcon)
+                        .font(.system(size: 11, weight: .bold))
+                    Text(disciplineName)
+                        .lineLimit(1)
+                }
+                .font(.system(.caption2, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.inkMuted)
+                .frame(maxWidth: .infinity)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+
+    /// A path-stage lesson (no discipline/level) is "mixed" when it features
+    /// more than one discipline, "single-theme" otherwise. Chapter-level and
+    /// review lessons are handled by their own branches above.
+    private var isMixedLesson: Bool {
+        launch.disciplineId == nil && launch.level == nil
+            && Set(launch.items.map { $0.disciplineId }).count > 1
+    }
+
+    private var singleDisciplineName: String? {
+        guard launch.disciplineId == nil, launch.level == nil else { return nil }
+        let ids = launch.items.map { $0.disciplineId }
+        guard let only = ids.first, ids.allSatisfy({ $0 == only }) else { return nil }
+        return storeDisciplineName(only)
+    }
+
+    private var singleDisciplineIcon: String {
+        let ids = launch.items.map { $0.disciplineId }
+        if let only = ids.first, ids.allSatisfy({ $0 == only }),
+           let store = storeDiscipline(only) {
+            return store.icon
+        }
+        return "book.fill"
+    }
+
+    private func storeDiscipline(_ id: String) -> Discipline? {
+        model.catalog.disciplines.first { $0.id == id }
+    }
+
+    private func storeDisciplineName(_ id: String) -> String {
+        storeDiscipline(id)?.name ?? "Thème"
     }
 
     @ViewBuilder

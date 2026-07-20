@@ -19,7 +19,8 @@ struct StagePathView: View {
                     state: model.state(of: stage),
                     color: model.selectedDiscipline?.color ?? Theme.stageColor(stage.index),
                     record: model.store.progress.chapterRecords[stage.id],
-                    disciplines: stage.disciplineIds.compactMap { model.discipline(withId: $0) }
+                    disciplines: stage.disciplineIds.compactMap { model.discipline(withId: $0) },
+                    isMixedPath: model.selectedDiscipline == nil
                 ) {
                     onSelect(stage)
                 }
@@ -58,6 +59,8 @@ struct StageNodeView: View {
     let color: Color
     let record: ChapterRecord?
     let disciplines: [Discipline]
+    /// True when this node belongs to the default mixed path (multiple themes per lesson).
+    var isMixedPath: Bool = false
     let action: () -> Void
 
     @State private var isPulsing: Bool = false
@@ -89,6 +92,20 @@ struct StageNodeView: View {
                     .foregroundStyle(state == .locked ? Theme.inkMuted : Theme.ink)
                     .multilineTextAlignment(.center)
                     .frame(width: 160)
+                if isMixedPath {
+                    HStack(spacing: 4) {
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Thèmes mélangés")
+                            .font(.system(.caption2, design: .rounded, weight: .heavy))
+                    }
+                    .foregroundStyle(state == .locked ? Theme.inkMuted : color)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule().fill(state == .locked ? Theme.lockedFill : color.opacity(0.12))
+                    )
+                }
                 themeIcons
                 if let record {
                     Text("\(Int(record.bestScore * 100)) % maîtrisé")

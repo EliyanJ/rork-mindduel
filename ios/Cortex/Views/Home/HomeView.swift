@@ -121,6 +121,7 @@ struct HomeView: View {
     private var dailyLessonCard: some View {
         let stage = model.nextStage
         let color = model.selectedDiscipline?.color ?? Theme.stageColor(stage?.index ?? 0)
+        let isMixed = model.selectedDiscipline == nil
         VStack(alignment: .leading, spacing: 12) {
             Label("LEÇON DU JOUR", systemImage: "sun.max.fill")
                 .font(.system(.caption, design: .rounded, weight: .heavy))
@@ -130,6 +131,18 @@ struct HomeView: View {
             Text("\(stage?.items.count ?? 0) questions · \(model.selectedDiscipline?.name ?? "thèmes variés") · environ 5 min")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .opacity(0.85)
+            if isMixed {
+                HStack(spacing: 6) {
+                    Image(systemName: "shuffle")
+                        .font(.system(size: 12, weight: .bold))
+                    Text("Plusieurs thèmes mélangés")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(.white.opacity(0.22)))
+            }
             if let stage {
                 themeRow(for: stage)
             }

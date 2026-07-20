@@ -5,6 +5,12 @@ struct LessonCompleteView: View {
     let accuracy: Double
     let streak: Int
     let onDone: () -> Void
+    /// Optional multi-session indicator, e.g. "Manche 1/2" or "Niveau validé".
+    var sessionLabel: String? = nil
+    /// True when this was session 1/2 and the level isn't evaluated yet.
+    var needsAnotherSession: Bool = false
+    /// True when this manche just validated the chapter level (>=80%).
+    var levelJustValidated: Bool = false
 
     @State private var hasAppeared: Bool = false
 
@@ -33,6 +39,12 @@ struct LessonCompleteView: View {
             }
             .opacity(hasAppeared ? 1 : 0)
 
+            if let sessionLabel {
+                sessionBadge(label: sessionLabel, highlighted: levelJustValidated)
+                    .opacity(hasAppeared ? 1 : 0)
+                    .offset(y: hasAppeared ? 0 : 16)
+            }
+
             HStack(spacing: 12) {
                 statCard(title: "XP", value: "+\(xp)", icon: "bolt.fill", color: Theme.gold)
                 statCard(title: "Précision", value: "\(Int(accuracy * 100)) %", icon: "target", color: Theme.success)
@@ -42,8 +54,17 @@ struct LessonCompleteView: View {
             .offset(y: hasAppeared ? 0 : 24)
 
             Spacer()
-            Button("Continuer", action: onDone)
-                .buttonStyle(ChunkyButtonStyle())
+            VStack(spacing: 10) {
+                if needsAnotherSession {
+                    Text("Reviens demain pour la manche 2 et valider ce niveau.")
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+                }
+                Button("Continuer", action: onDone)
+                    .buttonStyle(ChunkyButtonStyle())
+            }
         }
         .padding(20)
         .background(Theme.background)
@@ -52,6 +73,21 @@ struct LessonCompleteView: View {
                 hasAppeared = true
             }
         }
+    }
+
+    private func sessionBadge(label: String, highlighted: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: highlighted ? "checkmark.seal.fill" : "flag.checkered.2.crossed")
+                .font(.system(size: 13, weight: .bold))
+            Text(label)
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            Capsule().fill(highlighted ? Theme.success : Theme.primary)
+        )
     }
 
     private func statCard(title: String, value: String, icon: String, color: Color) -> some View {

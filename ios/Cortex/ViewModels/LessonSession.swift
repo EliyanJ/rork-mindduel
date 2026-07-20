@@ -22,6 +22,11 @@ final class LessonSession {
     let disciplineId: String?
     let level: DifficultyLevel?
     let chapterIdRaw: String?
+    /// 1-based index of the current manche within a multi-session chapter level.
+    let sessionNumber: Int
+    /// Total manches needed to validate a chapter level (2 = 20 questions / 10 per session).
+    /// 1 for non-level lessons (mixed/themed path stages, reviews).
+    let totalSessions: Int
     private let store: ProgressStore
 
     private(set) var index: Int = 0
@@ -49,7 +54,43 @@ final class LessonSession {
         self.disciplineId = disciplineId
         self.level = level
         self.chapterIdRaw = chapterIdRaw
+        // A chapter level is played over 2 manches of 10 questions (20 total).
+        // Other lessons (mixed/themed path stages, reviews) are single-session.
+        if disciplineId != nil, level != nil, chapterIdRaw != nil {
+            let prior = store.chapterProgress(
+                disciplineId: disciplineId!, chapterId: chapterIdRaw!, level: level!
+            )?.sessionsDone ?? 0
+            self.sessionNumber = prior + 1
+            self.totalSessions = 2
+        } else {
+            self.sessionNumber = 1
+            self.totalSessions = 1
+        }
         prepareQuestion()
+    }
+
+    /// True when this lesson is one manche of a 2-session chapter level.
+    var isMultiSessionLevel: Bool { totalSessions > 1 }
+
+    /// After completion, true if the chapter level still needs another manche
+    /// (i.e. this was session 1/2 and the level isn't evaluated yet).
+    var needsAnotherSession: Bool {
+        guard phase == .completed, isMultiSessionLevel,
+              let disciplineId, let level, let chapterIdRaw,
+              let cp = store.chapterProgress(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level) else {
+            return false
+        }
+        return !cp.isCompleted
+    }
+
+    /// After completion, true if this manche just validated the level (>=80%).
+    var levelJustValidated: Bool {
+        guard phase == .completed, isMultiSessionLevel,
+              let disciplineId, let level, let chapterIdRaw,
+              let cp = store.chapterProgress(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level) else {
+            return false
+        }
+        return cp.isCompleted && cp.passed
     }
 
     var current: LessonItem { items[min(index, max(items.count - 1, 0))] }
