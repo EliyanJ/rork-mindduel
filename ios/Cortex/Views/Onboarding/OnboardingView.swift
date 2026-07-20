@@ -100,6 +100,9 @@ struct OnboardingView: View {
                         },
                         onViewFullPath: {
                             goNext()
+                        },
+                        onClose: {
+                            goNext()
                         }
                     )
                 case .commitment:

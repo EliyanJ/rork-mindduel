@@ -19,10 +19,18 @@ struct OnboardingPaywallStep: View {
     @State private var selectedPackage: Package?
     @State private var legalSheet: LegalLink?
     @State private var expandedFaq: FAQItem?
+    @State private var compact: Bool = false
 
     private enum LegalLink: Identifiable {
         case privacy, terms
         var id: Int { hashValue }
+    }
+
+    private struct BenefitItem: Identifiable {
+        let id = UUID()
+        let icon: String
+        let text: String
+        let color: Color
     }
 
     private struct FeatureRow: Identifiable {
@@ -42,6 +50,15 @@ struct OnboardingPaywallStep: View {
 
     private var packages: [Package] {
         store.offerings?.current?.availablePackages ?? []
+    }
+
+    private var benefits: [BenefitItem] {
+        [
+            BenefitItem(icon: "brain.head.profile", text: "Développer ta culture générale", color: Theme.primary),
+            BenefitItem(icon: "bubble.left.and.bubble.right", text: "Avoir des conversations plus riches", color: Color(hex: "#F59E0B")),
+            BenefitItem(icon: "sparkles", text: "Booster ta confiance en soirée", color: Color(hex: "#EC4899")),
+            BenefitItem(icon: "flame.fill", text: "Rendre ton temps d'écran utile", color: Color(hex: "#8B5CF6")),
+        ]
     }
 
     private let features: [FeatureRow] = [
@@ -88,122 +105,149 @@ struct OnboardingPaywallStep: View {
     ]
 
     var body: some View {
-        GeometryReader { geo in
-            let compact = geo.size.height < 700
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        heroSection
 
-            ZStack(alignment: .topLeading) {
-                VStack(spacing: 0) {
-                    ScrollView {
-                        VStack(spacing: 22) {
-                            header(compact: compact)
+                        benefitsSection
 
-                            comparisonCard(compact: compact)
+                        comparisonCard
 
-                            faqSection
+                        packagesSection
 
-                            if store.isLoading {
-                                ProgressView()
-                                    .tint(Theme.primary)
-                                    .frame(maxWidth: .infinity, minHeight: 120)
-                            } else if !packages.isEmpty {
-                                VStack(spacing: 14) {
-                                    ForEach(packages, id: \.identifier) { package in
-                                        packageRow(package)
-                                    }
-                                }
-                            } else {
-                                emptyState
-                            }
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.top, compact ? 16 : 28)
-                        .padding(.bottom, 16)
+                        faqSection
                     }
-
-                    if !packages.isEmpty {
-                        stickyCTA
-                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, compact ? 52 : 68)
+                    .padding(.bottom, 24)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(
-                    ZStack {
-                        Theme.background
-                        OnboardingDecor(variant: 0)
-                    }
-                )
 
-                closeButton(compact: compact)
-            }
-            .onAppear { selectedPackage = packages.first(where: { $0.packageType == .annual }) ?? packages.first }
-            .onChange(of: packages) { _, newValue in
-                if selectedPackage == nil { selectedPackage = newValue.first(where: { $0.packageType == .annual }) ?? newValue.first }
-            }
-            .sheet(item: $legalSheet) { link in
-                switch link {
-                case .privacy:
-                    LegalWebView(title: "Confidentialité", url: WebLinks.privacy)
-                case .terms:
-                    LegalWebView(title: "Conditions", url: WebLinks.terms)
+                if !packages.isEmpty {
+                    stickyCTA
                 }
             }
-            .alert("Erreur", isPresented: .init(
-                get: { store.error != nil },
-                set: { if !$0 { store.error = nil } }
-            )) {
-                Button("OK") { store.error = nil }
-            } message: {
-                Text(store.error ?? "")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                ZStack {
+                    Theme.background
+                    OnboardingDecor(variant: 0)
+                }
+            )
+            .onGeometryChange(for: CGSize.self) { proxy in
+                proxy.size
+            } action: { size in
+                compact = size.height < 700
             }
+
+            closeButton
+        }
+        .onAppear { selectedPackage = packages.first(where: { $0.packageType == .annual }) ?? packages.first }
+        .onChange(of: packages) { _, newValue in
+            if selectedPackage == nil { selectedPackage = newValue.first(where: { $0.packageType == .annual }) ?? newValue.first }
+        }
+        .sheet(item: $legalSheet) { link in
+            switch link {
+            case .privacy:
+                LegalWebView(title: "Confidentialité", url: WebLinks.privacy)
+            case .terms:
+                LegalWebView(title: "Conditions", url: WebLinks.terms)
+            }
+        }
+        .alert("Erreur", isPresented: .init(
+            get: { store.error != nil },
+            set: { if !$0 { store.error = nil } }
+        )) {
+            Button("OK") { store.error = nil }
+        } message: {
+            Text(store.error ?? "")
         }
     }
 
-    // MARK: - Header
+    // MARK: - Hero
 
-    private func header(compact: Bool) -> some View {
-        VStack(spacing: 10) {
-            Text("🚀")
-                .font(.system(size: compact ? 36 : 44))
-                .padding(.top, compact ? 20 : 40)
-            Text("Passe en Premium")
-                .font(.system(size: compact ? 26 : 30, weight: .black, design: .rounded))
-                .foregroundStyle(Theme.ink)
-            Text("Plus de leçons, plus de révisions, sans publicité.")
-                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(Theme.inkMuted)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+    private var heroSection: some View {
+        VStack(spacing: 12) {
+            Image("MascotWave")
+                .resizable()
+                .scaledToFit()
+                .frame(height: compact ? 90 : 110)
+
+            VStack(spacing: 8) {
+                Text("Passe en Premium")
+                    .font(.system(size: compact ? 28 : 32, weight: .black, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+
+                Text("Apprends 4 fois plus avec les leçons, révise sans limites et sans publicité.")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(Theme.inkMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Benefits
+
+    private var benefitsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Minduel t'aide à")
+                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
+
+            VStack(spacing: 10) {
+                ForEach(benefits) { item in
+                    HStack(spacing: 12) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(item.color)
+                            .frame(width: 38, height: 38)
+                            .background(Circle().fill(item.color.opacity(0.12)))
+
+                        Text(item.text)
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(Theme.ink)
+                            .multilineTextAlignment(.leading)
+
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 14)
+                    .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 1.5))
+                }
+            }
+        }
+    }
+
     // MARK: - Comparison table
 
-    private func comparisonCard(compact: Bool) -> some View {
+    private var comparisonCard: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Fonctionnalité")
-                    .font(.system(.caption, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.inkMuted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 0) {
+                Spacer().frame(maxWidth: .infinity)
                 Text("Gratuit")
                     .font(.system(.caption, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.inkMuted)
-                    .frame(width: compact ? 64 : 76, alignment: .center)
+                    .frame(width: 64, alignment: .center)
                 Text("Premium")
                     .font(.system(.caption, design: .rounded, weight: .heavy))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
                     .background(Capsule().fill(Theme.primary))
-                    .frame(width: compact ? 76 : 90, alignment: .center)
+                    .frame(width: 86, alignment: .center)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
 
             Divider().background(Theme.line)
 
             ForEach(features) { feature in
-                HStack {
+                HStack(spacing: 0) {
                     HStack(spacing: 8) {
                         Image(systemName: feature.icon)
                             .font(.system(size: 14, weight: .bold))
@@ -219,34 +263,130 @@ struct OnboardingPaywallStep: View {
                     Text(feature.freeValue)
                         .font(.system(.footnote, design: .rounded, weight: .bold))
                         .foregroundStyle(Theme.inkMuted)
-                        .frame(width: compact ? 64 : 76, alignment: .center)
+                        .frame(width: 64, alignment: .center)
 
                     HStack(spacing: 4) {
-                        if feature.premiumIsUnlimited {
-                            Image(systemName: "infinity.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(Theme.success)
-                        } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(Theme.success)
-                        }
+                        Image(systemName: feature.premiumIsUnlimited ? "infinity.circle.fill" : "checkmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Theme.success)
                         Text(feature.premiumValue)
                             .font(.system(.footnote, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
                     }
-                    .frame(width: compact ? 76 : 90, alignment: .center)
+                    .frame(width: 86, alignment: .center)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, compact ? 11 : 14)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
 
                 if feature.id != features.last?.id {
                     Divider().background(Theme.line.opacity(0.6))
                 }
             }
         }
-        .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 1.5))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+    }
+
+    // MARK: - Packages
+
+    private var packagesSection: some View {
+        VStack(spacing: 14) {
+            ForEach(packages, id: \.identifier) { package in
+                packageCard(package)
+            }
+        }
+    }
+
+    private func packageCard(_ package: Package) -> some View {
+        let isSelected = selectedPackage?.identifier == package.identifier
+        let product = package.storeProduct
+        let isAnnual = package.packageType == .annual
+
+        return Button {
+            Haptics.tap()
+            withAnimation(.spring(duration: 0.2)) { selectedPackage = package }
+        } label: {
+            VStack(spacing: 0) {
+                if isAnnual {
+                    Text("3 jours d'essai gratuit")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.gold))
+                }
+
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(isAnnual ? "Annuel" : "Mensuel")
+                            .font(.system(.headline, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.ink)
+
+                        if isAnnual, let monthlyPrice = monthlyEquivalent(for: product) {
+                            Text("\(monthlyPrice) / mois")
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                .foregroundStyle(Theme.inkMuted)
+                        }
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        HStack(spacing: 6) {
+                            if isAnnual, let discount = annualDiscountString {
+                                Text(discount)
+                                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Capsule().fill(Theme.ink))
+                            }
+
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 22))
+                                .foregroundStyle(isSelected ? Theme.primary : Theme.line)
+                        }
+
+                        Text(product.localizedPriceString + (isAnnual ? "/an" : "/mois"))
+                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, isAnnual ? 12 : 16)
+            }
+            .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 2.5 : 1.5)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var annualDiscountString: String? {
+        guard let monthly = packages.first(where: { $0.packageType == .monthly })?.storeProduct,
+              let annual = packages.first(where: { $0.packageType == .annual })?.storeProduct else {
+            return nil
+        }
+        let monthlyNumber = NSDecimalNumber(decimal: monthly.price)
+        let annualNumber = NSDecimalNumber(decimal: annual.price)
+        let monthlyTotal = monthlyNumber.multiplying(by: 12)
+        if monthlyTotal.compare(annualNumber) == .orderedDescending {
+            let ratio = 1.0 - (annualNumber.doubleValue / monthlyTotal.doubleValue)
+            let percent = Int((ratio * 100).rounded())
+            return "-\(percent)%"
+        }
+        return nil
+    }
+
+    private func monthlyEquivalent(for product: StoreProduct) -> String? {
+        let monthly = NSDecimalNumber(decimal: product.price).dividing(by: 12)
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale.current
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: monthly)
     }
 
     // MARK: - FAQ
@@ -274,7 +414,7 @@ struct OnboardingPaywallStep: View {
                     expandedFaq = isExpanded ? nil : item
                 }
             } label: {
-                HStack {
+                HStack(spacing: 12) {
                     Text(item.question)
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.ink)
@@ -299,52 +439,8 @@ struct OnboardingPaywallStep: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1.2))
-    }
-
-    // MARK: - Package selection (RevenueCat, unchanged logic)
-
-    private func packageRow(_ package: Package) -> some View {
-        let isSelected = selectedPackage?.identifier == package.identifier
-        let product = package.storeProduct
-        return Button {
-            Haptics.tap()
-            withAnimation(.spring(duration: 0.2)) { selectedPackage = package }
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(package.packageType == .annual ? "Annuel" : product.localizedTitle)
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    if let intro = product.introductoryDiscount {
-                        Text("Essai gratuit de \(intro.subscriptionPeriod.value) \(intro.subscriptionPeriod.unit.label), puis \(product.localizedPriceString) / \(product.subscriptionPeriod?.unit.label ?? "période")")
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(Theme.inkMuted)
-                    } else {
-                        Text("\(product.localizedPriceString) / \(product.subscriptionPeriod?.unit.label ?? "période")")
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(Theme.inkMuted)
-                    }
-                }
-                Spacer()
-                if package.packageType == .annual {
-                    Text("MEILLEUR PRIX")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Theme.success))
-                }
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(isSelected ? Theme.primary : Theme.line)
-            }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 2.5 : 1.5))
-        }
-        .buttonStyle(.plain)
+        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1.2))
     }
 
     // MARK: - Sticky CTA + footer
@@ -362,7 +458,7 @@ struct OnboardingPaywallStep: View {
                 if store.isPurchasing {
                     ProgressView().tint(.white)
                 } else {
-                    Text("Débloquer Minduel Premium")
+                    Text("Commencer l'essai gratuit")
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: Theme.primary))
@@ -386,6 +482,10 @@ struct OnboardingPaywallStep: View {
 
     private var footer: some View {
         VStack(spacing: 8) {
+            Text("Annule à tout moment, 0 pénalité, 0 frais")
+                .font(.system(.caption, design: .rounded, weight: .semibold))
+                .foregroundStyle(Theme.inkMuted)
+
             Button("Restaurer les achats") {
                 Haptics.tap()
                 Task {
@@ -414,7 +514,7 @@ struct OnboardingPaywallStep: View {
 
     // MARK: - Close button (top-left, contrasted circle)
 
-    private func closeButton(compact: Bool) -> some View {
+    private var closeButton: some View {
         Button {
             Haptics.tap()
             onFinished()
@@ -427,7 +527,7 @@ struct OnboardingPaywallStep: View {
                 .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
         }
         .padding(.leading, 20)
-        .padding(.top, compact ? 4 : 8)
+        .padding(.top, 8)
     }
 
     private var emptyState: some View {

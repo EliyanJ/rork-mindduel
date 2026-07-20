@@ -9,6 +9,7 @@ struct OnboardingDiagnosticResultStep: View {
     let total: Int
     let onStartWeakest: (DisciplineDiagnosticResult) -> Void
     let onViewFullPath: () -> Void
+    let onClose: (() -> Void)?
 
     @Environment(AppModel.self) private var model
 
@@ -33,12 +34,13 @@ struct OnboardingDiagnosticResultStep: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let compact = geo.size.height < 700
-            let titleSize: CGFloat = compact ? 26 : 32
-            let scoreSize: CGFloat = compact ? 48 : 64
+        ZStack(alignment: .topTrailing) {
+            GeometryReader { geo in
+                let compact = geo.size.height < 700
+                let titleSize: CGFloat = compact ? 26 : 32
+                let scoreSize: CGFloat = compact ? 48 : 64
 
-            VStack(spacing: 0) {
+                VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: compact ? 16 : 22) {
                         VStack(alignment: .center, spacing: 8) {
@@ -118,7 +120,10 @@ struct OnboardingDiagnosticResultStep: View {
                     OnboardingDecor(variant: 1)
                 }
             )
-            .task {
+
+            closeButton
+        }
+        .task {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
                     isReady = true
                 }
@@ -128,6 +133,22 @@ struct OnboardingDiagnosticResultStep: View {
                 }
             }
         }
+    }
+
+    private var closeButton: some View {
+        Button {
+            Haptics.tap()
+            onClose?()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(.white.opacity(0.9)))
+                .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+        }
+        .padding(.trailing, 20)
+        .padding(.top, 8)
     }
 
     private func resultRow(_ result: DisciplineDiagnosticResult) -> some View {
@@ -178,6 +199,7 @@ struct OnboardingDiagnosticResultStep: View {
         score: 6,
         total: 9,
         onStartWeakest: { _ in },
-        onViewFullPath: {}
+        onViewFullPath: {},
+        onClose: {}
     )
 }
