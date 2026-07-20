@@ -36,12 +36,18 @@ export type Chapter = {
   questions?: Question[]; // legacy format
 };
 
+/** Whether a discipline is general culture or a specific domain (e.g. football).
+ * Used by matchmaking and the diagnostic to weight theme selection. */
+export type DisciplineKind = "generale" | "specifique";
+
 export type Discipline = {
   id: string;
   name: string;
   icon: string;
   colorHex: string;
   chapters: Chapter[];
+  /** Optional for backward-compat with older content.json entries that predate this field. */
+  kind?: DisciplineKind;
 };
 
 export type Content = {
@@ -61,6 +67,9 @@ export type GenTarget = {
   chapterTitle: string;
   level: string; // "facile" | "intermediaire" | "difficile" | "maitre" | "legende" | "legacy"
   count: number;
+  /** Whether the discipline is general culture or a specific domain (e.g. football).
+   * Drives the familiarity mix: generale -> 40/40/20, specifique -> 0/50/50. */
+  kind?: DisciplineKind;
 };
 
 export type GenResult = {
@@ -165,7 +174,7 @@ export function detectIncomplete(content: Content, maxBatch: number = DEFAULT_BA
         if (needed > 0) {
           pushChunked(
             targets,
-            { disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: "facile" },
+            { disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: "facile", kind: disc.kind },
             needed,
             maxBatch,
           );
@@ -176,7 +185,7 @@ export function detectIncomplete(content: Content, maxBatch: number = DEFAULT_BA
           if (needed > 0) {
             pushChunked(
               targets,
-              { disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: lvlName },
+              { disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: lvlName, kind: disc.kind },
               needed,
               maxBatch,
             );
@@ -213,10 +222,10 @@ export function planBulkTargets(content: Content, totalCount: number, maxBatch: 
     for (const disc of content.disciplines) {
       for (const ch of disc.chapters) {
         if (isLegacyChapter(ch)) {
-          allLevels.push({ disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: "facile" });
+          allLevels.push({ disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: "facile", kind: disc.kind });
         } else if (ch.levels) {
           for (const lvlName of Object.keys(ch.levels)) {
-            allLevels.push({ disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: lvlName });
+            allLevels.push({ disciplineId: disc.id, disciplineName: disc.name, chapterId: ch.id, chapterTitle: ch.title, level: lvlName, kind: disc.kind });
           }
         }
       }
@@ -265,6 +274,10 @@ export function contentSummary(content: Content): Array<{
 function buildPrompt(target: GenTarget, existing: Question[]): string {
   const existingPrompts = existing.map((q) => `- ${q.prompt}`).join("\n");
   const typeDistribution = `Répartis les types ainsi: ~40% multipleChoice, ~25% trueFalse, ~20% fillBlank, ~15% anagram.`;
+  const isSpecifique = target.kind === "specifique";
+  const familiarityMix = isSpecifique
+    ? `Discipline SPÉCIFIQUE (${target.disciplineName}): vise 0% "commun", ~50% "moyen", ~50% "pointu". Aucune question "commun" — le public cible est déjà passionné par le sujet.`
+    : `Discipline GÉNÉRALE: vise ~40% "commun", ~40% "moyen", ~20% "pointu".`;
 
   return `Tu es un générateur de questions de culture générale pour une app éducative française appelée Minduel.
 
@@ -283,6 +296,7 @@ Chaque question doit avoir un champ "familiarity" indiquant à quel point le fai
 - "commun": fait connu du grand public, évident pour la majorité des gens.
 - "moyen": culture générale correcte, pas évident mais pas obscur.
 - "pointu": fait de spécialiste/passionné, précis et pointu.
+${familiarityMix}
 ${familiarityGuidance(target.level)}
 Ne mélange JAMAIS un fait "pointu" complètement hors du niveau demandé — la cohérence de familiarité au sein du niveau est essentielle.
 

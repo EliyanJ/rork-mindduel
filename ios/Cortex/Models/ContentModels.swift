@@ -194,12 +194,39 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
     }
 }
 
+/// Whether a discipline is general culture or a specific domain (e.g. football).
+/// Used by matchmaking and the diagnostic to weight theme selection.
+nonisolated enum DisciplineKind: String, Codable {
+    case generale
+    case specifique
+}
+
 nonisolated struct Discipline: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let icon: String
     let colorHex: String
     let chapters: [Chapter]
+    /// General culture (histoire, sciences, ...) vs specific domain (football).
+    /// Optional for backward-compat with older catalogs that predate this field.
+    let kind: DisciplineKind?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, icon, colorHex, chapters, kind
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        icon = try container.decode(String.self, forKey: .icon)
+        colorHex = try container.decode(String.self, forKey: .colorHex)
+        chapters = try container.decode([Chapter].self, forKey: .chapters)
+        kind = try container.decodeIfPresent(DisciplineKind.self, forKey: .kind)
+    }
+
+    /// Convenience accessor defaulting to general culture when the field is missing.
+    var resolvedKind: DisciplineKind { kind ?? .generale }
 }
 
 nonisolated struct ContentCatalog: Codable {

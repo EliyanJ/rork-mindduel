@@ -42,9 +42,29 @@ Chaque question suit exactement cette forme JSON (voir `ContentModels.swift` cô
     "Liste de choix (QCM et fillBlank uniquement, null sinon)"
   ],
   "answer": "Réponse exacte, doit correspondre à une valeur de options si présentes",
-  "explanation": "1 à 3 phrases donnant un fait complémentaire intéressant, ton pédagogique et précis"
+  "explanation": "1 à 3 phrases donnant un fait complémentaire intéressant, ton pédagogique et précis",
+  "familiarity": "commun | moyen | pointu"
 }
 ```
+
+### 2.b. Schéma d'une discipline
+
+Chaque discipline (objet racine du catalogue) suit cette forme :
+
+```json
+{
+  "id": "identifiant_snake_case",
+  "name": "Nom affiché",
+  "icon": "nom SF Symbols valide (iOS)",
+  "colorHex": "#RRGGBB",
+  "kind": "generale | specifique",
+  "chapters": [ ... ]
+}
+```
+
+Le champ `kind` distingue :
+- `generale` : culture générale (histoire, sciences, géographie, littérature, arts, nature, technologie).
+- `specifique` : domaine spécialisé demandant une calibration différente (football).
 
 Règles à respecter :
 - `id` : unique dans tout le catalogue, format `xx_yy_n` (ex. `hi_an_1` = histoire / antiquité / question 1).
@@ -53,9 +73,13 @@ Règles à respecter :
 - `type = fillBlank` : le `prompt` contient `___` à la place du mot manquant, `options` propose 4 mots plausibles, `answer` = le bon mot.
 - `type = anagram` : pas d'`options`, `prompt` est un indice/définition, `answer` = le mot à trouver (en MAJUSCULES).
 - `explanation` : toujours renseignée, factuelle, jamais une invention statistique — même esprit que le reste de l'app (honnêteté des données).
-- Chaque **chapitre** contient exactement 5 questions aujourd'hui (peut être étendu).
-- Un nouveau **chapitre** = `{ id, title, questions: [...] }` ajouté au tableau `chapters` d'une discipline existante.
-- Une nouvelle **discipline** = `{ id, name, icon, colorHex, chapters: [...] }` ajoutée au tableau racine `disciplines`. L'icône doit être un nom SF Symbols valide (iOS), la couleur un hex `#RRGGBB`.
+- `familiarity` : **obligatoire** pour toute nouvelle question. Indique à quel point le fait est connu :
+  - `"commun"` : fait connu du grand public, évident pour la majorité des gens.
+  - `"moyen"` : culture générale correcte, pas évident mais pas obscur.
+  - `"pointu"` : fait de spécialiste/passionné, précis et pointu.
+- Chaque **chapitre** contient aujourd'hui 5 questions (peut être étendu). Répartition cible par chapitre : ~40 % commun / 40 % moyen / 20 % pointu. Pour les disciplines `specifique` (football) : 0 % commun / 50 % moyen / 50 % pointu.
+- Un nouveau **chapitre** = `{ id, title, levels: {...} | questions: [...] }` ajouté au tableau `chapters` d'une discipline existante.
+- Une nouvelle **discipline** = `{ id, name, icon, colorHex, kind, chapters: [...] }` ajoutée au tableau racine `disciplines`. L'icône doit être un nom SF Symbols valide (iOS), la couleur un hex `#RRGGBB`, et `kind` vaut `"generale"` par défaut (sauf domaine spécialisé comme le football → `"specifique"`).
 
 ---
 
