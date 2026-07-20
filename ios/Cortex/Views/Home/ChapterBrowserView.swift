@@ -9,27 +9,32 @@ struct ChapterBrowserView: View {
     @Environment(StoreViewModel.self) private var store
     let onSelectItems: ([LessonItem], String, String, DifficultyLevel) -> Void
 
+    @State private var pathWidth: CGFloat = 360
+
     var body: some View {
-        GeometryReader { geo in
-            VStack(spacing: 0) {
-                if let discipline = model.selectedDiscipline {
-                    ForEach(Array(discipline.chapters.enumerated()), id: \.element.id) { index, chapter in
-                        if index > 0 {
-                            connector
-                        }
-                        ChapterNodeView(
-                            chapter: chapter,
-                            discipline: discipline,
-                            index: index,
-                            state: state(for: chapter, discipline: discipline)
-                        ) { level in
-                            startLevel(chapter: chapter, discipline: discipline, level: level)
-                        }
-                        .offset(x: horizontalOffset(for: index, width: geo.size.width))
+        VStack(spacing: 0) {
+            if let discipline = model.selectedDiscipline {
+                ForEach(Array(discipline.chapters.enumerated()), id: \.element.id) { index, chapter in
+                    if index > 0 {
+                        connector
                     }
+                    ChapterNodeView(
+                        chapter: chapter,
+                        discipline: discipline,
+                        index: index,
+                        state: state(for: chapter, discipline: discipline)
+                    ) { level in
+                        startLevel(chapter: chapter, discipline: discipline, level: level)
+                    }
+                    .offset(x: horizontalOffset(for: index, width: pathWidth))
                 }
             }
-            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            pathWidth = newWidth
         }
     }
 

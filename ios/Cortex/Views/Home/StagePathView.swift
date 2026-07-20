@@ -6,26 +6,31 @@ struct StagePathView: View {
     @Environment(AppModel.self) private var model
     let onSelect: (PathStage) -> Void
 
+    @State private var pathWidth: CGFloat = 360
+
     var body: some View {
-        GeometryReader { geo in
-            VStack(spacing: 0) {
-                ForEach(model.stages) { stage in
-                    if stage.index > 0 {
-                        connector
-                    }
-                    StageNodeView(
-                        stage: stage,
-                        state: model.state(of: stage),
-                        color: model.selectedDiscipline?.color ?? Theme.stageColor(stage.index),
-                        record: model.store.progress.chapterRecords[stage.id],
-                        disciplines: stage.disciplineIds.compactMap { model.discipline(withId: $0) }
-                    ) {
-                        onSelect(stage)
-                    }
-                    .offset(x: horizontalOffset(for: stage.index, width: geo.size.width))
+        VStack(spacing: 0) {
+            ForEach(model.stages) { stage in
+                if stage.index > 0 {
+                    connector
                 }
+                StageNodeView(
+                    stage: stage,
+                    state: model.state(of: stage),
+                    color: model.selectedDiscipline?.color ?? Theme.stageColor(stage.index),
+                    record: model.store.progress.chapterRecords[stage.id],
+                    disciplines: stage.disciplineIds.compactMap { model.discipline(withId: $0) }
+                ) {
+                    onSelect(stage)
+                }
+                .offset(x: horizontalOffset(for: stage.index, width: pathWidth))
             }
-            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            pathWidth = newWidth
         }
     }
 
