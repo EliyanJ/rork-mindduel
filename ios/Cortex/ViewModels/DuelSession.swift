@@ -33,7 +33,7 @@ final class DuelSession {
     }
 
     static let roundDuration: Double = 15
-    static let questionCount: Int = 8
+    static let questionCount: Int = 15
 
     let questions: [Question]
     let opponent: Opponent

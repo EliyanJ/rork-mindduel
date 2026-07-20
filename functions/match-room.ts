@@ -90,7 +90,7 @@ export class MatchRoom extends DurableObject<Env> {
       if (!ticket.seed || !ticket.you || !ticket.opponent) return false;
       const state: MatchState = {
         seed: ticket.seed,
-        questionCount: ticket.questionCount ?? 8,
+        questionCount: ticket.questionCount ?? 15,
         roundDuration: ticket.roundDuration ?? 15,
         players: [ticket.you, ticket.opponent],
         phase: "waiting",

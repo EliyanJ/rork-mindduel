@@ -26114,15 +26114,15 @@
                 {
                   "id": "nature_mammiferes_f_34",
                   "type": "fillBlank",
-                  "prompt": "Le ___ est un mammifère qui se nourrit principalement de nectar.",
+                  "prompt": "Le ___ est un mammifère marsupial qui se nourrit presque exclusivement de feuilles d'eucalyptus.",
                   "answer": "Koala",
-                  "explanation": "Le koala se nourrit principalement de feuilles d'eucalyptus, mais en termes de nectar, il n'est pas un exemple commun.",
+                  "explanation": "Le koala se nourrit presque exclusivement de feuilles d'eucalyptus, qui sont pauvres en nutriments et légèrement toxiques — c'est pourquoi il dort jusqu'à 20 heures par jour.",
                   "familiarity": "pointu",
                   "options": [
                     "Hérisson",
-                    "Colibri",
                     "Koala",
-                    "Baleine"
+                    "Paresseux",
+                    "Blaireau"
                   ]
                 },
                 {
@@ -27716,9 +27716,9 @@
                 {
                   "id": "nature_insectes_f_43",
                   "type": "anagram",
-                  "prompt": "Indice: Insecte qui est souvent observé dans les jardins et aime le nectar. (Réorganisez les lettres : LIAECM)",
-                  "answer": "CIGALE",
-                  "explanation": "La cigale est un insecte qui aime le nectar et est souvent vue dans les jardins.",
+                  "prompt": "Indice: Insecte volant aux ailes colorées qui se nourrit de nectar des fleurs. (Réorganisez les lettres : LONPAPIL)",
+                  "answer": "PAPILLON",
+                  "explanation": "Le papillon se nourrit du nectar des fleurs grâce à sa trompe, et joue un rôle important de pollinisateur dans les jardins.",
                   "familiarity": "moyen"
                 },
                 {
@@ -36024,14 +36024,14 @@
                 {
                   "id": "football_euro_f_15",
                   "type": "multipleChoice",
-                  "prompt": "Quel joueur a remporté le Soulier d'Or à l'Euro 2020 ?",
+                  "prompt": "Quel joueur a remporté le Soulier d'Or de l'Euro 2020, départagé aux passes décisives après 5 buts ex aequo avec Patrik Schick ?",
                   "answer": "Cristiano Ronaldo",
-                  "explanation": "Cristiano Ronaldo a été le meilleur buteur de l'Euro 2020.",
+                  "explanation": "Cristiano Ronaldo et Patrik Schick ont tous deux marqué 5 buts à l'Euro 2020. Ronaldo a remporté le Soulier d'Or grâce à 1 passe décisive contre 0 pour Schick.",
                   "familiarity": "pointu",
                   "options": [
                     "Cristiano Ronaldo",
+                    "Patrik Schick",
                     "Kylian Mbappé",
-                    "Gareth Bale",
                     "Karim Benzema"
                   ]
                 },

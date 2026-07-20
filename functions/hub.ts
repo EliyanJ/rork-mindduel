@@ -504,7 +504,7 @@ export class Hub extends DurableObject {
     // Both players receive the same sorted theme list so their clients derive
     // an identical mixed question set from the shared seed.
     const themes = [me.discipline_id ?? "all", opponent.discipline_id ?? "all"].sort();
-    const base = { status: "matched", matchId, seed, questionCount: 8, roundDuration: 15, themes };
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes };
     const forMe = JSON.stringify({ ...base, you: myProfile, opponent: oppProfile });
     const forOpp = JSON.stringify({ ...base, you: oppProfile, opponent: myProfile });
 

@@ -26,8 +26,10 @@ nonisolated enum MatchQuestionPicker {
     /// Deterministic selection shared by both players of a ranked match.
     ///
     /// - `themes`: both players' theme choices ("all" = every discipline). When
-    ///   the two players picked different themes the duel mixes questions from
-    ///   both, split evenly and interleaved round-robin.
+    ///   the two players picked two distinct themes the duel splits 15 questions
+    ///   as 5 from theme A + 5 from theme B + 5 from a "basique" pool drawn from
+    ///   all general-culture disciplines. Same-theme or "all" matches draw all
+    ///   questions evenly across the available theme(s).
     /// - `averageElo`: average of both players' ELO, used to bias question
     ///   difficulty toward their shared level (with fallback when a theme has
     ///   too few questions at that difficulty).
@@ -45,8 +47,23 @@ nonisolated enum MatchQuestionPicker {
         let allowed = allowedLevels(forElo: averageElo)
         var generator = SeededGenerator(seedString: seed)
         var used = Set<String>()
-        var perTheme: [[Question]] = []
 
+        // Two distinct explicit themes → 5 / 5 / 5 split with a basique pool
+        // of general-culture questions (excluding the two chosen themes so a
+        // player who picked a generale theme doesn't see it duplicated).
+        if themes.count == 2, themes.allSatisfy({ $0 != "all" }) {
+            return mixedTwoTheme(
+                from: catalog,
+                themes: themes,
+                basiqueCount: count / 3,
+                perThemeCount: count / 3 + (count % 3 > 0 ? 1 : 0),
+                allowed: allowed,
+                generator: &generator,
+                used: &used
+            )
+        }
+
+        var perTheme: [[Question]] = []
         for (index, theme) in themes.enumerated() {
             let share = count / themes.count + (index < count % themes.count ? 1 : 0)
             var pool = pool(from: catalog, theme: theme, allowedLevels: allowed)
@@ -87,6 +104,109 @@ nonisolated enum MatchQuestionPicker {
                 }
             }
         }
+        return result
+    }
+
+    /// 5 / 5 / 5 split for two distinct themes: theme A, theme B, and a
+    /// "basique" pool drawn from general-culture disciplines (kind == .generale)
+    /// excluding the two chosen themes. Interleaves the three buckets so the
+    /// duel alternates A → B → basique → A → B → basique …
+    private static func mixedTwoTheme(
+        from catalog: ContentCatalog,
+        themes: [String],
+        basiqueCount: Int,
+        perThemeCount: Int,
+        allowed: Set<DifficultyLevel>,
+        generator: inout SeededGenerator,
+        used: inout Set<String>
+    ) -> [Question] {
+        let themeA = themes[0]
+        let themeB = themes[1]
+        let count = basiqueCount + perThemeCount * 2
+
+        var poolA = pool(from: catalog, theme: themeA, allowedLevels: allowed)
+        if poolA.count < perThemeCount {
+            poolA = self.pool(from: catalog, theme: themeA, allowedLevels: nil)
+        }
+        shuffle(&poolA, using: &generator)
+
+        var poolB = pool(from: catalog, theme: themeB, allowedLevels: allowed)
+        if poolB.count < perThemeCount {
+            poolB = self.pool(from: catalog, theme: themeB, allowedLevels: nil)
+        }
+        shuffle(&poolB, using: &generator)
+
+        var basique = basiquePool(from: catalog, excluding: [themeA, themeB], allowedLevels: allowed)
+        if basique.count < basiqueCount {
+            basique = basiquePool(from: catalog, excluding: [themeA, themeB], allowedLevels: nil)
+        }
+        shuffle(&basique, using: &generator)
+
+        func pick(_ source: [Question], _ n: Int) -> [Question] {
+            var picked: [Question] = []
+            for q in source where picked.count < n {
+                if used.insert(q.id).inserted { picked.append(q) }
+            }
+            return picked
+        }
+
+        let pickedA = pick(poolA, perThemeCount)
+        let pickedB = pick(poolB, perThemeCount)
+        let pickedBasique = pick(basique, basiqueCount)
+
+        // Interleave A → B → basique round-robin.
+        let buckets = [pickedA, pickedB, pickedBasique]
+        var result: [Question] = []
+        var cursor = 0
+        while result.count < count {
+            var addedAny = false
+            for bucket in buckets where cursor < bucket.count {
+                result.append(bucket[cursor])
+                addedAny = true
+                if result.count == count { break }
+            }
+            if !addedAny { break }
+            cursor += 1
+        }
+
+        // Shortfall: top up from the full catalog.
+        if result.count < count {
+            var fallback = pool(from: catalog, theme: "all", allowedLevels: nil)
+            shuffle(&fallback, using: &generator)
+            for q in fallback where result.count < count {
+                if used.insert(q.id).inserted { result.append(q) }
+            }
+        }
+        return result
+    }
+
+    /// General-culture question pool (disciplines with kind == .generale),
+    /// excluding any discipline ids in `exclude` (so a chosen generale theme
+    /// isn't duplicated in the basique bucket).
+    private static func basiquePool(
+        from catalog: ContentCatalog,
+        excluding exclude: [String],
+        allowedLevels: Set<DifficultyLevel>?
+    ) -> [Question] {
+        var result: [Question] = []
+        let excludeSet = Set(exclude)
+        for discipline in catalog.disciplines {
+            guard discipline.resolvedKind == .generale, !excludeSet.contains(discipline.id) else { continue }
+            for chapter in discipline.chapters {
+                if let levels = chapter.levels, let allowedLevels {
+                    for level in DifficultyLevel.allCases where allowedLevels.contains(level) {
+                        for question in levels[level.rawValue]?.questions ?? [] where question.type != .anagram {
+                            result.append(question)
+                        }
+                    }
+                } else {
+                    for question in chapter.allQuestions where question.type != .anagram {
+                        result.append(question)
+                    }
+                }
+            }
+        }
+        result.sort { $0.id < $1.id }
         return result
     }
 
