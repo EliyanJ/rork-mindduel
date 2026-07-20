@@ -17,6 +17,9 @@ nonisolated struct ChapterProgress: Codable {
     var isCompleted: Bool
     var questionsSeenIds: [String]
     var bestScore: Double
+    /// When a level is failed (<80%), the next time a free retry is allowed.
+    /// Used to prevent unlimited immediate resets and to drive the retry flow.
+    var nextRetryAvailableAt: Date?
 
     var currentScore: Double {
         guard totalAnswered > 0 else { return 0 }
@@ -37,7 +40,8 @@ nonisolated struct ChapterProgress: Codable {
             totalAnswered: 0,
             isCompleted: false,
             questionsSeenIds: [],
-            bestScore: 0
+            bestScore: 0,
+            nextRetryAvailableAt: nil
         )
     }
 }

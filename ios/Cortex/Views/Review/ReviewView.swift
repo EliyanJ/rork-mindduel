@@ -21,7 +21,7 @@ struct ReviewView: View {
         }
         .background(Theme.background)
         .fullScreenCover(item: $lessonLaunch) { launch in
-            LessonView(launch: launch, store: model.store)
+            LessonView(launch: launch, store: model.store) { _ in }
         }
         .sheet(isPresented: $isLockedPresented) {
             UnlockWithLivresView(kind: .review, progressStore: model.store) {

@@ -327,6 +327,39 @@ final class ProgressStore {
         progress.chapterRecords.values.filter { $0.bestScore >= 0.8 }.count
     }
 
+    // MARK: - Retry cooldown
+
+    /// Time a failed chapter level stays locked before a free retry is available.
+    private static let retryCooldownHours: Int = 24
+
+    /// Records that a chapter level was failed and locks free retries until the cooldown passes.
+    func markChapterLevelFailed(disciplineId: String, chapterId: String, level: DifficultyLevel) {
+        let key = Self.progressKey(disciplineId: disciplineId, chapterId: chapterId, level: level)
+        guard var existing = progress.chapterProgress[key] else { return }
+        let nextRetry = Calendar.current.date(byAdding: .hour, value: Self.retryCooldownHours, to: .now) ?? .now
+        existing.nextRetryAvailableAt = nextRetry
+        existing.isCompleted = true
+        existing.bestScore = max(existing.bestScore, existing.currentScore)
+        progress.chapterProgress[key] = existing
+        save()
+    }
+
+    /// Whether the player can retry a failed chapter level for free (cooldown elapsed).
+    func canRetryFailedChapterLevel(disciplineId: String, chapterId: String, level: DifficultyLevel) -> Bool {
+        guard let cp = chapterProgress(disciplineId: disciplineId, chapterId: chapterId, level: level),
+              cp.isCompleted, !cp.passed,
+              let nextRetry = cp.nextRetryAvailableAt else { return false }
+        return .now >= nextRetry
+    }
+
+    /// Resets progress if the cooldown has passed, returning true if a reset happened.
+    @discardableResult
+    func autoResetChapterLevelIfNeeded(disciplineId: String, chapterId: String, level: DifficultyLevel) -> Bool {
+        guard canRetryFailedChapterLevel(disciplineId: disciplineId, chapterId: chapterId, level: level) else { return false }
+        resetChapterLevelProgress(disciplineId: disciplineId, chapterId: chapterId, level: level)
+        return true
+    }
+
     // MARK: - Multi-level progression (v2)
 
     private static func progressKey(disciplineId: String, chapterId: String, level: DifficultyLevel) -> String {
@@ -377,6 +410,20 @@ final class ProgressStore {
         }
         progress.chapterProgress[key] = existing
         save()
+    }
+
+    /// Returns a fresh question pool for a chapter level, automatically resetting
+    /// failed progress if the cooldown has elapsed so the pool is never empty.
+    func questionPoolForChapterLevel(
+        disciplineId: String,
+        chapterId: String,
+        level: DifficultyLevel,
+        allQuestionIds: [String]
+    ) -> [String] {
+        autoResetChapterLevelIfNeeded(disciplineId: disciplineId, chapterId: chapterId, level: level)
+        let seen = Set(seenQuestionIds(disciplineId: disciplineId, chapterId: chapterId, level: level))
+        let fresh = allQuestionIds.filter { !seen.contains($0) }
+        return fresh.isEmpty ? allQuestionIds : fresh
     }
 
     /// Resets chapter-level progress so the player can retry from session 1.

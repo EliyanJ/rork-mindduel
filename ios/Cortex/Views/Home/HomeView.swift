@@ -50,7 +50,9 @@ struct HomeView: View {
             }
         }
         .fullScreenCover(item: $lessonLaunch) { launch in
-            LessonView(launch: launch, store: model.store)
+            LessonView(launch: launch, store: model.store) { retryLaunch in
+                handleLessonRetry(retryLaunch)
+            }
         }
         .sheet(item: $lockedLessonPending) { stage in
             UnlockWithLivresView(kind: .lesson, progressStore: model.store) {
@@ -208,13 +210,54 @@ struct HomeView: View {
         let chapter = model.catalog.disciplines.first { $0.id == disciplineId }?
             .chapters.first { $0.id == chapterId }
         let title = "\(chapter?.title ?? "Chapitre") · \(level.displayName)"
+        let freshItems = makeFreshLevelItems(
+            disciplineId: disciplineId,
+            chapterId: chapterId,
+            level: level,
+            proposedItems: items
+        )
         lessonLaunch = LessonLaunch(
             title: title,
             chapterId: "\(disciplineId)_\(chapterId)_\(level.rawValue)",
-            items: items,
+            items: freshItems,
             disciplineId: disciplineId,
             level: level,
             chapterIdRaw: chapterId
         )
+    }
+
+    private func handleLessonRetry(_ retryLaunch: LessonLaunch) {
+        guard let disciplineId = retryLaunch.disciplineId,
+              let level = retryLaunch.level,
+              let chapterIdRaw = retryLaunch.chapterIdRaw else { return }
+        model.store.resetChapterLevelProgress(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level)
+        let freshItems = makeFreshLevelItems(
+            disciplineId: disciplineId,
+            chapterId: chapterIdRaw,
+            level: level,
+            proposedItems: retryLaunch.items
+        )
+        Haptics.success()
+        lessonLaunch = LessonLaunch(
+            title: retryLaunch.title,
+            chapterId: retryLaunch.chapterId,
+            items: freshItems,
+            disciplineId: disciplineId,
+            level: level,
+            chapterIdRaw: chapterIdRaw
+        )
+    }
+
+    private func makeFreshLevelItems(disciplineId: String, chapterId: String, level: DifficultyLevel, proposedItems: [LessonItem]) -> [LessonItem] {
+        let allIds = proposedItems.map { $0.question.id }
+        let poolIds = model.store.questionPoolForChapterLevel(
+            disciplineId: disciplineId,
+            chapterId: chapterId,
+            level: level,
+            allQuestionIds: allIds
+        )
+        let idSet = Set(poolIds)
+        let fresh = proposedItems.filter { idSet.contains($0.question.id) }
+        return fresh.isEmpty ? proposedItems : fresh
     }
 }

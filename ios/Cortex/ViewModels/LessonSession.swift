@@ -32,6 +32,14 @@ final class LessonSession {
     private(set) var correctCount: Int = 0
     private(set) var xpEarned: Int = 0
     private(set) var streakAfterCompletion: Int = 0
+    private(set) var wrongAnswers: [WrongAnswer] = []
+
+    struct WrongAnswer: Identifiable, Hashable {
+        let id = UUID()
+        let question: Question
+        let selectedAnswer: String
+        let disciplineId: String
+    }
 
     init(items: [LessonItem], chapterId: String?, store: ProgressStore,
          disciplineId: String? = nil, level: DifficultyLevel? = nil, chapterIdRaw: String? = nil) {
@@ -59,6 +67,11 @@ final class LessonSession {
             Haptics.success()
         } else {
             Haptics.error()
+            wrongAnswers.append(WrongAnswer(
+                question: question,
+                selectedAnswer: selection,
+                disciplineId: current.disciplineId
+            ))
         }
         store.recordAnswer(questionId: question.id, disciplineId: current.disciplineId, correct: correct)
         phase = .feedback(correct: correct)
@@ -94,10 +107,26 @@ final class LessonSession {
                 answered: items.count,
                 seenIds: seenIds
             )
+            // If the chapter level is now completed but failed (<80%), mark it as failed
+            // so the retry cooldown and empty-pool prevention kick in.
+            if let cp = store.chapterProgress(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level),
+               cp.isCompleted, !cp.passed {
+                store.markChapterLevelFailed(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level)
+            }
         }
         streakAfterCompletion = store.currentStreak
         phase = .completed
         Haptics.medium()
+    }
+
+    /// Convenience: a level is "failed" when it was just completed and scored <80%.
+    var isLevelFailed: Bool {
+        guard phase == .completed,
+              let disciplineId, let level, let chapterIdRaw,
+              let cp = store.chapterProgress(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level) else {
+            return false
+        }
+        return cp.isCompleted && !cp.passed
     }
 
     private func prepareQuestion() {

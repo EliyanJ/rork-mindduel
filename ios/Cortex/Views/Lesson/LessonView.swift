@@ -11,11 +11,17 @@ struct LessonLaunch: Identifiable {
 }
 
 struct LessonView: View {
+    let launch: LessonLaunch
     @Environment(\.dismiss) private var dismiss
+    @Environment(StoreViewModel.self) private var store
     @State private var session: LessonSession
+    @State private var isWatchingAd = false
     private let title: String
+    private let onRetry: (LessonLaunch) -> Void
 
-    init(launch: LessonLaunch, store: ProgressStore) {
+    init(launch: LessonLaunch, store: ProgressStore, onRetry: @escaping (LessonLaunch) -> Void = { _ in }) {
+        self.launch = launch
+        self.onRetry = onRetry
         self.title = launch.title
         _session = State(initialValue: LessonSession(
             items: launch.items,
@@ -28,20 +34,79 @@ struct LessonView: View {
     }
 
     var body: some View {
-        Group {
-            if session.phase == .completed {
-                LessonCompleteView(
-                    xp: session.xpEarned,
-                    accuracy: session.accuracy,
-                    streak: session.streakAfterCompletion
-                ) {
-                    dismiss()
+        ZStack {
+            Group {
+                if session.phase == .completed {
+                    if session.isLevelFailed {
+                        LessonFailureView(
+                            score: session.correctCount,
+                            maxScore: session.items.count,
+                            requiredAccuracy: 0.8,
+                            wrongAnswers: session.wrongAnswers,
+                            isPremium: store.isPremium,
+                            onRetry: retryNow,
+                            onLater: { dismiss() }
+                        )
+                    } else {
+                        LessonCompleteView(
+                            xp: session.xpEarned,
+                            accuracy: session.accuracy,
+                            streak: session.streakAfterCompletion
+                        ) {
+                            dismiss()
+                        }
+                    }
+                } else {
+                    lessonContent
                 }
-            } else {
-                lessonContent
+            }
+            .background(Theme.background)
+
+            if isWatchingAd {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .overlay {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.5)
+                    }
             }
         }
-        .background(Theme.background)
+        .alert("Erreur", isPresented: .init(
+            get: { AdsManager.shared.lastError != nil },
+            set: { if !$0 { AdsManager.shared.lastError = nil } }
+        )) {
+            Button("OK") { AdsManager.shared.lastError = nil }
+        } message: {
+            Text(AdsManager.shared.lastError ?? "")
+        }
+    }
+
+    private func retryNow() {
+        if store.isPremium {
+            Haptics.success()
+            onRetry(retryLaunch)
+            return
+        }
+        Haptics.medium()
+        isWatchingAd = true
+        AdsManager.shared.showRewarded(from: TopViewControllerFinder.topViewController()) { rewarded in
+            isWatchingAd = false
+            if rewarded {
+                onRetry(retryLaunch)
+            }
+        }
+    }
+
+    private var retryLaunch: LessonLaunch {
+        LessonLaunch(
+            title: title,
+            chapterId: launch.chapterId,
+            items: launch.items,
+            disciplineId: launch.disciplineId,
+            level: launch.level,
+            chapterIdRaw: launch.chapterIdRaw
+        )
     }
 
     private var lessonContent: some View {
