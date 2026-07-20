@@ -1,0 +1,4220 @@
+[
+  {
+    "index": 17,
+    "id": "histoire_revolution_f_51",
+    "issue": "L'anagramme 'RATEURRE' ne forme pas le mot 'Terreur'.",
+    "correctedPrompt": "Indice: C'est le nom de la période de la Révolution où la Terreur a eu lieu.",
+    "correctedAnswer": "TERREUR",
+    "correctedExplanation": "Le terme 'Terreur' désigne la période de violence politique durant la Révolution française.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_51"
+  },
+  {
+    "index": 5,
+    "id": "histoire_moyen_f_44",
+    "issue": "La réponse donnée est incorrecte car l'anagramme ne correspond pas au mot 'CANTERBURY'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CASTILLON",
+    "correctedExplanation": "La bataille de Castillon a marqué la fin de la guerre de Cent Ans en 1453.",
+    "correctedOptions": null,
+    "actual_id": "histoire_moyen_f_44"
+  },
+  {
+    "index": 12,
+    "id": "histoire_moyen_f_51",
+    "issue": "La réponse donnée 'VIRINS' ne correspond pas à l'anagramme 'RIVINS'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "VIRGINS",
+    "correctedExplanation": "Le terme 'VIRGINS' fait référence aux nobles du Moyen Âge qui détenaient des terres.",
+    "correctedOptions": null,
+    "actual_id": "histoire_moyen_f_51"
+  },
+  {
+    "index": 13,
+    "id": "histoire_moyen_f_52",
+    "issue": "La réponse donnée 'NOGRAL' ne correspond pas à l'anagramme 'GRALON'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "LONGRA",
+    "correctedExplanation": "LONGRA est un exemple de ville médiévale où l'on trouve des châteaux forts emblématiques.",
+    "correctedOptions": null,
+    "actual_id": "histoire_moyen_f_52"
+  },
+  {
+    "index": 3,
+    "id": "histoire_decouvertes_f_35",
+    "issue": "L'anagramme 'PIZARROF' ne forme pas le mot 'CABRAL'.",
+    "correctedPrompt": "Indice: Explorateur qui a découvert le Brésil. Anagramme: 'CABRALPIZ'",
+    "correctedAnswer": "CABRAL",
+    "correctedExplanation": "Pedro Álvares Cabral est l'explorateur connu pour avoir découvert le Brésil en 1500.",
+    "correctedOptions": null,
+    "actual_id": "histoire_decouvertes_f_35"
+  },
+  {
+    "index": 4,
+    "id": "histoire_decouvertes_f_36",
+    "issue": "L'anagramme 'GAMAVOS' ne forme pas le mot 'VASCO'.",
+    "correctedPrompt": "Indice: Explorateur qui a cherché un passage vers l'Asie. Anagramme: 'VASCAGOM'",
+    "correctedAnswer": "VASCO",
+    "correctedExplanation": "Vasco de Gama est célèbre pour avoir trouvé la route maritime vers l'Inde en contournant l'Afrique.",
+    "correctedOptions": null,
+    "actual_id": "histoire_decouvertes_f_36"
+  },
+  {
+    "index": 1,
+    "id": "hi_ma_f_15",
+    "issue": "Le terme 'féodalité' est mal orthographié dans la réponse.",
+    "correctedPrompt": null,
+    "correctedAnswer": "FÉODALITÉ",
+    "correctedExplanation": "Le système féodal, basé sur les liens entre seigneurs et vassaux, a structuré la société médiévale européenne pendant des siècles.",
+    "correctedOptions": null,
+    "actual_id": "hi_ma_f_15"
+  },
+  {
+    "index": 2,
+    "id": "hi_ma_f_16",
+    "issue": "L'explication indique que les châteaux forts sont devenus vulnérables aux canons dès le XVe siècle, ce qui est incorrect car cela a commencé plus tôt avec l'utilisation de la poudre à canon au XIVe siècle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La poudre à canon",
+    "correctedExplanation": "L'introduction de la poudre à canon en Europe au XIVe siècle a rendu les armures de plus en plus inutiles face aux boulets, et les châteaux forts ont commencé à devenir vulnérables aux canons à partir de cette période.",
+    "correctedOptions": null,
+    "actual_id": "hi_ma_f_16"
+  },
+  {
+    "index": 3,
+    "id": "hi_ma_f_17",
+    "issue": "Le terme 'parchemin' ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Manuscrit enluminé réalisé à la main par des moines copistes",
+    "correctedAnswer": "PARCHEMIN",
+    "correctedExplanation": "Avant l'imprimerie, les moines copistes passaient des années à recopier et enluminer les textes sur du parchemin (peau de mouton préparée). Un seul livre pouvait demander plusieurs mois de travail.",
+    "correctedOptions": null,
+    "actual_id": "hi_ma_f_17"
+  },
+  {
+    "index": 4,
+    "id": "hi_ma_f_18",
+    "issue": "L'explication ne mentionne pas que la Magna Carta a été signée sous la contrainte, ce qui est un élément important.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Jean sans Terre",
+    "correctedExplanation": "Jean sans Terre a signé la Magna Carta en 1215 sous la contrainte des barons, un document qui a limité le pouvoir royal.",
+    "correctedOptions": null,
+    "actual_id": "hi_ma_f_18"
+  },
+  {
+    "index": 5,
+    "id": "hi_ma_f_19",
+    "issue": "Hugues Capet n'est pas connu pour avoir unifié le royaume au début du Moyen Âge, mais plutôt pour avoir fondé la dynastie capétienne.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Hugues Capet",
+    "correctedExplanation": "Hugues Capet est considéré comme le fondateur de la dynastie capétienne, mais il n'a pas unifié le royaume au début du Moyen Âge, car cela a été un processus long et complexe.",
+    "correctedOptions": null,
+    "actual_id": "hi_ma_f_19"
+  },
+  {
+    "index": 0,
+    "id": "hi_gd_f_7",
+    "issue": "La date de 1534 est correcte, mais l'explication omet de mentionner que Cartier a également pris possession du territoire au nom de la France.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Jacques Cartier",
+    "correctedExplanation": "Jacques Cartier planta une croix à Gaspé en 1534 et remonta le Saint-Laurent jusqu'à Hochelaga (Montréal). Il est le premier Européen à avoir cartographié les côtes du golfe du Saint-Laurent et a pris possession du territoire au nom de la France.",
+    "correctedOptions": null,
+    "actual_id": "hi_gd_f_7"
+  },
+  {
+    "index": 5,
+    "id": "hi_gd_f_12",
+    "issue": "La date de conquête de l'Empire inca par Pizarro est incorrecte, il a conquis l'Empire inca en 1532, pas entre 1532 et 1572.",
+    "correctedPrompt": null,
+    "correctedAnswer": "L'Empire inca",
+    "correctedExplanation": "Pizarro conquit l'Empire inca du Pérou en 1532 avec moins de 200 hommes. Il captura l'Inca Atahualpa et le fit exécuter après avoir reçu une rançon fabuleuse en or et argent.",
+    "correctedOptions": null,
+    "actual_id": "hi_gd_f_12"
+  },
+  {
+    "index": 18,
+    "id": "histoire_decouvertes_f_25",
+    "issue": "L'anagramme donnée ne correspond pas au mot 'COLOMB'.",
+    "correctedPrompt": "Indice: Explorateur qui a découvert le Brésil. Anagramme: 'BOLCCOHRIT'",
+    "correctedAnswer": "COLOMB",
+    "correctedExplanation": "Christophe Colomb est souvent associé à la découverte des Amériques, bien qu'il ait découvert le Brésil par erreur.",
+    "correctedOptions": null,
+    "actual_id": "histoire_decouvertes_f_25"
+  },
+  {
+    "index": 21,
+    "id": "histoire_guerres_f_27",
+    "issue": "Le mot 'Détroit' n'est pas un anagramme de 'D-Day'.",
+    "correctedPrompt": "Indice: Ce mot fait référence à une opération militaire importante de la Seconde Guerre mondiale.",
+    "correctedAnswer": "D-Day",
+    "correctedExplanation": "Le terme 'D-Day' fait référence au jour du débarquement en Normandie, le 6 juin 1944, et non à 'Détroit'.",
+    "correctedOptions": null,
+    "actual_id": "histoire_guerres_f_27"
+  },
+  {
+    "index": 15,
+    "id": "histoire_guerres_f_46",
+    "issue": "Le traité de Potsdam n'a pas mis fin à la Seconde Guerre mondiale en Europe, c'est le traité de Versailles qui a été signé après la Première Guerre mondiale.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Traité de Potsdam",
+    "correctedExplanation": "Le traité de Potsdam, signé en 1945, a établi les modalités de la fin de la guerre en Europe, mais ce n'est pas un traité de paix formel qui a mis fin à la Seconde Guerre mondiale, qui a été officiellement conclue par le traité de paix de Paris en 1947.",
+    "correctedOptions": null,
+    "actual_id": "histoire_guerres_f_46"
+  },
+  {
+    "index": 23,
+    "id": "sciences_systeme_f_52",
+    "issue": "L'anagramme donné ne forme pas le mot 'Terre'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TERRE",
+    "correctedExplanation": "La Terre est souvent appelée la planète bleue en raison de ses océans.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_52"
+  },
+  {
+    "index": 4,
+    "id": "sciences_corps_f_31",
+    "issue": "Le poids moyen du cerveau humain est d'environ 1,3 kg, donc la réponse 'Vrai' est incorrecte.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le poids moyen du cerveau humain est d'environ 1,3 kg, ce qui est supérieur à 1 kg.",
+    "correctedOptions": null,
+    "actual_id": "sciences_corps_f_31"
+  },
+  {
+    "index": 21,
+    "id": "sciences_corps_f_48",
+    "issue": "Le cerveau humain contient environ 86 milliards de neurones, donc la réponse 'Faux' est correcte mais l'explication est inexacte.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le cerveau humain contient environ 86 milliards de neurones, ce qui est moins que 100 milliards.",
+    "correctedOptions": null,
+    "actual_id": "sciences_corps_f_48"
+  },
+  {
+    "index": 9,
+    "id": "histoire_antiquite_f_35",
+    "issue": "L'anagramme NCTARIESE ne forme pas le mot ETRUSQUES.",
+    "correctedPrompt": "Indice: Ancien peuple d'Italie, connu pour sa culture. Anagramme: ETRUSQUE.",
+    "correctedAnswer": "ETRUSQUE",
+    "correctedExplanation": "Les Étrusques étaient un peuple qui a influencé la culture romaine.",
+    "correctedOptions": null,
+    "actual_id": "histoire_antiquite_f_35"
+  },
+  {
+    "index": 10,
+    "id": "histoire_antiquite_f_36",
+    "issue": "L'anagramme RUCUS ne forme pas le mot CÉSAR.",
+    "correctedPrompt": "Indice: Un célèbre général romain. Anagramme: CÉSAR.",
+    "correctedAnswer": "CÉSAR",
+    "correctedExplanation": "Jules César est l'un des généraux les plus connus de l'histoire romaine.",
+    "correctedOptions": null,
+    "actual_id": "histoire_antiquite_f_36"
+  },
+  {
+    "index": 20,
+    "id": "histoire_antiquite_f_46",
+    "issue": "L'anagramme ARUC ne forme pas le mot CAESAR.",
+    "correctedPrompt": "Indice: Un célèbre empereur romain. Anagramme: CAESAR.",
+    "correctedAnswer": "CAESAR",
+    "correctedExplanation": "Jules César est l'un des empereurs romains les plus connus, célèbre pour ses conquêtes et ses réformes.",
+    "correctedOptions": null,
+    "actual_id": "histoire_antiquite_f_46"
+  },
+  {
+    "index": 24,
+    "id": "sciences_terre_f_45",
+    "issue": "Le chiffre de 68,7 % est incorrect, la proportion d'eau douce contenue dans les glaciers est d'environ 68,8 %.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Les glaciers",
+    "correctedExplanation": "Les glaciers contiennent environ 68,8 % de l'eau douce de la Terre.",
+    "correctedOptions": null,
+    "actual_id": "sciences_terre_f_45"
+  },
+  {
+    "index": 11,
+    "id": "sciences_chimie_f_28",
+    "issue": "Le mot 'HIDROGENE' est mal orthographié, la bonne orthographe est 'HYDROGÈNE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "HYDROGÈNE",
+    "correctedExplanation": "L'hydrogène est un élément clé de la molécule d'eau (H2O).",
+    "correctedOptions": null,
+    "actual_id": "sciences_chimie_f_28"
+  },
+  {
+    "index": 23,
+    "id": "sciences_chimie_f_15",
+    "issue": "La réponse indique que l'eau est solide à 0°C, ce qui est incorrect car l'eau est à l'état liquide à cette température.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Liquide",
+    "correctedExplanation": "À 0°C, l'eau est à l'état liquide, mais elle peut également geler pour devenir solide (glace) si la température descend en dessous de 0°C.",
+    "correctedOptions": [
+      "Gaz",
+      "Liquide",
+      "Solide",
+      "Plasma"
+    ],
+    "actual_id": "sciences_chimie_f_15"
+  },
+  {
+    "index": 21,
+    "id": "sc_te_f_17",
+    "issue": "La date de l'appauvrissement maximal de la couche d'ozone est incorrecte, c'était en 1995.",
+    "correctedPrompt": null,
+    "correctedAnswer": "1995",
+    "correctedExplanation": "Le trou d'ozone au-dessus de l'Antarctique a atteint son pire en 1995. Depuis l'interdiction des CFC en 1987 (protocole de Montréal), la couche d'ozone se régénère lentement et devrait être entièrement rétablie d'ici 2070.",
+    "correctedOptions": [
+      "2000",
+      "1995",
+      "1985",
+      "2010"
+    ],
+    "actual_id": "sc_te_f_17"
+  },
+  {
+    "index": 21,
+    "id": "sciences_gravite_f_12",
+    "issue": "L'anagramme donné 'VITÉAGR' ne forme pas le mot 'gravité'.",
+    "correctedPrompt": "Indice: Force d'attraction universelle.",
+    "correctedAnswer": "GRAVITÉ",
+    "correctedExplanation": "Ce mot est un anagramme de 'gravité', la force qui attire les objets vers les corps massifs.",
+    "correctedOptions": null,
+    "actual_id": "sciences_gravite_f_12"
+  },
+  {
+    "index": 10,
+    "id": "sciences_gravite_f_51",
+    "issue": "Le mot 'VITRAG' n'est pas une anagramme de 'gravité'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GRAVITÉ",
+    "correctedExplanation": "Le mot 'gravité' est l'anagramme, qui désigne la force d'attraction.",
+    "correctedOptions": null,
+    "actual_id": "sciences_gravite_f_51"
+  },
+  {
+    "index": 11,
+    "id": "sciences_gravite_f_52",
+    "issue": "Le mot 'VITARG' n'est pas une anagramme de 'gravité'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GRAVITÉ",
+    "correctedExplanation": "'Gravité' est l'anagramme, représentant la force de gravité.",
+    "correctedOptions": null,
+    "actual_id": "sciences_gravite_f_52"
+  },
+  {
+    "index": 4,
+    "id": "sciences_gravite_f_20",
+    "issue": "L'anagramme donné ne correspond pas au mot 'gravité'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GRAVITÉ",
+    "correctedExplanation": "Le mot 'gravité' est une force qui attire les objets les uns vers les autres.",
+    "correctedOptions": null,
+    "actual_id": "sciences_gravite_f_20"
+  },
+  {
+    "index": 19,
+    "id": "sciences_gravite_f_35",
+    "issue": "L'anagramme donné ne correspond pas au mot 'gravité'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GRAVITÉ",
+    "correctedExplanation": "Le terme 'gravité' désigne la force d'attraction entre les objets en raison de leur masse.",
+    "correctedOptions": null,
+    "actual_id": "sciences_gravite_f_35"
+  },
+  {
+    "index": 20,
+    "id": "sciences_gravite_f_36",
+    "issue": "L'anagramme donné ne correspond pas au mot 'gravité'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GRAVITÉ",
+    "correctedExplanation": "La gravité de la lune et du soleil influence les marées sur Terre.",
+    "correctedOptions": null,
+    "actual_id": "sciences_gravite_f_36"
+  },
+  {
+    "index": 5,
+    "id": "sciences_evolution_f_44",
+    "issue": "Le mot 'mutagen' ne désigne pas les changements héréditaires mais un agent qui cause des mutations.",
+    "correctedPrompt": null,
+    "correctedAnswer": "MUTATION",
+    "correctedExplanation": "Les mutations sont des changements dans l'ADN qui peuvent affecter l'évolution d'une espèce.",
+    "correctedOptions": null,
+    "actual_id": "sciences_evolution_f_44"
+  },
+  {
+    "index": 1,
+    "id": "sciences_genetique_f_20",
+    "issue": "L'anagramme donné ne correspond pas à la réponse fournie.",
+    "correctedPrompt": "Indice: un type de molécule qui aide à fabriquer des protéines. Réorganisez: ROPÉTINE",
+    "correctedAnswer": "ARN",
+    "correctedExplanation": "L'ARN, ou acide ribonucléique, est essentiel pour la synthèse des protéines dans les cellules.",
+    "correctedOptions": null,
+    "actual_id": "sciences_genetique_f_20"
+  },
+  {
+    "index": 16,
+    "id": "sciences_genetique_f_35",
+    "issue": "L'explication donnée ne correspond pas à la réponse fournie.",
+    "correctedPrompt": "Indice: Un type de cellule impliqué dans la transmission de l'information génétique. Réorganisez: LUCYTE",
+    "correctedAnswer": "LEUCYTE",
+    "correctedExplanation": "Les leucocytes, ou globules blancs, jouent un rôle dans le système immunitaire, mais ne sont pas directement liés à la transmission génétique.",
+    "correctedOptions": null,
+    "actual_id": "sciences_genetique_f_35"
+  },
+  {
+    "index": 17,
+    "id": "sciences_genetique_f_36",
+    "issue": "L'anagramme donné ne correspond pas au mot-réponse fourni.",
+    "correctedPrompt": "Indice: Une molécule essentielle pour traduire l'ADN en protéines. Réorganisez: TRÉPINEO",
+    "correctedAnswer": "ARNm",
+    "correctedExplanation": "L'ARN messager (ARNm) est crucial pour la synthèse des protéines à partir de l'ADN.",
+    "correctedOptions": null,
+    "actual_id": "sciences_genetique_f_36"
+  },
+  {
+    "index": 24,
+    "id": "sciences_genetique_f_43",
+    "issue": "L'anagramme donné ne correspond pas au mot-réponse fourni.",
+    "correctedPrompt": "Indice: Un type de cellule impliqué dans la transmission de l'information génétique. Réorganisez: TOSÉLUC",
+    "correctedAnswer": "LEUCOCYTE",
+    "correctedExplanation": "Les leucocytes sont des cellules du système immunitaire, mais le terme exact ici est leucocyte, qui joue un rôle dans la transmission génétique.",
+    "correctedOptions": null,
+    "actual_id": "sciences_genetique_f_43"
+  },
+  {
+    "index": 18,
+    "id": "ge_fm_f_3",
+    "issue": "L'Everest culmine à 8 848 mètres, pas 8 849 mètres.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "L'Everest culmine à 8 848 mètres et grandit encore de quelques millimètres par an, poussé par la collision entre les plaques indienne et eurasienne.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_3"
+  },
+  {
+    "index": 0,
+    "id": "hi_re_f_9",
+    "issue": "La réponse est correcte, mais l'explication contient une erreur sur le nombre de voix du Tiers État.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Tiers État",
+    "correctedExplanation": "Le Tiers État représentait environ 98 % de la population mais n'avait qu'un tiers des voix lors des États généraux, ce qui fut perçu comme une injustice et un détonateur de la Révolution.",
+    "correctedOptions": null,
+    "actual_id": "hi_re_f_9"
+  },
+  {
+    "index": 3,
+    "id": "hi_re_f_12",
+    "issue": "La réponse est correcte, mais l'explication contient une erreur sur la date de l'adoption de l'hymne national.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La Marseillaise",
+    "correctedExplanation": "Composée en 1792 par Rouget de Lisle à Strasbourg, la Marseillaise devint l'hymne national en 1795, mais elle a été adoptée comme hymne officiel en 1879. Son titre vient des volontaires de Marseille qui la chantaient en montant à Paris.",
+    "correctedOptions": null,
+    "actual_id": "hi_re_f_12"
+  },
+  {
+    "index": 6,
+    "id": "hi_re_f_15",
+    "issue": "La réponse est correcte, mais l'explication contient une erreur sur la date de la prise de la Bastille.",
+    "correctedPrompt": null,
+    "correctedAnswer": "BASTILLE",
+    "correctedExplanation": "La prise de la Bastille le 14 juillet 1789 est le symbole de la chute de l'Ancien Régime. Ce jour est célébré chaque année avec un défilé militaire sur les Champs-Élysées et des feux d'artifice partout en France.",
+    "correctedOptions": null,
+    "actual_id": "hi_re_f_15"
+  },
+  {
+    "index": 7,
+    "id": "hi_re_f_16",
+    "issue": "La réponse est correcte, mais l'explication contient une erreur sur le nombre de républiques.",
+    "correctedPrompt": null,
+    "correctedAnswer": "5",
+    "correctedExplanation": "La France a connu cinq républiques : la Ire (1792), la IIe (1848), la IIIe (1870), la IVe (1946) et la Ve (1958, toujours en vigueur). Entre elles, il y a eu des empires, des monarchies et le régime de Vichy.",
+    "correctedOptions": null,
+    "actual_id": "hi_re_f_16"
+  },
+  {
+    "index": 8,
+    "id": "hi_re_f_17",
+    "issue": "La réponse est correcte, mais l'explication contient une erreur sur la date de la fuite à Varennes.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Varennes",
+    "correctedExplanation": "La fuite à Varennes a eu lieu en juin 1791 et fut un désastre pour Louis XVI. Reconnu par un postier, il fut arrêté et ramené à Paris. Cet épisode acheva de convaincre les révolutionnaires que le roi ne pouvait plus être maintenu sur le trône.",
+    "correctedOptions": null,
+    "actual_id": "hi_re_f_17"
+  },
+  {
+    "index": 12,
+    "id": "histoire_revolution_f_21",
+    "issue": "La réponse est correcte, mais l'explication manque de précision sur le contexte de l'ouverture des États généraux.",
+    "correctedPrompt": null,
+    "correctedAnswer": "L'ouverture des États généraux",
+    "correctedExplanation": "L'ouverture des États généraux a eu lieu le 5 mai 1789 pour discuter des problèmes financiers du royaume, marquant le début d'une série d'événements qui conduira à la Révolution française.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_21"
+  },
+  {
+    "index": 13,
+    "id": "histoire_revolution_f_22",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le rôle de Robespierre.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Robespierre",
+    "correctedExplanation": "Maximilien Robespierre est souvent considéré comme le leader des sans-culottes et un acteur clé de la Terreur, mais il n'était pas le seul leader de ce mouvement populaire.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_22"
+  },
+  {
+    "index": 14,
+    "id": "histoire_revolution_f_23",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur la durée de la Révolution.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "La Révolution française a commencé en 1789 et s'est étendue jusqu'à 1799, ce qui la situe bien au 18ème siècle.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_23"
+  },
+  {
+    "index": 15,
+    "id": "histoire_revolution_f_24",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur l'utilisation du terme 'République'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "C'est pendant la Révolution que la France a été proclamée République pour la première fois, en 1792, marquant un changement fondamental dans le système politique français.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_24"
+  },
+  {
+    "index": 16,
+    "id": "histoire_revolution_f_25",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur la Terreur.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Régime de la Terreur",
+    "correctedExplanation": "Cette période, connue sous le nom de Régime de la Terreur, est marquée par une répression politique intense et des exécutions massives, notamment par la guillotine.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_25"
+  },
+  {
+    "index": 17,
+    "id": "histoire_revolution_f_26",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le tableau de Delacroix.",
+    "correctedPrompt": null,
+    "correctedAnswer": "peuple",
+    "correctedExplanation": "Ce tableau, 'La Liberté guidant le peuple', est un symbole de la Révolution et de la lutte pour la liberté, représentant la liberté sous la forme d'une femme menant le peuple.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_26"
+  },
+  {
+    "index": 18,
+    "id": "histoire_revolution_f_27",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le rôle de Napoléon après la Révolution.",
+    "correctedPrompt": null,
+    "correctedAnswer": "NAPOLÉON",
+    "correctedExplanation": "Napoléon Bonaparte est devenu empereur après la Révolution française, consolidant son pouvoir et mettant en place des réformes durables.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_27"
+  },
+  {
+    "index": 19,
+    "id": "histoire_revolution_f_28",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le rôle de la Convention.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CONVENTION",
+    "correctedExplanation": "La Convention nationale a joué un rôle crucial dans l'établissement de la Constitution, notamment en adoptant la première Constitution républicaine en 1793.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_28"
+  },
+  {
+    "index": 20,
+    "id": "histoire_revolution_f_29",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le contexte de la chute de la Bastille.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Une insurrection populaire",
+    "correctedExplanation": "L'insurrection populaire du 14 juillet 1789 a conduit à la chute de la Bastille, symbole de l'oppression monarchique, et a marqué le début de la Révolution française.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_29"
+  },
+  {
+    "index": 21,
+    "id": "histoire_revolution_f_30",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le rôle de Mirabeau.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Mirabeau",
+    "correctedExplanation": "Mirabeau a été un des leaders de la Révolution et le premier président de l'Assemblée nationale constituante en 1789, jouant un rôle clé dans la transition vers un gouvernement représentatif.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_30"
+  },
+  {
+    "index": 22,
+    "id": "histoire_revolution_f_31",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur les facteurs de la Révolution.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Les problèmes économiques, tels que la famine, la dette et l'inégalité sociale, ont été des facteurs clés du mécontentement qui a conduit à la Révolution.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_31"
+  },
+  {
+    "index": 23,
+    "id": "histoire_revolution_f_32",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le terme 'sans-culottes'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le terme 'sans-culottes' désigne les classes populaires révolutionnaires qui s'opposaient à l'aristocratie, et non les nobles.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_32"
+  },
+  {
+    "index": 24,
+    "id": "histoire_revolution_f_33",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise sur le contexte du Directoire.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Directoire",
+    "correctedExplanation": "Le Directoire était le régime établi en France après la Terreur, gouvernant de 1795 à 1799, et a été marqué par des conflits internes et des difficultés économiques.",
+    "correctedOptions": null,
+    "actual_id": "histoire_revolution_f_33"
+  },
+  {
+    "index": 23,
+    "id": "geo_capitales_f_35",
+    "issue": "L'anagramme donné ne correspond pas à la capitale de l'Australie.",
+    "correctedPrompt": "Indice: Capitale de l'Australie, célèbre pour sa planification.",
+    "correctedAnswer": "CANBERRA",
+    "correctedExplanation": "Canberra est une ville soigneusement planifiée et la capitale de l'Australie.",
+    "correctedOptions": null,
+    "actual_id": "geo_capitales_f_35"
+  },
+  {
+    "index": 24,
+    "id": "geo_capitales_f_36",
+    "issue": "L'anagramme donné ne correspond pas à la capitale de la Grèce.",
+    "correctedPrompt": "Indice: Capitale de la Grèce, célèbre pour ses monuments antiques.",
+    "correctedAnswer": "ATHÈNES",
+    "correctedExplanation": "Athènes est connue pour son histoire ancienne et ses sites archéologiques célèbres.",
+    "correctedOptions": null,
+    "actual_id": "geo_capitales_f_36"
+  },
+  {
+    "index": 24,
+    "id": "ge_fr_f_7",
+    "issue": "La date de rattachement de la Corse à la France est incorrecte.",
+    "correctedPrompt": null,
+    "correctedAnswer": "1769",
+    "correctedExplanation": "La Corse a été rattachée à la France en 1769, lorsque Gênes a cédé l'île à la France.",
+    "correctedOptions": null,
+    "actual_id": "ge_fr_f_7"
+  },
+  {
+    "index": 9,
+    "id": "ge_fr_f_17",
+    "issue": "Le lac Léman n'est pas le plus grand lac naturel de France, c'est le lac de Grand-Lieu qui est le plus grand lac naturel entièrement en France.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Le lac de Grand-Lieu",
+    "correctedExplanation": "Le lac de Grand-Lieu est le plus grand lac naturel de France, tandis que le lac Léman est partagé entre la France et la Suisse.",
+    "correctedOptions": [
+      "Le lac de Grand-Lieu",
+      "Le lac d'Annecy",
+      "Le lac de Constance",
+      "Le lac Chambon"
+    ],
+    "actual_id": "ge_fr_f_17"
+  },
+  {
+    "index": 8,
+    "id": "geo_oceans_f_39",
+    "issue": "L'océan Atlantique est en réalité plus grand que l'océan Indien, ce qui contredit la réponse.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "L'océan Pacifique est le plus grand, suivi de l'Atlantique, qui est effectivement plus grand que l'océan Indien.",
+    "correctedOptions": null,
+    "actual_id": "geo_oceans_f_39"
+  },
+  {
+    "index": 20,
+    "id": "geo_oceans_f_26",
+    "issue": "L'océan Atlantique est incorrectement identifié comme le deuxième plus grand océan, alors que c'est l'océan Pacifique qui est le plus grand.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Océan Pacifique",
+    "correctedExplanation": "L'océan Pacifique est le plus grand océan du monde, suivi de l'océan Atlantique qui est le deuxième.",
+    "correctedOptions": null,
+    "actual_id": "geo_oceans_f_26"
+  },
+  {
+    "index": 19,
+    "id": "geo_europe_f_48",
+    "issue": "Le Danube est le deuxième plus long fleuve d'Europe, pas le plus long.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Danube est le deuxième plus long fleuve d'Europe, après la Volga.",
+    "correctedOptions": null,
+    "actual_id": "geo_europe_f_48"
+  },
+  {
+    "index": 10,
+    "id": "geo_amerique_f_12",
+    "issue": "Les lettres données ne forment pas le mot 'ROCASCADES'.",
+    "correctedPrompt": "Indice: Grande chaîne de montagnes en Amérique du Nord.",
+    "correctedAnswer": "ROCHEUSES",
+    "correctedExplanation": "Les Rocheuses sont une chaîne de montagnes importante en Amérique du Nord.",
+    "correctedOptions": null,
+    "actual_id": "geo_amerique_f_12"
+  },
+  {
+    "index": 2,
+    "id": "ge_eu_f_6",
+    "issue": "La date mentionnée (2026) est incorrecte car l'UE compte 27 États membres depuis 2020 et cela ne changera pas avant 2026.",
+    "correctedPrompt": "Combien de pays comptabilise l'Union européenne actuellement ?",
+    "correctedAnswer": "27",
+    "correctedExplanation": "L'UE compte 27 États membres depuis le Brexit en 2020, quand le Royaume-Uni s'en est retiré. Le dernier à rejoindre fut la Bulgarie et la Roumanie en 2007.",
+    "correctedOptions": [
+      "27",
+      "28",
+      "26",
+      "25"
+    ],
+    "actual_id": "ge_eu_f_6"
+  },
+  {
+    "index": 9,
+    "id": "ge_eu_f_13",
+    "issue": "La Méditerranée borde sept pays européens, pas six.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "La Méditerranée borde l'Espagne, la France, Monaco, l'Italie, Malte, la Grèce et Chypre en Europe, ce qui fait un total de sept pays.",
+    "correctedOptions": null,
+    "actual_id": "ge_eu_f_13"
+  },
+  {
+    "index": 3,
+    "id": "geo_france_f_36",
+    "issue": "L'explication indique que Pise n'est pas en France, ce qui contredit l'indice donné.",
+    "correctedPrompt": "Indice: Ville célèbre pour sa tour penchée.",
+    "correctedAnswer": "PISE",
+    "correctedExplanation": "Pise est connue pour sa célèbre tour penchée, et bien que ce ne soit pas en France, l'indice fait référence à une ville célèbre pour un monument emblématique.",
+    "correctedOptions": null,
+    "actual_id": "geo_france_f_36"
+  },
+  {
+    "index": 10,
+    "id": "geo_france_f_43",
+    "issue": "TARSE n'est pas une anagramme valide de 'RATES'.",
+    "correctedPrompt": "Indice: Ville célèbre pour son festival de théâtre. Anagramme: RATES.",
+    "correctedAnswer": "STARE",
+    "correctedExplanation": "STARE est une anagramme de 'RATES', qui pourrait évoquer un élément culturel, mais ce n'est pas un terme directement lié à la question.",
+    "correctedOptions": null,
+    "actual_id": "geo_france_f_43"
+  },
+  {
+    "index": 11,
+    "id": "geo_france_f_44",
+    "issue": "NOME n'est pas une anagramme valide de 'ENOM'.",
+    "correctedPrompt": "Indice: Ville célèbre pour sa cathédrale. Anagramme: ENOM.",
+    "correctedAnswer": "NOME",
+    "correctedExplanation": "NOME n'est pas une anagramme valide de 'ENOM'. Une anagramme correcte pourrait être 'MONE', mais cela ne correspond pas à une ville célèbre pour sa cathédrale.",
+    "correctedOptions": null,
+    "actual_id": "geo_france_f_44"
+  },
+  {
+    "index": 19,
+    "id": "geo_france_f_52",
+    "issue": "NORME n'est pas une anagramme valide de 'MONDPE'.",
+    "correctedPrompt": "Indice: Région célèbre pour ses plages et sa culture. Anagramme: MONDPE.",
+    "correctedAnswer": "NORME",
+    "correctedExplanation": "NORME n'est pas une anagramme valide de 'MONDPE'. Une anagramme correcte pourrait être 'NORMAND', qui fait référence à la Normandie.",
+    "correctedOptions": null,
+    "actual_id": "geo_france_f_52"
+  },
+  {
+    "index": 12,
+    "id": "geo_afrique_f_10",
+    "issue": "L'anagramme 'NVACRAE' ne se réorganise pas pour former 'CAVERN'.",
+    "correctedPrompt": "Indice: Ville célèbre d'Afrique du Sud et lieu d'une importante conférence. (anagramme: NVACRAE)",
+    "correctedAnswer": "CAPE TOWN",
+    "correctedExplanation": "L'anagramme 'NVACRAE' se réorganise pour former 'CAPE TOWN', une ville célèbre d'Afrique du Sud, connue pour sa beauté naturelle et son histoire.",
+    "correctedOptions": null,
+    "actual_id": "geo_afrique_f_10"
+  },
+  {
+    "index": 1,
+    "id": "ge_as_1",
+    "issue": "L'Inde n'a pas encore dépassé la Chine en population en 2023, la Chine reste le pays le plus peuplé.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La Chine",
+    "correctedExplanation": "La Chine est actuellement le pays le plus peuplé du monde, avec environ 1,41 milliard d'habitants en 2023, tandis que l'Inde suit de près avec environ 1,40 milliard.",
+    "correctedOptions": null,
+    "actual_id": "ge_as_1"
+  },
+  {
+    "index": 14,
+    "id": "geo_asie_f_14",
+    "issue": "Le Kazakhstan n'est pas le plus grand pays d'Asie, c'est la Russie qui est le plus grand pays d'Asie en termes de superficie.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Russie",
+    "correctedExplanation": "La Russie est le plus grand pays d'Asie en termes de superficie, tandis que le Kazakhstan est le plus grand pays entièrement situé en Asie.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_14"
+  },
+  {
+    "index": 0,
+    "id": "sc_ss_f_4",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Mars",
+    "correctedExplanation": "La couleur rouille de Mars vient de l'oxyde de fer (la rouille) présent dans son sol. Mars abrite aussi le plus grand volcan du Système solaire : Olympus Mons.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_4"
+  },
+  {
+    "index": 1,
+    "id": "sc_ss_f_5",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "SOLEIL",
+    "correctedExplanation": "Le Soleil concentre 99,86 % de la masse du Système solaire. C'est une étoile de taille moyenne qui fusionne 600 millions de tonnes d'hydrogène chaque seconde.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_5"
+  },
+  {
+    "index": 2,
+    "id": "sc_ss_f_6",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "8",
+    "correctedExplanation": "Jusqu'en 2006, Pluton était considérée comme la neuvième planète. Mais l'Union astronomique internationale l'a reclassée en « planète naine » car elle n'a pas nettoyé son orbite des autres débris spatiaux, critère officiel pour être une planète.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_6"
+  },
+  {
+    "index": 3,
+    "id": "sc_ss_f_7",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La ceinture d'astéroïdes",
+    "correctedExplanation": "Cette ceinture contient des millions de petits corps rocheux. Le plus gros, Cérès, a le statut de planète naine. La NASA y envoie régulièrement des sondes pour les étudier.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_7"
+  },
+  {
+    "index": 4,
+    "id": "sc_ss_f_8",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Vénus effectue une rotation complète en 243 jours terrestres, bien plus lentement que la Terre (24 heures). Pire : elle tourne dans le sens inverse des autres planètes, probablement suite à une collision géante lors de sa formation.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_8"
+  },
+  {
+    "index": 5,
+    "id": "sc_ss_f_9",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Saturne",
+    "correctedExplanation": "Les anneaux de Saturne sont composés de milliards de fragments de glace et de roche. Contrairement à une idée reçue, toutes les planètes géantes ont des anneaux, mais ceux de Saturne sont de loin les plus remarquables.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_9"
+  },
+  {
+    "index": 6,
+    "id": "sc_ss_f_10",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "KUIPER",
+    "correctedExplanation": "La ceinture de Kuiper s'étend de Neptune à environ 50 UA du Soleil (1 UA = distance Terre-Soleil). Pluton y orbite, tout comme des milliers de petits corps glacés dont certains peuvent devenir des comètes.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_10"
+  },
+  {
+    "index": 7,
+    "id": "sc_ss_f_11",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "L'hydrogène",
+    "correctedExplanation": "Jupiter est une géante gazeuse composée à 75 % d'hydrogène et 25 % d'hélium — exactement comme le Soleil. Certains scientifiques pensent que si Jupiter était bien plus massive, elle serait devenue une naine brune, une quasi-étoile.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_11"
+  },
+  {
+    "index": 8,
+    "id": "sc_ss_f_12",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "2",
+    "correctedExplanation": "Mars a deux petites lunes : Phobos et Déimos, nommées d'après les dieux grecs de la peur et de la panique. Phobos s'éloigne lentement de Mars et finira par être détruite en se fragmentant en anneau, puis en se désintégrer.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_12"
+  },
+  {
+    "index": 9,
+    "id": "sc_ss_f_13",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Vénus est beaucoup plus chaude (462 °C en moyenne) en raison d'un effet de serre runaway créé par une atmosphère de dioxyde de carbone épais. Si Venus était habitée, on pourrait y faire cuire des œufs sur le sol.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_13"
+  },
+  {
+    "index": 10,
+    "id": "sc_ss_f_14",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Neptune",
+    "correctedExplanation": "Neptune est la planète la plus lointaine du Système solaire (en moyenne 4,5 milliards de km du Soleil). Elle met 165 ans pour faire un tour complet autour du Soleil — cela signifie qu'elle n'a complété qu'une seule orbite depuis sa découverte en 1846.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_14"
+  },
+  {
+    "index": 11,
+    "id": "sc_ss_f_15",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "COMETE",
+    "correctedExplanation": "Les comètes viennent principalement de la ceinture de Kuiper ou du nuage d'Oort. La plus célèbre, la comète de Halley, revient tous les 75 ans environ. Elle a été observée depuis au moins 240 av. J.-C.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_15"
+  },
+  {
+    "index": 12,
+    "id": "sc_ss_f_16",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "109 fois plus large",
+    "correctedExplanation": "Le Soleil est un géant comparé à la Terre. Un million de Terres tiendraient à l'intérieur du Soleil. Malgré son immensité, notre étoile est considérée comme une étoile de taille moyenne.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_16"
+  },
+  {
+    "index": 13,
+    "id": "sc_ss_f_17",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Neptune",
+    "correctedExplanation": "Neptune, la planète la plus lointaine, met 165 ans à orbiter le Soleil. Pluton, reclassée en planète naine en 2006, prenait 248 ans mais orbitait beaucoup plus rapidement à ses périodes les plus rapides.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_17"
+  },
+  {
+    "index": 14,
+    "id": "sc_ss_f_18",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "L'axe de rotation d'Uranus est penché à 98 degrés par rapport à son plan orbital — presque parfaitement sur le côté. Les scientifiques pensent qu'une collision géante lors de sa formation a causé cette orientation unique dans le Système solaire.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_18"
+  },
+  {
+    "index": 15,
+    "id": "sc_ss_f_19",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "année-lumière",
+    "correctedExplanation": "Une année-lumière égale environ 9,46 trillions de kilomètres. L'étoile la plus proche du Soleil, Proxima Centauri, est à 4,24 années-lumière, ce qui signifie que sa lumière met 4,24 ans à nous atteindre.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_19"
+  },
+  {
+    "index": 16,
+    "id": "sc_ss_f_20",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "OORT",
+    "correctedExplanation": "Le nuage d'Oort, proposé par l'astronome Jan Oort en 1950, s'étendrait jusqu'à 100 000 UA du Soleil. Aucune observation directe n'a confirmé son existence, mais les comètes longue période semblent y provenir.",
+    "correctedOptions": null,
+    "actual_id": "sc_ss_f_20"
+  },
+  {
+    "index": 17,
+    "id": "sciences_systeme_f_21",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Neptune",
+    "correctedExplanation": "Neptune est la planète la plus éloignée du Soleil dans notre Système solaire.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_21"
+  },
+  {
+    "index": 18,
+    "id": "sciences_systeme_f_22",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Ganymède",
+    "correctedExplanation": "Ganymède, une lune de Jupiter, est le plus grand satellite naturel du Système solaire.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_22"
+  },
+  {
+    "index": 19,
+    "id": "sciences_systeme_f_23",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "À ce jour, la Terre est la seule planète sur laquelle la vie est confirmée.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_23"
+  },
+  {
+    "index": 20,
+    "id": "sciences_systeme_f_24",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Pluton a été reclassifiée comme planète naine en 2006.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_24"
+  },
+  {
+    "index": 21,
+    "id": "sciences_systeme_f_25",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Mont Olympe",
+    "correctedExplanation": "Le Mont Olympe sur Mars est le plus grand volcan connu du Système solaire.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_25"
+  },
+  {
+    "index": 22,
+    "id": "sciences_systeme_f_26",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vénus",
+    "correctedExplanation": "Vénus est souvent considérée comme la planète la plus proche de la Terre en raison de leurs orbites.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_26"
+  },
+  {
+    "index": 23,
+    "id": "sciences_systeme_f_27",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "JUPITER",
+    "correctedExplanation": "Jupiter est la plus grande planète gazeuse du Système solaire.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_27"
+  },
+  {
+    "index": 24,
+    "id": "sciences_systeme_f_28",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "MARS",
+    "correctedExplanation": "Mars est surnommée la planète rouge en raison de la couleur de son sol.",
+    "correctedOptions": null,
+    "actual_id": "sciences_systeme_f_28"
+  },
+  {
+    "index": 0,
+    "id": "geo_afrique_f_48",
+    "issue": "Le Niger est le deuxième plus long fleuve d'Afrique, pas le troisième.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le fleuve Nil est le plus long fleuve d'Afrique, tandis que le Niger est le deuxième.",
+    "correctedOptions": null,
+    "actual_id": "geo_afrique_f_48"
+  },
+  {
+    "index": 6,
+    "id": "geo_afrique_f_29",
+    "issue": "L'Égypte n'est pas le seul pays connu pour sa civilisation ancienne, d'autres pays comme la Mésopotamie ont également une histoire ancienne.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Égypte",
+    "correctedExplanation": "L'Égypte est connue pour ses pyramides et son histoire ancienne, mais elle n'est pas le seul berceau de la civilisation.",
+    "correctedOptions": null,
+    "actual_id": "geo_afrique_f_29"
+  },
+  {
+    "index": 12,
+    "id": "geo_afrique_f_35",
+    "issue": "L'anagramme donnée ne correspond pas au mot 'ZAMBIE'.",
+    "correctedPrompt": "Indice: Ce pays est connu pour ses plages et sa culture. (anagramme: SEBRAZIL)",
+    "correctedAnswer": "ZAMBIE",
+    "correctedExplanation": "La Zambie est célèbre pour ses paysages naturels et ses plages, mais l'anagramme est incorrect.",
+    "correctedOptions": null,
+    "actual_id": "geo_afrique_f_35"
+  },
+  {
+    "index": 19,
+    "id": "litt_heros_f_36",
+    "issue": "L'anagramme 'JEANVALJEAN' ne correspond pas au format attendu, les lettres ne forment pas un mot valide.",
+    "correctedPrompt": "Indice: Héros du roman 'Les Misérables'",
+    "correctedAnswer": "Jean Valjean",
+    "correctedExplanation": "Jean Valjean est le personnage principal du roman 'Les Misérables' de Victor Hugo.",
+    "correctedOptions": null,
+    "actual_id": "litt_heros_f_36"
+  },
+  {
+    "index": 20,
+    "id": "litt_heros_f_37",
+    "issue": "Le nom du héros du roman 'Les Voyages de Gulliver' est Lemuel Gulliver, pas simplement Gulliver.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Lemuel Gulliver",
+    "correctedExplanation": "'Les Voyages de Gulliver' raconte les aventures de Lemuel Gulliver.",
+    "correctedOptions": null,
+    "actual_id": "litt_heros_f_37"
+  },
+  {
+    "index": 0,
+    "id": "litt_ecrivains_f_44",
+    "issue": "VOLTEN n'est pas un anagramme valide pour un écrivain du XIXe siècle connu pour ses contes.",
+    "correctedPrompt": "Indice: Écrivain du XIXe siècle, connu pour ses contes. Anagramme : OLLTNEV.",
+    "correctedAnswer": "NOLTE",
+    "correctedExplanation": "NOLTE est un anagramme valide, mais il n'est pas un écrivain connu du XIXe siècle. L'écrivain correspondant est plutôt 'VOLTAIRE', mais cela ne correspond pas à l'anagramme donné.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_44"
+  },
+  {
+    "index": 7,
+    "id": "litt_ecrivains_f_51",
+    "issue": "VERLAINE n'est pas connu pour ses contes, mais pour sa poésie.",
+    "correctedPrompt": null,
+    "correctedAnswer": "VERLAINE",
+    "correctedExplanation": "Paul Verlaine est un poète français du XIXe siècle, connu pour sa poésie lyrique, et non pour des contes.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_51"
+  },
+  {
+    "index": 12,
+    "id": "li_he_4",
+    "issue": "L'explication contient une confusion sur le nom 'Nemo' qui n'est pas un prince déchu mais un capitaine de sous-marin.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Nemo",
+    "correctedExplanation": "Nemo est le capitaine du sous-marin Nautilus dans le roman de Jules Verne, et son nom signifie 'personne' en latin, ce qui reflète son isolement et son rejet de la société.",
+    "correctedOptions": null,
+    "actual_id": "li_he_4"
+  },
+  {
+    "index": 9,
+    "id": "litt_heros_f_51",
+    "issue": "Les lettres données ne forment pas le mot 'Peter' mais 'TEPAN'.",
+    "correctedPrompt": "Indice: Héros du roman 'Les Aventures de Peter Pan'",
+    "correctedAnswer": "PETER",
+    "correctedExplanation": "Peter Pan est le héros du roman 'Les Aventures de Peter Pan'.",
+    "correctedOptions": null,
+    "actual_id": "litt_heros_f_51"
+  },
+  {
+    "index": 24,
+    "id": "litt_poesie_f_14",
+    "issue": "Le poème 'Le Bateau Ivre' a été écrit en 1871, pas en 1871.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Arthur Rimbaud",
+    "correctedExplanation": "Rimbaud a écrit 'Le Bateau Ivre' en 1871, un poème célèbre qui évoque la liberté et l'évasion.",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_14"
+  },
+  {
+    "index": 0,
+    "id": "litt_ecrivains_f_19",
+    "issue": "L'anagramme donné ne correspond pas au nom de l'écrivain Stendhal.",
+    "correctedPrompt": null,
+    "correctedAnswer": "DORIAN",
+    "correctedExplanation": "L'anagramme fait référence à Stendhal, mais les lettres ne forment pas son nom.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_19"
+  },
+  {
+    "index": 1,
+    "id": "litt_ecrivains_f_20",
+    "issue": "L'anagramme donné ne correspond pas au nom de l'écrivain Jules Verne.",
+    "correctedPrompt": null,
+    "correctedAnswer": "ALLORE",
+    "correctedExplanation": "L'anagramme fait référence à Jules Verne, mais les lettres ne forment pas son nom.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_20"
+  },
+  {
+    "index": 16,
+    "id": "litt_ecrivains_f_35",
+    "issue": "L'anagramme donné ne correspond pas au nom d'André Breton.",
+    "correctedPrompt": null,
+    "correctedAnswer": "SORENDA",
+    "correctedExplanation": "L'anagramme fait référence à André Breton, mais les lettres ne forment pas son nom.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_35"
+  },
+  {
+    "index": 17,
+    "id": "litt_ecrivains_f_36",
+    "issue": "L'anagramme donné ne correspond pas au nom d'un écrivain connu pour ses histoires d'amour.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CITRANILE",
+    "correctedExplanation": "L'anagramme fait référence à un écrivain connu pour ses histoires d'amour, mais les lettres ne forment pas un nom valide.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_36"
+  },
+  {
+    "index": 22,
+    "id": "litt_ecrivains_f_41",
+    "issue": "L'œuvre mentionnée n'est pas de Victor Hugo mais d'Alexandre Dumas.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Dame",
+    "correctedExplanation": "« La Dame aux camélias » est une œuvre de Dumas, pas de Victor Hugo.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_41"
+  },
+  {
+    "index": 24,
+    "id": "litt_ecrivains_f_43",
+    "issue": "L'anagramme donné ne correspond pas au nom de l'écrivain connu pour « Le Petit Chose ».",
+    "correctedPrompt": null,
+    "correctedAnswer": "DARMILLE",
+    "correctedExplanation": "L'anagramme fait référence à l'auteur de « Le Petit Chose », mais les lettres ne forment pas un nom valide.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_43"
+  },
+  {
+    "index": 3,
+    "id": "litt_poesie_f_18",
+    "issue": "Le haïku est décrit comme un poème de 6 vers, alors qu'il en a 3.",
+    "correctedPrompt": null,
+    "correctedAnswer": "haïku",
+    "correctedExplanation": "Le haïku est un poème japonais traditionnel composé de 3 vers, souvent évoquant la nature.",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_18"
+  },
+  {
+    "index": 12,
+    "id": "litt_poesie_f_27",
+    "issue": "Le nom 'Hermann' n'est pas un poète français célèbre du XIXe siècle.",
+    "correctedPrompt": "Indice: Un célèbre poète français du XIXe siècle - Réorganisez les lettres de 'Lesmeirh'.",
+    "correctedAnswer": "HERMES",
+    "correctedExplanation": "Le nom 'Hermann' est fictif et ne correspond pas à un poète connu.",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_27"
+  },
+  {
+    "index": 20,
+    "id": "litt_poesie_f_35",
+    "issue": "Les lettres 'Ravmielh' ne forment pas un anagramme valide pour un poète français célèbre.",
+    "correctedPrompt": "Indice: Un poète français célèbre pour ses poèmes sur l'amour - Réorganisez les lettres de 'Ravmielh'.",
+    "correctedAnswer": "HERVALIM",
+    "correctedExplanation": "Le nom 'HERVALIM' est fictif et ne correspond pas à un poète connu.",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_35"
+  },
+  {
+    "index": 0,
+    "id": "ge_fm_f_10",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TIAN SHAN",
+    "correctedExplanation": "Le Tian Shan (« Montagnes célestes » en mandarin) s'étend sur 2 500 km entre la Chine, le Kazakhstan et la Kirghizie. Son plus haut sommet est le Pic Khan Tengri (7 010 m).",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_10"
+  },
+  {
+    "index": 1,
+    "id": "ge_fm_f_11",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La Caspienne",
+    "correctedExplanation": "Bien qu'on l'appelle « mer » de Caspienne, c'est techniquement un lac. Elle mesure 1 200 km de long. Le lac Baïkal en Sibérie est le plus profond.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_11"
+  },
+  {
+    "index": 2,
+    "id": "ge_fm_f_12",
+    "issue": "Le Nil traverse 2 continents, pas 1.",
+    "correctedPrompt": "Combien de continents sont traversés par le Nil ?",
+    "correctedAnswer": "2",
+    "correctedExplanation": "Le Nil traverse l'Afrique et une petite partie de l'Asie (via le Soudan du Sud), ce qui le fait passer par 2 continents avant de se jeter en Méditerranée.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_12"
+  },
+  {
+    "index": 3,
+    "id": "ge_fm_f_13",
+    "issue": "Les Alpes mesurent environ 1 200 km, mais les Carpates mesurent environ 1 500 km.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Les Carpates en Europe de l'Est sont plus longues (environ 1 500 km) que les Alpes (environ 1 200 km). Mais les Alpes sont plus hautes et plus connues touristiquement.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_13"
+  },
+  {
+    "index": 4,
+    "id": "ge_fm_f_14",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Sahara",
+    "correctedExplanation": "Le Sahara couvre plus de 9 millions de km². Il y a 10 000 ans, c'était une savane verte parcourue de rivières.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_14"
+  },
+  {
+    "index": 5,
+    "id": "ge_fm_f_15",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "OLYMPE",
+    "correctedExplanation": "Le mont Olympe est une montagne réelle en Grèce (2 918 m), mais les anciens Grecs l'imagaient comme la demeure des douze Olympiens : Zeus, Héra, Poséidon, etc.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_15"
+  },
+  {
+    "index": 6,
+    "id": "ge_fm_f_16",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "L'Amazone",
+    "correctedExplanation": "L'Amazone déverse environ 209 000 m³ d'eau par seconde. C'est presque 10 fois plus que le Congo (le deuxième), 40 fois plus que le Nil.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_16"
+  },
+  {
+    "index": 7,
+    "id": "ge_fm_f_17",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Le lac Baïkal",
+    "correctedExplanation": "Le lac Baïkal atteint 1 642 mètres de profondeur en Sibérie. C'est un lac d'eau douce qui contient 23 % de l'eau douce du monde.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_17"
+  },
+  {
+    "index": 8,
+    "id": "ge_fm_f_18",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le Rhône prend sa source en Suisse dans les Alpes et se jette en Méditerranée en France après 812 km. C'est un fleuve historiquement important pour le commerce entre l'Europe continentale et la méditerranée.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_18"
+  },
+  {
+    "index": 9,
+    "id": "ge_fm_f_19",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Kilimanjaro",
+    "correctedExplanation": "Le Kilimanjaro est en Tanzanie et est visible depuis les plaines du Kenya. C'est un volcan dominat l'écosystème environnant avec ses neiges éternelles.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_19"
+  },
+  {
+    "index": 10,
+    "id": "ge_fm_f_20",
+    "issue": "Sakhaline n'est pas une chaîne de montagnes mais une île.",
+    "correctedPrompt": "Chaîne de montagnes qui sépare la Russie du Japon en Asie",
+    "correctedAnswer": "Aucune chaîne de montagnes ne sépare la Russie du Japon.",
+    "correctedExplanation": "Sakhaline est une île russe très montagneuse, mais elle ne constitue pas une chaîne de montagnes. La chaîne de montagnes qui sépare la Russie du Japon est la chaîne de Kouriles.",
+    "correctedOptions": null,
+    "actual_id": "ge_fm_f_20"
+  },
+  {
+    "index": 11,
+    "id": "geo_fleuves_f_21",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Rhône",
+    "correctedExplanation": "Le Rhône est un fleuve qui traverse Lyon avant de se jeter dans la mer Méditerranée.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_21"
+  },
+  {
+    "index": 12,
+    "id": "geo_fleuves_f_22",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Alpes",
+    "correctedExplanation": "Les Alpes sont une chaîne de montagnes qui s'étend à travers plusieurs pays européens, y compris la France.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_22"
+  },
+  {
+    "index": 13,
+    "id": "geo_fleuves_f_23",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Garonne",
+    "correctedExplanation": "La Garonne est le fleuve qui traverse la ville de Bordeaux.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_23"
+  },
+  {
+    "index": 14,
+    "id": "geo_fleuves_f_24",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Mont Blanc",
+    "correctedExplanation": "Le Mont Blanc est le plus haut sommet des Alpes et de l'Europe occidentale.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_24"
+  },
+  {
+    "index": 15,
+    "id": "geo_fleuves_f_25",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le Danube est effectivement le fleuve le plus long d'Europe, mesurant environ 2 860 km.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_25"
+  },
+  {
+    "index": 16,
+    "id": "geo_fleuves_f_26",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Mont Everest se trouve en Asie, à la frontière entre le Népal et la Chine.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_26"
+  },
+  {
+    "index": 17,
+    "id": "geo_fleuves_f_27",
+    "issue": "BLANCMONT n'est pas une anagramme valide du Mont Blanc.",
+    "correctedPrompt": "Indice: Montagne célèbre en France.",
+    "correctedAnswer": "MONT BLANC",
+    "correctedExplanation": "C'est une anagramme du Mont Blanc, la plus haute montagne des Alpes.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_27"
+  },
+  {
+    "index": 18,
+    "id": "geo_fleuves_f_28",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "SEINE",
+    "correctedExplanation": "C'est une anagramme du fleuve Seine, qui traverse la capitale française.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_28"
+  },
+  {
+    "index": 19,
+    "id": "geo_fleuves_f_29",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Rhône",
+    "correctedExplanation": "Le Rhône est le fleuve qui traverse Lyon.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_29"
+  },
+  {
+    "index": 20,
+    "id": "geo_fleuves_f_30",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Garonne",
+    "correctedExplanation": "La Garonne est le fleuve qui traverse la ville de Bordeaux.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_30"
+  },
+  {
+    "index": 21,
+    "id": "geo_fleuves_f_31",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le Mont Blanc culmine à 4 808 mètres, ce qui en fait le plus haut sommet des Alpes.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_31"
+  },
+  {
+    "index": 22,
+    "id": "geo_fleuves_f_32",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "La Loire mesure 1 006 kilomètres, ce qui en fait le plus long fleuve de France.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_32"
+  },
+  {
+    "index": 23,
+    "id": "geo_fleuves_f_33",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Tibre",
+    "correctedExplanation": "Le Tibre est le fleuve qui traverse Rome et se jette dans la mer Adriatique.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_33"
+  },
+  {
+    "index": 24,
+    "id": "geo_fleuves_f_34",
+    "issue": "Aucune erreur factuelle détectée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Alpes",
+    "correctedExplanation": "Les Alpes sont une chaîne de montagnes célèbre qui s'étend entre la France et l'Italie.",
+    "correctedOptions": null,
+    "actual_id": "geo_fleuves_f_34"
+  },
+  {
+    "index": 3,
+    "id": "litt_poesie_f_43",
+    "issue": "Les lettres données ne forment pas le mot 'APOLLINAIRE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_43"
+  },
+  {
+    "index": 11,
+    "id": "litt_poesie_f_51",
+    "issue": "Les lettres données ne forment pas le mot 'BAUDELAIRE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_51"
+  },
+  {
+    "index": 12,
+    "id": "litt_poesie_f_52",
+    "issue": "Les lettres données ne forment pas le mot 'MOLIÈRE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "litt_poesie_f_52"
+  },
+  {
+    "index": 13,
+    "id": "litt_bd_f_51",
+    "issue": "L'anagramme 'KULELTU' ne correspond pas à 'Lucky Luke'.",
+    "correctedPrompt": "Indice: Personnage célèbre de bande dessinée qui est un cow-boy et a été créé par Morris.",
+    "correctedAnswer": "Lucky Luke",
+    "correctedExplanation": "Lucky Luke est le cow-boy connu pour tirer plus vite que son ombre.",
+    "correctedOptions": null,
+    "actual_id": "litt_bd_f_51"
+  },
+  {
+    "index": 12,
+    "id": "litt_prix_f_48",
+    "issue": "Le Prix Femina est effectivement attribué uniquement à des auteurs féminins.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le Prix Femina est exclusivement attribué aux auteurs féminins, sans exception.",
+    "correctedOptions": null,
+    "actual_id": "litt_prix_f_48"
+  },
+  {
+    "index": 4,
+    "id": "litt_theatre_f_13",
+    "issue": "La réponse donnée 'CHUR' n'est pas un mot valide.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CHŒUR",
+    "correctedExplanation": "Le chœur est un groupe de personnages qui commente les événements de la pièce, apportant une perspective collective.",
+    "correctedOptions": null,
+    "actual_id": "litt_theatre_f_13"
+  },
+  {
+    "index": 0,
+    "id": "geo_asie_f_25",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Indonésie",
+    "correctedExplanation": "L'Indonésie est un archipel volcanique situé en Asie du Sud-Est.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_25"
+  },
+  {
+    "index": 1,
+    "id": "geo_asie_f_26",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Yangtsé",
+    "correctedExplanation": "Le Yangtsé est le plus long fleuve de Chine et d'Asie.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_26"
+  },
+  {
+    "index": 2,
+    "id": "geo_asie_f_27",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TOKYO",
+    "correctedExplanation": "Tokyo est la capitale du Japon et une métropole mondiale.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_27"
+  },
+  {
+    "index": 3,
+    "id": "geo_asie_f_28",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "PHILIPPINES",
+    "correctedExplanation": "Les Philippines sont un archipel célèbre pour ses plages magnifiques.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_28"
+  },
+  {
+    "index": 4,
+    "id": "geo_asie_f_29",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Thaïlande",
+    "correctedExplanation": "La Thaïlande est célèbre pour ses nombreux temples bouddhistes et sa gastronomie épicée.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_29"
+  },
+  {
+    "index": 5,
+    "id": "geo_asie_f_30",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Chine",
+    "correctedExplanation": "Le fleuve Yangzi, le plus long fleuve d'Asie, traverse la Chine.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_30"
+  },
+  {
+    "index": 6,
+    "id": "geo_asie_f_31",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Tibre est un fleuve italien, situé en Europe, et non en Asie.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_31"
+  },
+  {
+    "index": 7,
+    "id": "geo_asie_f_32",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le mont Everest est le sommet le plus élevé du monde et se situe en Asie, à la frontière entre le Népal et la Chine.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_32"
+  },
+  {
+    "index": 8,
+    "id": "geo_asie_f_33",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Japon",
+    "correctedExplanation": "Le Japon est célèbre pour ses cerisiers en fleurs, surtout lors du printemps.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_33"
+  },
+  {
+    "index": 9,
+    "id": "geo_asie_f_34",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Philippines",
+    "correctedExplanation": "Les Philippines sont un archipel d'Asie du Sud-Est, connu pour ses magnifiques plages.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_34"
+  },
+  {
+    "index": 10,
+    "id": "geo_asie_f_35",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "INDE",
+    "correctedExplanation": "L'Inde est célèbre pour son thé et sa riche culture historique.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_35"
+  },
+  {
+    "index": 11,
+    "id": "geo_asie_f_36",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TOKYO",
+    "correctedExplanation": "Tokyo est une métropole japonaise renommée pour sa culture variée et ses impressionnants gratte-ciels.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_36"
+  },
+  {
+    "index": 12,
+    "id": "geo_asie_f_37",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Océan Pacifique",
+    "correctedExplanation": "L'océan Pacifique est le plus grand océan du monde et borde la côte est de l'Asie.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_37"
+  },
+  {
+    "index": 13,
+    "id": "geo_asie_f_38",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Inde",
+    "correctedExplanation": "L'Inde est célèbre pour sa cuisine riche en épices et ses nombreux festivals culturels.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_38"
+  },
+  {
+    "index": 14,
+    "id": "geo_asie_f_39",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Vietnam est situé en Asie du Sud-Est, et non en Asie de l'Est.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_39"
+  },
+  {
+    "index": 15,
+    "id": "geo_asie_f_40",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "La Chine est effectivement le pays le plus vaste d'Asie en termes de superficie.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_40"
+  },
+  {
+    "index": 16,
+    "id": "geo_asie_f_41",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Indonésie",
+    "correctedExplanation": "L'Indonésie est un archipel célèbre pour ses nombreuses plages et sa biodiversité.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_41"
+  },
+  {
+    "index": 17,
+    "id": "geo_asie_f_42",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Cambodge",
+    "correctedExplanation": "Le Cambodge est célèbre pour ses temples, notamment Angkor Wat, et sa riche histoire.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_42"
+  },
+  {
+    "index": 18,
+    "id": "geo_asie_f_43",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CHINE",
+    "correctedExplanation": "La Chine est célèbre pour ses pandas et sa culture millénaire.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_43"
+  },
+  {
+    "index": 19,
+    "id": "geo_asie_f_44",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "SHANGHAI",
+    "correctedExplanation": "Shanghai est l'une des plus grandes villes du monde et un important centre commercial.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_44"
+  },
+  {
+    "index": 20,
+    "id": "geo_asie_f_45",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Désert de Gobi",
+    "correctedExplanation": "Le désert de Gobi est le plus grand désert d'Asie, situé principalement en Mongolie et en Chine.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_45"
+  },
+  {
+    "index": 21,
+    "id": "geo_asie_f_46",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Kuala Lumpur",
+    "correctedExplanation": "Kuala Lumpur est la capitale de la Malaisie, connue pour ses tours jumelles Petronas.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_46"
+  },
+  {
+    "index": 22,
+    "id": "geo_asie_f_47",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "L'Asie est effectivement le continent le plus peuplé, abritant plus de la moitié de la population mondiale.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_47"
+  },
+  {
+    "index": 23,
+    "id": "geo_asie_f_48",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Taj Mahal est situé en Inde, à Agra, et est considéré comme un symbole de l'architecture moghole.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_48"
+  },
+  {
+    "index": 24,
+    "id": "geo_asie_f_49",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Inde",
+    "correctedExplanation": "L'Inde est célèbre pour sa riche cuisine épicée et ses variétés de thé.",
+    "correctedOptions": null,
+    "actual_id": "geo_asie_f_49"
+  },
+  {
+    "index": 0,
+    "id": "litt_theatre_f_34",
+    "issue": "Les festivals, comme les Dionysies, étaient souvent dédiés à Déméter, mais principalement à Dionysos, le dieu du vin et du théâtre.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Déméter",
+    "correctedExplanation": "Les festivals, comme les Dionysies, étaient principalement dédiés à Dionysos, le dieu du vin et du théâtre, bien que Déméter ait également eu des festivals qui lui étaient consacrés.",
+    "correctedOptions": null,
+    "actual_id": "litt_theatre_f_34"
+  },
+  {
+    "index": 9,
+    "id": "litt_prix_f_20",
+    "issue": "La date de création du Prix Renaudot est incorrecte, il a été créé en 1926 et non en 1944.",
+    "correctedPrompt": null,
+    "correctedAnswer": "RENAUDOT",
+    "correctedExplanation": "Le Prix Renaudot est un prix littéraire important en France, créé en 1926.",
+    "correctedOptions": null,
+    "actual_id": "litt_prix_f_20"
+  },
+  {
+    "index": 23,
+    "id": "litt_prix_f_34",
+    "issue": "Le Prix Renaudot n'est pas décerné uniquement à un roman français chaque année.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Prix Renaudot",
+    "correctedExplanation": "Le Prix Renaudot récompense des ouvrages de fiction et de non-fiction, pas uniquement un roman français.",
+    "correctedOptions": null,
+    "actual_id": "litt_prix_f_34"
+  },
+  {
+    "index": 24,
+    "id": "litt_prix_f_35",
+    "issue": "Le mot 'GONCOURT' ne correspond pas à l'anagramme de 5 lettres.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GONCOURT",
+    "correctedExplanation": "Le Goncourt est un prix littéraire très connu en France.",
+    "correctedOptions": null,
+    "actual_id": "litt_prix_f_35"
+  },
+  {
+    "index": 5,
+    "id": "litt_contes_f_35",
+    "issue": "La réponse donnée 'BLANCHEE' est incorrecte, les lettres ne forment pas le mot 'Blanche-Neige'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "BLANCHE",
+    "correctedExplanation": "Blanche-Neige est un personnage central du conte qui vit avec les sept nains dans la forêt.",
+    "correctedOptions": null,
+    "actual_id": "litt_contes_f_35"
+  },
+  {
+    "index": 22,
+    "id": "litt_contes_f_52",
+    "issue": "La réponse donnée 'CENDRILLON' est incorrecte, les lettres ne forment pas le mot 'Cendrillon'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CENDRILLON",
+    "correctedExplanation": "Cendrillon est connue pour sa relation avec des animaux dans son conte.",
+    "correctedOptions": null,
+    "actual_id": "litt_contes_f_52"
+  },
+  {
+    "index": 0,
+    "id": "geo_climats_f_46",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "savane",
+    "correctedExplanation": "La savane est un écosystème caractérisé par des prairies et quelques arbres, typique des régions chaudes.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_46"
+  },
+  {
+    "index": 1,
+    "id": "geo_climats_f_47",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le climat méditerranéen a des hivers doux et des étés chauds et secs.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_47"
+  },
+  {
+    "index": 2,
+    "id": "geo_climats_f_48",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "La toundra a une végétation très limitée et est principalement froide.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_48"
+  },
+  {
+    "index": 3,
+    "id": "geo_climats_f_49",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "désert",
+    "correctedExplanation": "Les déserts sont des régions arides avec très peu de précipitations.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_49"
+  },
+  {
+    "index": 4,
+    "id": "geo_climats_f_50",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "climat",
+    "correctedExplanation": "Le climat tempéré se caractérise par des variations de température entre les saisons.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_50"
+  },
+  {
+    "index": 5,
+    "id": "geo_climats_f_51",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "DÉSERT",
+    "correctedExplanation": "Le climat désertique est caractérisé par un manque de pluie et des températures élevées.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_51"
+  },
+  {
+    "index": 6,
+    "id": "geo_climats_f_52",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "PRAIRIE",
+    "correctedExplanation": "Les prairies sont des écosystèmes herbeux, souvent présentes dans les régions tempérées.",
+    "correctedOptions": null,
+    "actual_id": "geo_climats_f_52"
+  },
+  {
+    "index": 7,
+    "id": "li_ec_1",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Victor Hugo",
+    "correctedExplanation": "Hugo publia « Les Misérables » en 1862 depuis son exil à Guernesey. Pour connaître le succès du livre, il envoya à son éditeur le télégramme le plus court de l'histoire : « ? ». Réponse : « ! ».",
+    "correctedOptions": null,
+    "actual_id": "li_ec_1"
+  },
+  {
+    "index": 8,
+    "id": "li_ec_2",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Jules Verne",
+    "correctedExplanation": "Publié en 1870, le roman anticipait le sous-marin électrique des décennies avant son invention. Jules Verne est l'un des auteurs les plus traduits au monde, juste derrière Agatha Christie.",
+    "correctedOptions": null,
+    "actual_id": "li_ec_2"
+  },
+  {
+    "index": 9,
+    "id": "li_ec_3",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Poquelin prit le pseudonyme de Molière vers 1644, peut-être pour épargner sa famille bourgeoise de la honte du théâtre. Il mourut en 1673 quelques heures après avoir joué… « Le Malade imaginaire ».",
+    "correctedOptions": null,
+    "actual_id": "li_ec_3"
+  },
+  {
+    "index": 10,
+    "id": "li_ec_4",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Saint-Exupéry",
+    "correctedExplanation": "Écrit à New York en 1943, « Le Petit Prince » est traduit en plus de 500 langues, un record mondial. Pilote de guerre, Saint-Exupéry disparut en mer en 1944 lors d'une mission de reconnaissance.",
+    "correctedOptions": null,
+    "actual_id": "li_ec_4"
+  },
+  {
+    "index": 11,
+    "id": "li_ec_5",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "VOLTAIRE",
+    "correctedExplanation": "Voltaire, de son vrai nom François-Marie Arouet, fut embastillé deux fois pour ses écrits. « Candide » (1759), conte féroce contre l'optimisme naïf, se conclut par « il faut cultiver notre jardin ».",
+    "correctedOptions": null,
+    "actual_id": "li_ec_5"
+  },
+  {
+    "index": 12,
+    "id": "litt_ecrivains_f_6",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Jean de La Fontaine",
+    "correctedExplanation": "Jean de La Fontaine est célèbre pour ses fables, qui sont des récits moraux mettant en scène des animaux.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_6"
+  },
+  {
+    "index": 13,
+    "id": "litt_ecrivains_f_7",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Gustave Flaubert",
+    "correctedExplanation": "Gustave Flaubert est l'auteur du roman « Madame Bovary », publié en 1856.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_7"
+  },
+  {
+    "index": 14,
+    "id": "litt_ecrivains_f_8",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Albert Camus a remporté le Prix Nobel de Littérature en 1957, pas le Prix Nobel de la Paix.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_8"
+  },
+  {
+    "index": 15,
+    "id": "litt_ecrivains_f_9",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Marcel Proust est bien connu pour son roman monumental « À la recherche du temps perdu », publié en plusieurs volumes.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_9"
+  },
+  {
+    "index": 16,
+    "id": "litt_ecrivains_f_10",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Baudelaire",
+    "correctedExplanation": "Charles Baudelaire est l'auteur du recueil de poèmes « Les Fleurs du mal », publié en 1857.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_10"
+  },
+  {
+    "index": 17,
+    "id": "litt_ecrivains_f_11",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Molière",
+    "correctedExplanation": "Molière est le dramaturge qui a écrit « Le Tartuffe », une comédie critique sur l'hypocrisie religieuse.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_11"
+  },
+  {
+    "index": 18,
+    "id": "litt_ecrivains_f_12",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CAMUS",
+    "correctedExplanation": "Albert Camus est un écrivain majeur du XXe siècle, reconnu pour ses réflexions sur l'absurde.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_12"
+  },
+  {
+    "index": 19,
+    "id": "litt_ecrivains_f_13",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "STENDHAL",
+    "correctedExplanation": "Stendhal est l'auteur du roman « Le Rouge et le Noir », une œuvre emblématique de la littérature française.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_13"
+  },
+  {
+    "index": 20,
+    "id": "litt_ecrivains_f_14",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Émile Zola",
+    "correctedExplanation": "Émile Zola est l'auteur de la série de romans « Les Rougon-Macquart », qui explore la vie en France sous le Second Empire.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_14"
+  },
+  {
+    "index": 21,
+    "id": "litt_ecrivains_f_15",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Émile Zola",
+    "correctedExplanation": "Germinal est l'un des romans les plus célèbres d'Émile Zola, mettant en lumière les conditions de vie des mineurs.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_15"
+  },
+  {
+    "index": 22,
+    "id": "litt_ecrivains_f_16",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Victor Hugo est bien l'auteur du roman « Notre-Dame de Paris », publié en 1831.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_16"
+  },
+  {
+    "index": 23,
+    "id": "litt_ecrivains_f_17",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Chanson",
+    "correctedExplanation": "« Chanson » est un poème célèbre de Paul Verlaine, mettant en avant son style lyrique.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_17"
+  },
+  {
+    "index": 24,
+    "id": "litt_ecrivains_f_18",
+    "issue": "Aucune erreur factuelle.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Simone",
+    "correctedExplanation": "Simone de Beauvoir est célèbre pour ses essais, notamment « Le Deuxième Sexe », qui explore le féminisme.",
+    "correctedOptions": null,
+    "actual_id": "litt_ecrivains_f_18"
+  },
+  {
+    "index": 0,
+    "id": "litt_femmes_f_7",
+    "issue": "La réponse donnée est incorrecte, c'est Émile Zola qui a écrit 'Les Rougon-Macquart'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Émile Zola",
+    "correctedExplanation": "Émile Zola est l'auteur de la série des 'Rougon-Macquart', qui explore la société française du XIXe siècle.",
+    "correctedOptions": null,
+    "actual_id": "litt_femmes_f_7"
+  },
+  {
+    "index": 4,
+    "id": "litt_femmes_f_11",
+    "issue": "La réponse donnée est incorrecte, Marie NDiaye a remporté le prix Goncourt en 2009, pas en 1984.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Marie NDiaye",
+    "correctedExplanation": "Marie NDiaye a remporté le prix Goncourt pour son roman 'Trois femmes puissantes' en 2009.",
+    "correctedOptions": null,
+    "actual_id": "litt_femmes_f_11"
+  },
+  {
+    "index": 20,
+    "id": "litt_femmes_f_27",
+    "issue": "La réponse donnée est correcte, mais l'explication est incorrecte car 'La Femme rompue' est un recueil de nouvelles, pas un roman.",
+    "correctedPrompt": null,
+    "correctedAnswer": "BEAUVOIR",
+    "correctedExplanation": "Simone de Beauvoir est l'autrice de 'La Femme rompue', un recueil de nouvelles qui traite des thèmes de l'identité et de la condition féminine.",
+    "correctedOptions": null,
+    "actual_id": "litt_femmes_f_27"
+  },
+  {
+    "index": 15,
+    "id": "litt_contes_f_20",
+    "issue": "Le mot 'CLOUFA' ne correspond pas aux lettres données.",
+    "correctedPrompt": "Indice: Un personnage qui vit avec des ours dans une forêt. Réorganisez les lettres pour trouver: 'OUFCLAR'.",
+    "correctedAnswer": "CLOUFA",
+    "correctedExplanation": "Clofa est un personnage inventé et ne correspond pas à un conte connu.",
+    "correctedOptions": null,
+    "actual_id": "litt_contes_f_20"
+  },
+  {
+    "index": 22,
+    "id": "litt_contes_f_27",
+    "issue": "Le mot 'NÉPTUNE' ne correspond pas aux lettres données.",
+    "correctedPrompt": "Indice: Un personnage qui vit dans un monde sous-marin. Réorganisez les lettres pour trouver: 'REPSILNTEE'.",
+    "correctedAnswer": "NÉPTUNE",
+    "correctedExplanation": "Néptune est le dieu de la mer dans la mythologie, mais ne correspond pas à un personnage de conte.",
+    "correctedOptions": null,
+    "actual_id": "litt_contes_f_27"
+  },
+  {
+    "index": 23,
+    "id": "litt_contes_f_28",
+    "issue": "Le mot 'CENDRILLON' ne correspond pas aux lettres données.",
+    "correctedPrompt": "Indice: Un personnage féminin célèbre qui perd sa chaussure. Réorganisez les lettres pour trouver: 'RINDCENLEO'.",
+    "correctedAnswer": "CENDRILLON",
+    "correctedExplanation": "Cendrillon est le personnage qui perd sa chaussure lors du bal, mais le mot ne correspond pas aux lettres.",
+    "correctedOptions": null,
+    "actual_id": "litt_contes_f_28"
+  },
+  {
+    "index": 21,
+    "id": "litt_contemporaine_f_24",
+    "issue": "Le roman « Soumission » de Michel Houellebecq se déroule dans un futur proche, mais la réponse indique 'faux' alors que c'est vrai.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "« Soumission » de Michel Houellebecq se déroule dans un futur proche en France, explorant des thèmes politiques et sociaux.",
+    "correctedOptions": null,
+    "actual_id": "litt_contemporaine_f_24"
+  },
+  {
+    "index": 18,
+    "id": "litt_contemporaine_f_21",
+    "issue": "Jean-Paul Dubois n'est pas l'auteur du roman « La Météo », c'est Philippe Djian.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Philippe Djian",
+    "correctedExplanation": "Philippe Djian est l'auteur du roman « La Météo », qui aborde des thèmes contemporains.",
+    "correctedOptions": [
+      "Amélie Nothomb",
+      "Philippe Djian",
+      "Jean-Paul Dubois",
+      "Marie NDiaye"
+    ],
+    "actual_id": "litt_contemporaine_f_21"
+  },
+  {
+    "index": 11,
+    "id": "arts_peinture_f_12",
+    "issue": "L'anagramme formé à partir des lettres 'LIGENRAT' ne correspond pas à un terme artistique connu.",
+    "correctedPrompt": "Indice: Art abstrait. Réorganisez les lettres: LIGENRAT",
+    "correctedAnswer": "GRAINLET",
+    "correctedExplanation": "L'anagramme formé à partir des lettres est 'GRAINLET', qui ne correspond pas à un terme artistique connu.",
+    "actual_id": "arts_peinture_f_12"
+  },
+  {
+    "index": 1,
+    "id": "arts_peinture_f_27",
+    "issue": "Les lettres données ne forment pas le mot 'GRANIO'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GRAIN",
+    "correctedExplanation": "Le peintre est Antoine Watteau, connu pour ses œuvres rococo.",
+    "correctedOptions": null,
+    "actual_id": "arts_peinture_f_27"
+  },
+  {
+    "index": 12,
+    "id": "arts_peinture_f_38",
+    "issue": "L'Origine du monde n'est pas une œuvre de Gustave Courbet, mais de Jean-Auguste-Dominique Ingres.",
+    "correctedPrompt": null,
+    "correctedAnswer": "L'Origine du monde",
+    "correctedExplanation": "L'Origine du monde est une œuvre emblématique qui représente le réalisme, sans idéalisation.",
+    "correctedOptions": null,
+    "actual_id": "arts_peinture_f_38"
+  },
+  {
+    "index": 3,
+    "id": "litt_femmes_f_35",
+    "issue": "L'anagramme donnée ne correspond pas à l'autrice de 'Le Rivage des Syrtes'.",
+    "correctedPrompt": "Indice: Autrice connue pour 'Le Rivage des Syrtes'.",
+    "correctedAnswer": "YOURCENAR",
+    "correctedExplanation": "Marguerite Yourcenar est l'autrice de 'Le Rivage des Syrtes', et l'anagramme fait référence à elle.",
+    "correctedOptions": null,
+    "actual_id": "litt_femmes_f_35"
+  },
+  {
+    "index": 16,
+    "id": "litt_femmes_f_48",
+    "issue": "L'indice donné pour l'anagramme est incorrect car il fait référence à un auteur masculin.",
+    "correctedPrompt": "Indice: Autrice connue pour 'Céline' et 'L'Éducation sentimentale'.",
+    "correctedAnswer": null,
+    "correctedExplanation": null,
+    "correctedOptions": null,
+    "actual_id": "litt_femmes_f_48"
+  },
+  {
+    "index": 19,
+    "id": "litt_femmes_f_51",
+    "issue": "David Foenkinos n'est pas l'autrice de 'La Délicatesse', c'est une œuvre de l'autrice française Anna Gavalda.",
+    "correctedPrompt": "L'autrice du roman « La Délicatesse » est ___ .",
+    "correctedAnswer": "Anna Gavalda",
+    "correctedExplanation": "Anna Gavalda est l'autrice de 'La Délicatesse', un roman romantique qui explore les thèmes de l'amour et de la perte.",
+    "correctedOptions": [
+      "David Foenkinos",
+      "Nina Bouraoui",
+      "Marc Levy",
+      "Anna Gavalda"
+    ],
+    "actual_id": "litt_femmes_f_51"
+  },
+  {
+    "index": 0,
+    "id": "arts_peinture_f_51",
+    "issue": "L'anagramme donné ne correspond pas au nom d'un peintre connu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "RAVELEN",
+    "correctedExplanation": "Le bon anagramme est 'RAVELEN', mais ce n'est pas un peintre connu.",
+    "correctedOptions": null,
+    "actual_id": "arts_peinture_f_51"
+  },
+  {
+    "index": 1,
+    "id": "arts_peinture_f_52",
+    "issue": "Le nom donné ne correspond pas à un peintre connu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "RIGAD",
+    "correctedExplanation": "Un exemple correct serait 'RIGAD', mais il n'est pas connu dans l'art.",
+    "correctedOptions": null,
+    "actual_id": "arts_peinture_f_52"
+  },
+  {
+    "index": 21,
+    "id": "arts_musique_f_20",
+    "issue": "L'anagramme donné ne correspond pas au mot 'violoncelle'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "VIOLONCELLE",
+    "correctedExplanation": "L'instrument à cordes est le 'violoncelle', qui est utilisé dans de nombreux orchestres.",
+    "correctedOptions": null,
+    "actual_id": "arts_musique_f_20"
+  },
+  {
+    "index": 8,
+    "id": "arts_musique_f_32",
+    "issue": "Le mot 'clam' ne correspond pas à un instrument à percussion.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Cymbale",
+    "correctedExplanation": "Le terme 'cymbale' fait référence à un instrument à percussion, souvent utilisé dans divers styles musicaux.",
+    "correctedOptions": null,
+    "actual_id": "arts_musique_f_32"
+  },
+  {
+    "index": 16,
+    "id": "arts_musique_f_40",
+    "issue": "Le mot 'clavim' ne correspond pas à un instrument à percussion.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Cymbale",
+    "correctedExplanation": "Le terme 'cymbale' fait référence à un instrument à percussion qui produit des sons par le biais de frappes.",
+    "correctedOptions": null,
+    "actual_id": "arts_musique_f_40"
+  },
+  {
+    "index": 23,
+    "id": "arts_musique_f_47",
+    "issue": "L'anagramme de 'MUNIGAT' ne forme pas le mot 'GUITAR'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GUITARE",
+    "correctedExplanation": "La guitare est un instrument à cordes très populaire dans de nombreux genres musicaux.",
+    "correctedOptions": null,
+    "actual_id": "arts_musique_f_47"
+  },
+  {
+    "index": 24,
+    "id": "arts_musique_f_48",
+    "issue": "Le mot 'bandro' ne correspond pas à un instrument à percussion reconnu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Djembe",
+    "correctedExplanation": "Le djembe est un instrument à percussion utilisé dans certaines musiques traditionnelles.",
+    "correctedOptions": null,
+    "actual_id": "arts_musique_f_48"
+  },
+  {
+    "index": 6,
+    "id": "arts_cinema_f_38",
+    "issue": "Le Roi Lion n'a pas remporté l'Oscar du meilleur film, il a seulement été nommé.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Le Roi Lion",
+    "correctedExplanation": "Le Roi Lion a été le premier film d'animation à recevoir une nomination pour l'Oscar du meilleur film en 1995, mais il n'a pas remporté cet Oscar.",
+    "correctedOptions": null,
+    "actual_id": "arts_cinema_f_38"
+  },
+  {
+    "index": 20,
+    "id": "arts_cinema_f_27",
+    "issue": "La réponse 'Disney' est incorrecte car le réalisateur de 'Le Roi Lion' est Roger Allers et Rob Minkoff, et Disney est le studio, pas le réalisateur.",
+    "correctedPrompt": "Le réalisateur connu pour ses films d'animation à succès, comme 'Le Roi Lion', est ___.",
+    "correctedAnswer": "Roger Allers et Rob Minkoff",
+    "correctedExplanation": "Roger Allers et Rob Minkoff ont réalisé 'Le Roi Lion', un film d'animation emblématique produit par Disney.",
+    "correctedOptions": null,
+    "actual_id": "arts_cinema_f_27"
+  },
+  {
+    "index": 0,
+    "id": "litt_contemporaine_f_28",
+    "issue": "L'anagramme 'SLIMANI' ne correspond pas aux lettres du mot 'Leïla'.",
+    "correctedPrompt": "Indice: Auteur de « Chanson douce »",
+    "correctedAnswer": "LEÏLA",
+    "correctedExplanation": "Leïla Slimani est l'auteure du roman « Chanson douce », qui a remporté le Prix Goncourt.",
+    "correctedOptions": null,
+    "actual_id": "litt_contemporaine_f_28"
+  },
+  {
+    "index": 7,
+    "id": "litt_contemporaine_f_35",
+    "issue": "L'anagramme 'HOUELLEBECQ' ne correspond pas aux lettres du mot 'Michel'.",
+    "correctedPrompt": "Indice: Auteur de « La Carte et le Territoire »",
+    "correctedAnswer": "MICHEL",
+    "correctedExplanation": "Michel Houellebecq est l'auteur du roman « La Carte et le Territoire », qui a reçu le Prix Goncourt.",
+    "correctedOptions": null,
+    "actual_id": "litt_contemporaine_f_35"
+  },
+  {
+    "index": 9,
+    "id": "litt_contemporaine_f_37",
+    "issue": "La réponse 'David Foenkinos' est correcte, mais l'explication indique une date de publication incorrecte.",
+    "correctedPrompt": "Qui a écrit le roman « La Vie est facile, ne t'inquiète pas » ?",
+    "correctedAnswer": "David Foenkinos",
+    "correctedExplanation": "David Foenkinos est l'auteur de ce roman publié en 2013.",
+    "correctedOptions": null,
+    "actual_id": "litt_contemporaine_f_37"
+  },
+  {
+    "index": 12,
+    "id": "litt_contemporaine_f_40",
+    "issue": "La date de 2016 pour le Prix Goncourt de 'Chanson douce' est incorrecte, il a été décerné en 2016 mais le roman a été publié en 2014.",
+    "correctedPrompt": "Le roman « Chanson douce » de Leïla Slimani a remporté le Prix Goncourt en 2016.",
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le roman a effectivement remporté le Prix Goncourt en 2016, reconnu pour sa qualité littéraire.",
+    "correctedOptions": null,
+    "actual_id": "litt_contemporaine_f_40"
+  },
+  {
+    "index": 19,
+    "id": "litt_contemporaine_f_47",
+    "issue": "Le terme 'auteur' est incorrectement utilisé au féminin dans la question, il devrait être 'auteure'.",
+    "correctedPrompt": "Le roman « L'Élégance du hérisson » a été écrit par une auteure française.",
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "L'Élégance du hérisson est un roman écrit par Muriel Barbery, une auteure française.",
+    "correctedOptions": null,
+    "actual_id": "litt_contemporaine_f_47"
+  },
+  {
+    "index": 18,
+    "id": "arts_mode_f_12",
+    "issue": "L'anagramme 'détacté' ne forme pas le mot 'décadent'.",
+    "correctedPrompt": "Indice: Ce mot désigne un style de mode qui évoque des souvenirs du passé. Anagramme: 'décadent'",
+    "correctedAnswer": "DÉCADENT",
+    "correctedExplanation": "Le terme 'décadent' est souvent utilisé pour décrire des styles de mode inspirés par le passé.",
+    "correctedOptions": null,
+    "actual_id": "arts_mode_f_12"
+  },
+  {
+    "index": 11,
+    "id": "arts_opera_f_36",
+    "issue": "L'anagramme donné ne forme pas le mot 'Don Giovanni'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "DONGIOVANNI",
+    "correctedExplanation": "Don Giovanni est un opéra de Mozart, qui raconte l'histoire du célèbre séducteur Don Juan.",
+    "correctedOptions": null,
+    "actual_id": "arts_opera_f_36"
+  },
+  {
+    "index": 11,
+    "id": "arts_opera_f_11",
+    "issue": "L'Opéra de Paris a été inauguré en 1875, mais l'affirmation qu'il s'agit d'un bâtiment distinct de l'Opéra Bastille est incorrecte car l'Opéra Bastille a été inauguré en 1989.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "L'Opéra de Paris, connu sous le nom de Palais Garnier, a été inauguré en 1875, mais il ne s'agit pas d'un bâtiment distinct de l'Opéra Bastille, qui a été inauguré en 1989.",
+    "actual_id": "arts_opera_f_11"
+  },
+  {
+    "index": 0,
+    "id": "arts_photographie_f_13",
+    "issue": "Les lettres 'ETOGRAHPIE' ne forment pas le mot 'PHOTOGRAPHIE'.",
+    "correctedPrompt": "Indice: Un terme pour désigner une image prise par un appareil photo. Réorganisez les lettres : 'ETOGRAHPIE'",
+    "correctedAnswer": null,
+    "correctedExplanation": null,
+    "correctedOptions": null,
+    "actual_id": "arts_photographie_f_13"
+  },
+  {
+    "index": 6,
+    "id": "arts_photographie_f_19",
+    "issue": "Les lettres 'GRAIHOTEPIE' ne forment pas le mot 'PHOTOGRAPHIE'.",
+    "correctedPrompt": "Indice: Un terme pour désigner une image prise par un appareil photo. Réorganisez les lettres : 'GRAIHOTEPIE'",
+    "correctedAnswer": null,
+    "correctedExplanation": null,
+    "correctedOptions": null,
+    "actual_id": "arts_photographie_f_19"
+  },
+  {
+    "index": 14,
+    "id": "arts_photographie_f_27",
+    "issue": "Les lettres 'EPAPOERCR' ne forment pas le mot 'REPORTAGE'.",
+    "correctedPrompt": "Indice: Un terme pour désigner un type de photographie. Réorganisez les lettres : 'EPAPOERCR'",
+    "correctedAnswer": null,
+    "correctedExplanation": null,
+    "correctedOptions": null,
+    "actual_id": "arts_photographie_f_27"
+  },
+  {
+    "index": 15,
+    "id": "arts_photographie_f_28",
+    "issue": "Les lettres 'OACRM' ne forment pas le mot 'MACRO'.",
+    "correctedPrompt": "Indice: Un type de photographie impliquant des prises de vue rapprochées. Réorganisez les lettres : 'OACRM'",
+    "correctedAnswer": null,
+    "correctedExplanation": null,
+    "correctedOptions": null,
+    "actual_id": "arts_photographie_f_28"
+  },
+  {
+    "index": 22,
+    "id": "arts_photographie_f_35",
+    "issue": "Les lettres 'APRAEILPO' ne forment pas le mot 'APPAREIL'.",
+    "correctedPrompt": "Indice: Un terme désignant un appareil photo à objectif interchangeable. Réorganisez les lettres : 'APRAEILPO'",
+    "correctedAnswer": null,
+    "correctedExplanation": null,
+    "correctedOptions": null,
+    "actual_id": "arts_photographie_f_35"
+  },
+  {
+    "index": 0,
+    "id": "litt_bd_f_13",
+    "issue": "La réponse est correcte, mais l'explication omet de mentionner que Uderzo a co-créé Astérix avec René Goscinny.",
+    "correctedPrompt": null,
+    "correctedAnswer": "UDERZO",
+    "correctedExplanation": "Albert Uderzo est l'un des co-créateurs d'Astérix, une bande dessinée très populaire en France, qu'il a co-créée avec René Goscinny.",
+    "actual_id": "litt_bd_f_13"
+  },
+  {
+    "index": 1,
+    "id": "litt_bd_f_14",
+    "issue": "La réponse est correcte, mais le personnage principal de 'Les Schtroumpfs' est en réalité le Schtroumpf, sans autre qualification.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Schtroumpf",
+    "correctedExplanation": "Le personnage principal de la bande dessinée 'Les Schtroumpfs' est simplement appelé 'Schtroumpf', sans autre qualification.",
+    "actual_id": "litt_bd_f_14"
+  },
+  {
+    "index": 3,
+    "id": "litt_bd_f_16",
+    "issue": "La réponse est correcte, mais Tintin est un reporter, pas un espion.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Tintin",
+    "correctedExplanation": "Tintin est un jeune reporter et aventurier qui voyage autour du monde dans ses enquêtes, mais il n'est pas un espion.",
+    "actual_id": "litt_bd_f_16"
+  },
+  {
+    "index": 4,
+    "id": "litt_bd_f_17",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que la bande dessinée se déroule en Gaule.",
+    "correctedPrompt": null,
+    "correctedAnswer": "gaulois",
+    "correctedExplanation": "La bande dessinée 'Astérix' met en scène un petit village gaulois qui résiste à l'Empire romain, situé en Gaule.",
+    "actual_id": "litt_bd_f_17"
+  },
+  {
+    "index": 5,
+    "id": "litt_bd_f_18",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Blueberry est un personnage de cow-boy.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "La bande dessinée 'Blueberry' se déroule dans le Far West américain et non pendant la guerre de Sécession, et Blueberry est un cow-boy.",
+    "actual_id": "litt_bd_f_18"
+  },
+  {
+    "index": 6,
+    "id": "litt_bd_f_19",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que certains personnages sont des animaux anthropomorphes.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Les personnages de 'Les Aventures de Tintin' sont principalement des humains, bien que certains animaux apparaissent comme des compagnons, mais ils ne sont pas les personnages principaux.",
+    "actual_id": "litt_bd_f_19"
+  },
+  {
+    "index": 7,
+    "id": "litt_bd_f_20",
+    "issue": "La réponse est incorrecte car TÉRIX ne forme pas une anagramme valide d'Astérix.",
+    "correctedPrompt": "Indice: Personnage principal de la bande dessinée 'Astérix'.",
+    "correctedAnswer": "ASTÉRIX",
+    "correctedExplanation": "Astérix est le personnage principal de la célèbre bande dessinée 'Astérix', et le mot 'TÉRIX' ne constitue pas une anagramme valide.",
+    "actual_id": "litt_bd_f_20"
+  },
+  {
+    "index": 8,
+    "id": "litt_bd_f_21",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Franquin a pris la suite de Jijé.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Franquin",
+    "correctedExplanation": "Franquin est le dessinateur et scénariste qui a créé les personnages de Spirou et Fantasio, prenant la suite de Jijé.",
+    "actual_id": "litt_bd_f_21"
+  },
+  {
+    "index": 9,
+    "id": "litt_bd_f_22",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Titeuf est le personnage principal de sa propre bande dessinée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Titeuf",
+    "correctedExplanation": "Titeuf est le personnage principal de cette bande dessinée humoristique créée par Zep, qui porte son nom.",
+    "actual_id": "litt_bd_f_22"
+  },
+  {
+    "index": 10,
+    "id": "litt_bd_f_23",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Garfield est un chat orange.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Garfield est en réalité un chat paresseux et gourmand, célèbre pour son humour sarcastique, et non un chien.",
+    "actual_id": "litt_bd_f_23"
+  },
+  {
+    "index": 11,
+    "id": "litt_bd_f_24",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Blueberry est un cow-boy dans le contexte du Far West.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Blueberry est un personnage de bande dessinée qui vit dans l'Ouest américain et est un cow-boy, ce qui est le thème principal de la série.",
+    "actual_id": "litt_bd_f_24"
+  },
+  {
+    "index": 12,
+    "id": "litt_bd_f_25",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Garfield est un chat orange.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Garfield",
+    "correctedExplanation": "Garfield est célèbre pour son amour des lasagnes et son attitude paresseuse, et il est un chat orange.",
+    "actual_id": "litt_bd_f_25"
+  },
+  {
+    "index": 13,
+    "id": "litt_bd_f_26",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que le nom correct est Astérix avec un accent.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Astérix",
+    "correctedExplanation": "Astérix est le personnage principal de cette bande dessinée qui se déroule en Gaule, et son nom est écrit avec un accent.",
+    "actual_id": "litt_bd_f_26"
+  },
+  {
+    "index": 14,
+    "id": "litt_bd_f_27",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Titeuf aborde des thèmes liés à l'enfance.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TITEUF",
+    "correctedExplanation": "Titeuf est un personnage célèbre qui aborde avec humour des thèmes liés à l'enfance et l'école.",
+    "actual_id": "litt_bd_f_27"
+  },
+  {
+    "index": 15,
+    "id": "litt_bd_f_28",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Hercule est un héros de la mythologie grecque.",
+    "correctedPrompt": null,
+    "correctedAnswer": "HERCULE",
+    "correctedExplanation": "Hercule est un personnage mythologique souvent représenté dans des bandes dessinées et des films, et il est un héros de la mythologie grecque.",
+    "actual_id": "litt_bd_f_28"
+  },
+  {
+    "index": 16,
+    "id": "litt_bd_f_29",
+    "issue": "La réponse est incorrecte car Schtroumpfette n'est pas un extraterrestre, mais un personnage schtroumpf.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Schtroumpfette est un personnage emblématique de la bande dessinée 'Les Schtroumpfs' créée par Peyo, mais elle n'est pas un extraterrestre.",
+    "actual_id": "litt_bd_f_29"
+  },
+  {
+    "index": 17,
+    "id": "litt_bd_f_30",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Morris a créé Lucky Luke en 1946.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Morris est en effet le créateur de Lucky Luke, célèbre cow-boy qui tire plus vite que son ombre, créé en 1946.",
+    "actual_id": "litt_bd_f_30"
+  },
+  {
+    "index": 18,
+    "id": "litt_bd_f_31",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que le nom est écrit avec un accent.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Astérix",
+    "correctedExplanation": "Astérix est le héros de cette célèbre bande dessinée française qui raconte les aventures d'un petit gaulois, et son nom est écrit avec un accent.",
+    "actual_id": "litt_bd_f_31"
+  },
+  {
+    "index": 19,
+    "id": "litt_bd_f_32",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Gargamel est un sorcier et non un ami des schtroumpfs.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GARGAMEL",
+    "correctedExplanation": "Gargamel est le sorcier qui veut capturer les Schtroumpfs, un personnage central de la série, mais il n'est pas un ami des schtroumpfs.",
+    "actual_id": "litt_bd_f_32"
+  },
+  {
+    "index": 20,
+    "id": "litt_bd_f_33",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Titeuf est un jeune garçon aux cheveux blonds.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Titeuf",
+    "correctedExplanation": "Titeuf est un jeune garçon aux cheveux blonds qui vit des aventures humoristiques dans sa propre bande dessinée.",
+    "actual_id": "litt_bd_f_33"
+  },
+  {
+    "index": 21,
+    "id": "litt_bd_f_34",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Spirou et Fantasio sont des journalistes dans le contexte de leur travail.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Spirou et Fantasio sont effectivement des journalistes qui vivent de nombreuses aventures dans leur bande dessinée.",
+    "actual_id": "litt_bd_f_34"
+  },
+  {
+    "index": 22,
+    "id": "litt_bd_f_35",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Tintin est un reporter qui voyage à travers le monde.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Tintin",
+    "correctedExplanation": "Tintin est le personnage principal de la série créée par Hergé, un reporter qui voyage à travers le monde dans ses enquêtes.",
+    "actual_id": "litt_bd_f_35"
+  },
+  {
+    "index": 23,
+    "id": "litt_bd_f_36",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Batman est un super-héros de DC Comics.",
+    "correctedPrompt": null,
+    "correctedAnswer": "BATMAN",
+    "correctedExplanation": "Batman est un super-héros emblématique de l'univers DC Comics, connu pour son costume noir et ses aventures.",
+    "actual_id": "litt_bd_f_36"
+  },
+  {
+    "index": 24,
+    "id": "litt_bd_f_37",
+    "issue": "La réponse est correcte, mais l'explication pourrait être plus précise en mentionnant que Garfield a été créé en 1978.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Jim Davis",
+    "correctedExplanation": "'Garfield' a été créé par Jim Davis en 1978 et met en scène un chat paresseux et gourmand.",
+    "actual_id": "litt_bd_f_37"
+  },
+  {
+    "index": 1,
+    "id": "arts_mode_f_20",
+    "issue": "L'anagramme 'nertirée' ne forme pas le mot 'rétinée'.",
+    "correctedPrompt": "Indice: Ce mot désigne une tendance qui célèbre l'artisanat et les techniques traditionnelles. Anagramme: 'rétinée'",
+    "correctedAnswer": "RÉTRO",
+    "correctedExplanation": "Le terme 'rétro' évoque les styles et les techniques artisanales, souvent inspirés du passé.",
+    "correctedOptions": null,
+    "actual_id": "arts_mode_f_20"
+  },
+  {
+    "index": 16,
+    "id": "arts_mode_f_35",
+    "issue": "L'anagramme 'téranvige' ne forme pas le mot 'vintage'.",
+    "correctedPrompt": "Indice: Ce mot désigne un style de mode inspiré des années passées. Anagramme: 'vintage'",
+    "correctedAnswer": "VINTAGE",
+    "correctedExplanation": "Le style vintage fait référence à des vêtements et accessoires inspirés de décennies précédentes.",
+    "correctedOptions": null,
+    "actual_id": "arts_mode_f_35"
+  },
+  {
+    "index": 23,
+    "id": "arts_mode_f_42",
+    "issue": "Le kilt est traditionnellement associé à la culture écossaise, pas britannique en général.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Kilt",
+    "correctedExplanation": "Le kilt est un vêtement traditionnel écossais en tartan, souvent porté lors d'événements culturels en Écosse.",
+    "correctedOptions": null,
+    "actual_id": "arts_mode_f_42"
+  },
+  {
+    "index": 21,
+    "id": "arts_danse_f_27",
+    "issue": "Les lettres données ne forment pas le mot 'SALSA'.",
+    "correctedPrompt": "Indice: Danse souvent associée à la musique folklorique. Réarrangez: 'SIALC'",
+    "correctedAnswer": "CILAS",
+    "correctedExplanation": "Les lettres 'SIALC' peuvent être réarrangées pour former le mot 'CILAS', qui n'est pas une danse connue.",
+    "correctedOptions": null,
+    "actual_id": "arts_danse_f_27"
+  },
+  {
+    "index": 12,
+    "id": "nature_records_f_13",
+    "issue": "Le mot 'giter' ne peut pas être anagrammé en 'TIGRE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TIGRE",
+    "correctedExplanation": "Le mot 'TIGRE' ne peut pas être formé à partir des lettres de 'giter'.",
+    "correctedOptions": null,
+    "actual_id": "nature_records_f_13"
+  },
+  {
+    "index": 18,
+    "id": "nature_records_f_19",
+    "issue": "Le mot 'REQUINBALEINE' ne peut pas être anagrammé en 'REQUIN BALEINE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "REQUIN BALEINE",
+    "correctedExplanation": "Le mot 'REQUIN BALEINE' est correct, mais il ne s'agit pas d'un anagramme valide.",
+    "correctedOptions": null,
+    "actual_id": "nature_records_f_19"
+  },
+  {
+    "index": 7,
+    "id": "arts_instruments_f_27",
+    "issue": "L'anagramme donné ne forme pas le mot 'violon'.",
+    "correctedPrompt": "Indice: Instrument à cordes joué souvent dans les orchestres.",
+    "correctedAnswer": "VIOLON",
+    "correctedExplanation": "Le violon est un instrument de musique à cordes très utilisé.",
+    "correctedOptions": null,
+    "actual_id": "arts_instruments_f_27"
+  },
+  {
+    "index": 8,
+    "id": "arts_instruments_f_28",
+    "issue": "L'anagramme donné ne forme pas le mot 'trompette'.",
+    "correctedPrompt": "Indice: Instrument à vent en métal.",
+    "correctedAnswer": "TROMPETTE",
+    "correctedExplanation": "La trompette est un instrument à vent en métal.",
+    "correctedOptions": null,
+    "actual_id": "arts_instruments_f_28"
+  },
+  {
+    "index": 17,
+    "id": "nature_records_f_43",
+    "issue": "Le mot 'CETACHAIRE' n'est pas correct, il ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Animal marin connu pour sa grande taille. Réorganisez les lettres: 'AICENREHCE'",
+    "correctedAnswer": "CÉTACÉ",
+    "correctedExplanation": "Le cétacé est un terme général qui désigne les animaux marins comme les baleines, connus pour leur taille énorme.",
+    "correctedOptions": null,
+    "actual_id": "nature_records_f_43"
+  },
+  {
+    "index": 18,
+    "id": "nature_records_f_44",
+    "issue": "Le mot 'TIGRANACHE' n'est pas correct, il ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Animal connu pour sa grande vitesse dans l'eau. Réorganisez les lettres: 'HITREACNEA'",
+    "correctedAnswer": "TIGRE DE MER",
+    "correctedExplanation": "Le tigre de mer est un exemple d'animal marin capable de nager très rapidement.",
+    "correctedOptions": null,
+    "actual_id": "nature_records_f_44"
+  },
+  {
+    "index": 4,
+    "id": "arts_danse_f_35",
+    "issue": "Le mot 'RACONLE' ne correspond pas à une danse folklorique connue.",
+    "correctedPrompt": null,
+    "correctedAnswer": "LACONER",
+    "correctedExplanation": "La danse folklorique 'LACONER' est souvent associée aux célébrations et aux mariages.",
+    "correctedOptions": null,
+    "actual_id": "arts_danse_f_35"
+  },
+  {
+    "index": 5,
+    "id": "arts_danse_f_36",
+    "issue": "Le mot 'CRUINE' ne correspond pas à une danse folklorique irlandaise connue.",
+    "correctedPrompt": null,
+    "correctedAnswer": "REINCU",
+    "correctedExplanation": "La danse 'REINCU' est une danse traditionnelle irlandaise, souvent festive.",
+    "correctedOptions": null,
+    "actual_id": "arts_danse_f_36"
+  },
+  {
+    "index": 17,
+    "id": "arts_instruments_f_12",
+    "issue": "Le mot 'NOILVIO' ne correspond pas à un anagramme du mot 'violon'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "VIOLON",
+    "correctedExplanation": "Le mot est un anagramme du 'violon', un instrument à cordes.",
+    "correctedOptions": null,
+    "actual_id": "arts_instruments_f_12"
+  },
+  {
+    "index": 18,
+    "id": "arts_instruments_f_13",
+    "issue": "Le mot 'TROMEPET' ne correspond pas à un anagramme du mot 'trompette'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TROMPETTE",
+    "correctedExplanation": "Le mot est un anagramme de 'trompette', un instrument à vent en laiton.",
+    "correctedOptions": null,
+    "actual_id": "arts_instruments_f_13"
+  },
+  {
+    "index": 0,
+    "id": "nature_ocean_f_7",
+    "issue": "Le plancton n'est pas un animal marin spécifique mais un terme général pour désigner les organismes flottants dans l'eau, incluant des animaux et des végétaux.",
+    "correctedPrompt": "Le ___ est un organisme marin qui peut être bioluminescent.",
+    "correctedAnswer": "plancton",
+    "correctedExplanation": "Le plancton, qui inclut certaines espèces animales et végétales, a la capacité de produire de la lumière, notamment certaines méduses et phytoplanctons.",
+    "correctedOptions": null,
+    "actual_id": "nature_ocean_f_7"
+  },
+  {
+    "index": 14,
+    "id": "nature_plantes_f_27",
+    "issue": "La réponse 'RACON' ne forme pas un anagramme valide du mot 'CHÊNE'.",
+    "correctedPrompt": "Indice: Arbre souvent utilisé pour faire du mobilier.",
+    "correctedAnswer": "CHÊNE",
+    "correctedExplanation": "Le chêne est un arbre populaire pour la fabrication de meubles en raison de sa durabilité.",
+    "correctedOptions": null,
+    "actual_id": "nature_plantes_f_27"
+  },
+  {
+    "index": 15,
+    "id": "nature_plantes_f_28",
+    "issue": "La réponse 'RAISIN' ne forme pas un anagramme valide du mot 'BASILIC'.",
+    "correctedPrompt": "Indice: Plante herbacée souvent utilisée dans les cuisines.",
+    "correctedAnswer": "BASILIC",
+    "correctedExplanation": "Le basilic est une plante aromatique couramment utilisée dans la cuisine méditerranéenne.",
+    "correctedOptions": null,
+    "actual_id": "nature_plantes_f_28"
+  },
+  {
+    "index": 18,
+    "id": "nature_oiseaux_f_12",
+    "issue": "Le mot 'DOVIRE' n'est pas une anagramme valide pour 'VIRE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "DOVIER",
+    "correctedExplanation": "Le mot 'DOVIER' est une anagramme pour 'VIRE', qui évoque le comportement des oiseaux sur les fils.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_12"
+  },
+  {
+    "index": 19,
+    "id": "nature_oiseaux_f_13",
+    "issue": "Le mot 'ROUL' n'est pas une anagramme valide pour 'LURU'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "ROUL",
+    "correctedExplanation": "Le mot 'ROUL' n'est pas une anagramme valide pour 'LURU', qui n'est pas un oiseau reconnu pour son chant.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_13"
+  },
+  {
+    "index": 0,
+    "id": "nature_oiseaux_f_44",
+    "issue": "L'anagramme donné ne forme pas le mot 'PAPYR'.",
+    "correctedPrompt": "Indice: Un oiseau reconnu pour sa capacité à chanter et à imiter d'autres sons. (anagramme: TUIRAP)",
+    "correctedAnswer": "PAPYR",
+    "correctedExplanation": "Cet oiseau est souvent apprécié pour sa voix et ses capacités d'imitation, mais l'anagramme ne correspond pas au mot 'PAPYR'.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_44"
+  },
+  {
+    "index": 4,
+    "id": "nature_mammiferes_f_29",
+    "issue": "La vitesse maximale du guépard est généralement considérée comme étant de 100 km/h, et non 110 km/h.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Cheetah",
+    "correctedExplanation": "Le guépard est le mammifère terrestre le plus rapide, capable d'atteindre des vitesses de 100 km/h.",
+    "correctedOptions": null,
+    "actual_id": "nature_mammiferes_f_29"
+  },
+  {
+    "index": 17,
+    "id": "nature_mammiferes_f_42",
+    "issue": "L'explication ne précise pas la vitesse maximale du guépard, qui est généralement considérée comme étant de 100 km/h.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Guépard",
+    "correctedExplanation": "Le guépard est le mammifère terrestre le plus rapide, capable d'atteindre des vitesses de 100 km/h.",
+    "correctedOptions": null,
+    "actual_id": "nature_mammiferes_f_42"
+  },
+  {
+    "index": 0,
+    "id": "arts_monuments_f_26",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Sydney Opera House",
+    "correctedExplanation": "L'Opéra de Sydney est reconnu pour son design innovant et est un symbole de la ville.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_26"
+  },
+  {
+    "index": 1,
+    "id": "arts_monuments_f_27",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "VERSAILLES",
+    "correctedExplanation": "Le Palais de Versailles est un symbole de l'architecture et de l'art français.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_27"
+  },
+  {
+    "index": 2,
+    "id": "arts_monuments_f_28",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "PISE",
+    "correctedExplanation": "La Tour de Pise est célèbre pour son inclinaison et son architecture unique.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_28"
+  },
+  {
+    "index": 3,
+    "id": "arts_monuments_f_29",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La Pyramide de Khéops",
+    "correctedExplanation": "La Pyramide de Khéops est l'une des sept merveilles du monde et est célèbre pour sa forme pyramidale.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_29"
+  },
+  {
+    "index": 4,
+    "id": "arts_monuments_f_30",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Barcelone",
+    "correctedExplanation": "La Sagrada Família est une basilique emblématique située à Barcelone, en Espagne.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_30"
+  },
+  {
+    "index": 5,
+    "id": "arts_monuments_f_31",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le Parthénon est un temple grec situé à Athènes, dédié à la déesse de la sagesse, Athéna.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_31"
+  },
+  {
+    "index": 6,
+    "id": "arts_monuments_f_32",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Château de Chambord est situé dans la région de la Loire, en France, et non en Bretagne.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_32"
+  },
+  {
+    "index": 7,
+    "id": "arts_monuments_f_33",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Big Ben",
+    "correctedExplanation": "Big Ben est le nom de la grande cloche de la tour de l'horloge du Palais de Westminster à Londres.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_33"
+  },
+  {
+    "index": 8,
+    "id": "arts_monuments_f_34",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Colisée",
+    "correctedExplanation": "Le Colisée est un amphithéâtre romain situé au cœur de Rome, célèbre pour ses spectacles de gladiateurs.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_34"
+  },
+  {
+    "index": 9,
+    "id": "arts_monuments_f_35",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "LOUVRE",
+    "correctedExplanation": "Le Louvre est l'un des musées les plus célèbres au monde, situé à Paris.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_35"
+  },
+  {
+    "index": 10,
+    "id": "arts_monuments_f_36",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "SPHINX",
+    "correctedExplanation": "Le Sphinx est une statue mythique située près des pyramides de Gizeh en Égypte.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_36"
+  },
+  {
+    "index": 11,
+    "id": "arts_monuments_f_37",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Duomo de Florence",
+    "correctedExplanation": "Le Duomo de Florence, ou la cathédrale Santa Maria del Fiore, est célèbre pour sa coupole majestueuse conçue par Brunelleschi.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_37"
+  },
+  {
+    "index": 12,
+    "id": "arts_monuments_f_38",
+    "issue": "La réponse est incorrecte, le Château de Carcassonne n'est pas un château fortifié mais un ensemble de fortifications.",
+    "correctedPrompt": "Quel monument est un célèbre château fortifié en France ?",
+    "correctedAnswer": "Château de Chambord",
+    "correctedExplanation": "Le Château de Chambord est un exemple impressionnant de l'architecture de la Renaissance française, tandis que le Château de Carcassonne est un ensemble de fortifications médiévales.",
+    "correctedOptions": [
+      "Château de Chambord",
+      "Château de Chenonceau",
+      "Château de Carcassonne",
+      "Château de Versailles"
+    ],
+    "actual_id": "arts_monuments_f_38"
+  },
+  {
+    "index": 13,
+    "id": "arts_monuments_f_39",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Le Louvre a été construit au XIIe siècle comme une forteresse, avant de devenir un palais royal puis un musée.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_39"
+  },
+  {
+    "index": 14,
+    "id": "arts_monuments_f_40",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Mont Saint-Michel est en réalité situé en Normandie, bien qu'il soit proche de la Bretagne.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_40"
+  },
+  {
+    "index": 15,
+    "id": "arts_monuments_f_41",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Tour Eiffel",
+    "correctedExplanation": "La Tour Eiffel a été construite pour l'Exposition Universelle de 1889 à Paris.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_41"
+  },
+  {
+    "index": 16,
+    "id": "arts_monuments_f_42",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Colisée",
+    "correctedExplanation": "Le Colisée, ou amphithéâtre Flavien, était le lieu de spectacles et de combats de gladiateurs dans la Rome antique.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_42"
+  },
+  {
+    "index": 17,
+    "id": "arts_monuments_f_43",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "PARTHÉNON",
+    "correctedExplanation": "Le Parthénon est un temple dédié à la déesse Athéna, situé sur l'Acropole d'Athènes.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_43"
+  },
+  {
+    "index": 18,
+    "id": "arts_monuments_f_44",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "PYRAMIDE",
+    "correctedExplanation": "Les pyramides, notamment celles de Gizeh, sont des monuments funéraires emblématiques de l'Égypte ancienne.",
+    "correctedOptions": null,
+    "actual_id": "arts_monuments_f_44"
+  },
+  {
+    "index": 19,
+    "id": "ar_ci_1",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Les Oscars",
+    "correctedExplanation": "Décernés depuis 1929 par l'Académie des arts et des sciences du cinéma, les Oscars sont considérés comme la récompense la plus prestigieuse de l'industrie cinématographique américaine.",
+    "correctedOptions": null,
+    "actual_id": "ar_ci_1"
+  },
+  {
+    "index": 20,
+    "id": "ar_ci_2",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La Palme d'or",
+    "correctedExplanation": "Créée en 1955, la Palme d'or est la récompense la plus prestigieuse du Festival de Cannes, l'un des plus importants festivals de cinéma au monde, fondé en 1946.",
+    "correctedOptions": null,
+    "actual_id": "ar_ci_2"
+  },
+  {
+    "index": 21,
+    "id": "ar_ci_3",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "« Le Chanteur de jazz », sorti en 1927, est considéré comme le premier long métrage avec des dialogues synchronisés, marquant le début du cinéma parlant.",
+    "correctedOptions": null,
+    "actual_id": "ar_ci_3"
+  },
+  {
+    "index": 22,
+    "id": "ar_ci_4",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "César",
+    "correctedExplanation": "Créés en 1976, les César récompensent chaque année les meilleurs films et artistes du cinéma français, lors d'une cérémonie à Paris.",
+    "correctedOptions": null,
+    "actual_id": "ar_ci_4"
+  },
+  {
+    "index": 23,
+    "id": "ar_ci_5",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "ANIMATION",
+    "correctedExplanation": "Le cinéma d'animation regroupe des techniques variées : dessin traditionnel, pâte à modeler ou images de synthèse, et ne se limite pas aux films pour enfants.",
+    "correctedOptions": null,
+    "actual_id": "ar_ci_5"
+  },
+  {
+    "index": 24,
+    "id": "arts_cinema_f_6",
+    "issue": "Aucune erreur factuelle avérée.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Leonardo DiCaprio",
+    "correctedExplanation": "'Titanic' est un film emblématique sorti en 1997 avec Leonardo DiCaprio dans le rôle de Jack Dawson.",
+    "correctedOptions": null,
+    "actual_id": "arts_cinema_f_6"
+  },
+  {
+    "index": 1,
+    "id": "nature_oiseaux_f_20",
+    "issue": "L'anagramme de 'OISNEAU' n'est pas 'SOURIS'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "AUSION",
+    "correctedExplanation": "L'anagramme de 'OISNEAU' est 'AUSION', qui correspond à un oiseau qui picore.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_20"
+  },
+  {
+    "index": 8,
+    "id": "nature_oiseaux_f_27",
+    "issue": "L'anagramme de 'ELVOTE' ne correspond pas à 'TOVEL'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TOVEL",
+    "correctedExplanation": "L'anagramme de 'ELVOTE' est 'VOTELE', qui ne correspond pas à un oiseau.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_27"
+  },
+  {
+    "index": 9,
+    "id": "nature_oiseaux_f_28",
+    "issue": "L'anagramme de 'LANTUR' ne correspond pas à 'TULARN'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TURLAN",
+    "correctedExplanation": "L'anagramme de 'LANTUR' est 'TURLAN', qui désigne un oiseau coloré vivant dans les forêts tropicales.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_28"
+  },
+  {
+    "index": 16,
+    "id": "nature_oiseaux_f_35",
+    "issue": "L'anagramme de 'ROVSEAU' ne correspond pas à 'SOURAVE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "RAVOUSE",
+    "correctedExplanation": "L'anagramme de 'ROVSEAU' est 'RAVOUSE', qui désigne un oiseau souvent associé à la chance.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_35"
+  },
+  {
+    "index": 17,
+    "id": "nature_oiseaux_f_36",
+    "issue": "L'anagramme de 'RETHEI' ne correspond pas à 'HIERTE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "HIERTE",
+    "correctedExplanation": "L'anagramme de 'RETHEI' est 'HIERTE', qui désigne un oiseau connu pour faire son nid dans les arbres.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_36"
+  },
+  {
+    "index": 24,
+    "id": "nature_oiseaux_f_43",
+    "issue": "L'anagramme de 'LANTUR' ne correspond pas à 'TURTLE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TURLAN",
+    "correctedExplanation": "L'anagramme de 'LANTUR' est 'TURLAN', qui désigne un oiseau coloré vivant dans les forêts tropicales.",
+    "correctedOptions": null,
+    "actual_id": "nature_oiseaux_f_43"
+  },
+  {
+    "index": 21,
+    "id": "nature_reptiles_f_27",
+    "issue": "La réponse donnée 'FROGNEAD' n'est pas un mot valide.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Grenouille",
+    "correctedExplanation": "Cet amphibien est souvent associé à des habitats aquatiques.",
+    "correctedOptions": null,
+    "actual_id": "nature_reptiles_f_27"
+  },
+  {
+    "index": 22,
+    "id": "nature_reptiles_f_28",
+    "issue": "La réponse donnée 'GOBRALIER' n'est pas un mot valide.",
+    "correctedPrompt": null,
+    "correctedAnswer": "GOBERLAR",
+    "correctedExplanation": "Ce reptile est bien adapté à des conditions arides.",
+    "correctedOptions": null,
+    "actual_id": "nature_reptiles_f_28"
+  },
+  {
+    "index": 23,
+    "id": "nature_reptiles_f_29",
+    "issue": "Les reptiles ne se trouvent pas principalement dans les déserts, mais dans divers habitats, y compris les forêts et les prairies.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Forêts",
+    "correctedExplanation": "Les reptiles se trouvent dans divers habitats, mais beaucoup d'entre eux vivent dans les forêts.",
+    "correctedOptions": [
+      "Forêts",
+      "Déserts",
+      "Océans",
+      "Montagnes"
+    ],
+    "actual_id": "nature_reptiles_f_29"
+  },
+  {
+    "index": 0,
+    "id": "nature_animaux_f_12",
+    "issue": "Les lettres données ne forment pas le mot 'HIPPOPOTAME'.",
+    "correctedPrompt": "Indice: Animal qui aime l'eau et a un long nez. (Réorganisez les lettres: EAPNHEA)",
+    "correctedAnswer": "HIPPOPOTAME",
+    "correctedExplanation": "Le hippopotame est un grand mammifère semi-aquatique connu pour sa taille imposante.",
+    "correctedOptions": null,
+    "actual_id": "nature_animaux_f_12"
+  },
+  {
+    "index": 15,
+    "id": "nature_animaux_f_27",
+    "issue": "Les lettres données ne forment pas le mot 'CHAT'.",
+    "correctedPrompt": "Indice: Animal à fourrure, souvent gardé pour sa douceur. (Réorganisez les lettres: TCAH)",
+    "correctedAnswer": "CHAT",
+    "correctedExplanation": "Le chat est un animal de compagnie apprécié pour sa douceur et son caractère indépendant.",
+    "correctedOptions": null,
+    "actual_id": "nature_animaux_f_27"
+  },
+  {
+    "index": 16,
+    "id": "nature_animaux_f_28",
+    "issue": "Les lettres données ne forment pas le mot 'HAMSTER'.",
+    "correctedPrompt": "Indice: Animal rongeur souvent gardé dans une cage. (Réorganisez les lettres: RAHMETS)",
+    "correctedAnswer": "HAMSTER",
+    "correctedExplanation": "Le hamster est un petit rongeur souvent gardé comme animal de compagnie, apprécié pour son caractère actif.",
+    "correctedOptions": null,
+    "actual_id": "nature_animaux_f_28"
+  },
+  {
+    "index": 24,
+    "id": "nature_animaux_f_36",
+    "issue": "Les lettres données ne forment pas le mot 'HAMSTER'.",
+    "correctedPrompt": "Indice: Animal souvent gardé dans une cage et qui aime jouer. (Réorganisez les lettres: RAHMETS)",
+    "correctedAnswer": "HAMSTER",
+    "correctedExplanation": "Le hamster est un rongeur populaire, souvent gardé dans une cage et apprécié pour son activité nocturne.",
+    "correctedOptions": null,
+    "actual_id": "nature_animaux_f_36"
+  },
+  {
+    "index": 0,
+    "id": "nature_insectes_f_43",
+    "issue": "Les lettres données ne forment pas le mot 'papillon'.",
+    "correctedPrompt": "Indice: Insecte volant aux ailes colorées qui se nourrit de nectar des fleurs. (Réorganisez les lettres : LONPAPIL)",
+    "correctedAnswer": "PAPILLON",
+    "correctedExplanation": "Le papillon se nourrit du nectar des fleurs grâce à sa trompe, et joue un rôle important de pollinisateur dans les jardins.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_43"
+  },
+  {
+    "index": 1,
+    "id": "nature_insectes_f_44",
+    "issue": "Les lettres données ne forment pas le mot 'libellule'.",
+    "correctedPrompt": "Indice: Insecte qui produit des pigments colorés. (Réorganisez les lettres : LEITROU)",
+    "correctedAnswer": "LIBELLULE",
+    "correctedExplanation": "La libellule est connue pour ses couleurs vives et sa beauté.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_44"
+  },
+  {
+    "index": 15,
+    "id": "na_ec_f_14",
+    "issue": "Le terme 'Holocène' ne désigne pas l'extinction d'espèces, mais une époque géologique.",
+    "correctedPrompt": "Extinction d'espèces plus rapide que la normale, souvent due aux humains",
+    "correctedAnswer": "ANTHROPOCÈNE",
+    "correctedExplanation": "Nous vivons dans l'Anthropocène, une ère où les activités humaines dominent les systèmes naturels. Le taux d'extinction actuel est 100 à 1 000 fois plus rapide que le taux naturel.",
+    "correctedOptions": null,
+    "actual_id": "na_ec_f_14"
+  },
+  {
+    "index": 3,
+    "id": "nature_ecosystemes_f_27",
+    "issue": "La réponse donnée (DEZERS) ne correspond pas à l'anagramme (ZEDRES).",
+    "correctedPrompt": "Indice: Écosystème terrestre avec peu de pluie. (Anagramme : ZEDRES)",
+    "correctedAnswer": "DÉSERT",
+    "correctedExplanation": "Les déserts sont des écosystèmes qui se caractérisent par une faible pluviométrie.",
+    "correctedOptions": null,
+    "actual_id": "nature_ecosystemes_f_27"
+  },
+  {
+    "index": 20,
+    "id": "nature_ecosystemes_f_44",
+    "issue": "La réponse donnée (TOUNDRA) ne correspond pas à l'anagramme (DOUTRAN).",
+    "correctedPrompt": "Indice: Écosystème où l'on trouve des glaciers. (Anagramme : DOUTRAN)",
+    "correctedAnswer": "TOUNDRA",
+    "correctedExplanation": "La toundra est un écosystème froid souvent couvert de neige et de glace.",
+    "correctedOptions": null,
+    "actual_id": "nature_ecosystemes_f_44"
+  },
+  {
+    "index": 16,
+    "id": "tech_inventions_f_27",
+    "issue": "Les lettres données ne forment pas le mot 'VIRGOUN'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "NIGROU",
+    "correctedExplanation": "Le mot correct est 'NIGROU', qui fait référence à un ustensile de cuisine.",
+    "correctedOptions": null,
+    "actual_id": "tech_inventions_f_27"
+  },
+  {
+    "index": 17,
+    "id": "tech_inventions_f_28",
+    "issue": "Les lettres données ne forment pas le mot 'RIMAE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "MARI",
+    "correctedExplanation": "Le mot correct est 'MARI', qui désigne un instrument d'écriture.",
+    "correctedOptions": null,
+    "actual_id": "tech_inventions_f_28"
+  },
+  {
+    "index": 18,
+    "id": "tech_informatique_f_35",
+    "issue": "Le mot 'sociétal' ne correspond pas à l'anagramme donné 'ivelmsoitc'.",
+    "correctedPrompt": "Indice: Un appareil utilisé pour se déplacer dans le monde virtuel. Anagramme : ivelmsoitc",
+    "correctedAnswer": "MOBILE",
+    "correctedExplanation": "Le terme 'mobile' fait référence à des appareils qui permettent de se déplacer dans le monde virtuel, comme les smartphones ou les tablettes.",
+    "correctedOptions": null,
+    "actual_id": "tech_informatique_f_35"
+  },
+  {
+    "index": 12,
+    "id": "tech_espace_f_35",
+    "issue": "Le mot 'SONDEMARS' ne forme pas une anagramme valide du mot 'MARINER'.",
+    "correctedPrompt": "Indice: Premier objet fabriqué par l'homme à atteindre Mars.",
+    "correctedAnswer": "MARINER",
+    "correctedExplanation": "La première sonde à atteindre Mars a été Mariner 4 en 1965.",
+    "correctedOptions": null,
+    "actual_id": "tech_espace_f_35"
+  },
+  {
+    "index": 10,
+    "id": "tech_espace_f_8",
+    "issue": "Le programme Artemis vise à retourner des astronautes sur la Lune, mais il ne s'agit pas d'un projet pour envoyer des humains sur Mars.",
+    "correctedPrompt": "Le ___ est le projet de la NASA pour envoyer des humains sur Mars.",
+    "correctedAnswer": "null",
+    "correctedExplanation": "Le programme Artemis vise à retourner des astronautes sur la Lune et à préparer des missions vers Mars, mais il n'est pas spécifiquement un projet pour envoyer des humains sur Mars.",
+    "correctedOptions": null,
+    "actual_id": "tech_espace_f_8"
+  },
+  {
+    "index": 0,
+    "id": "tech_inventions_f_36",
+    "issue": "La réponse donnée, 'CLAVE', ne correspond pas à l'anagramme des lettres 'CARLE'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CLEAR",
+    "correctedExplanation": "La clé est un outil d'écriture, souvent utilisé dans des contextes éducatifs.",
+    "correctedOptions": null,
+    "actual_id": "tech_inventions_f_36"
+  },
+  {
+    "index": 4,
+    "id": "tech_inventions_f_40",
+    "issue": "L'Apple II a été lancé en 1977, donc la réponse 'Vrai' est incorrecte car elle implique que le premier ordinateur personnel a été lancé dans les années 1980.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le premier ordinateur personnel, l'Apple II, a été lancé en 1977, bien avant les années 1980.",
+    "correctedOptions": null,
+    "actual_id": "tech_inventions_f_40"
+  },
+  {
+    "index": 7,
+    "id": "tech_internet_f_36",
+    "issue": "L'anagramme donné ne forme pas le mot 'COSMOTIC'.",
+    "correctedPrompt": "Indice: C'est un type de réseau social. Anagramme: 'CIMTISOC'",
+    "correctedAnswer": "COSMOTIC",
+    "correctedExplanation": "Le mot caché est 'COSMOTIC', qui pourrait désigner une plateforme sociale.",
+    "correctedOptions": null,
+    "actual_id": "tech_internet_f_36"
+  },
+  {
+    "index": 9,
+    "id": "tech_internet_f_13",
+    "issue": "La réponse 'DISSEN' n'est pas un anagramme valide du mot 'DESSIN'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "DISSIM",
+    "correctedExplanation": "Le terme désigne un 'dissim' qui est utilisé en cryptographie.",
+    "correctedOptions": null,
+    "actual_id": "tech_internet_f_13"
+  },
+  {
+    "index": 23,
+    "id": "tech_internet_f_27",
+    "issue": "La réponse 'CLOBORAE' n'est pas un anagramme valide du mot correspondant.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CLOBBER",
+    "correctedExplanation": "Le mot 'CLOBBER' fait référence à un type de réseau social bien connu.",
+    "correctedOptions": null,
+    "actual_id": "tech_internet_f_27"
+  },
+  {
+    "index": 18,
+    "id": "tech_telescopes_f_28",
+    "issue": "Le mot 'PARALLÈLE' ne correspond pas à l'anagramme 'ALAIREUC'.",
+    "correctedPrompt": "Indice: Unité de mesure astronomique. (Réorganiser : ALAIREUC)",
+    "correctedAnswer": "AU",
+    "correctedExplanation": "L'unité astronomique (AU) est utilisée pour mesurer les distances dans le système solaire, notamment la distance moyenne entre la Terre et le Soleil.",
+    "correctedOptions": null,
+    "actual_id": "tech_telescopes_f_28"
+  },
+  {
+    "index": 1,
+    "id": "nature_insectes_f_19",
+    "issue": "Le mot 'TAPIELEM' n'est pas un insecte et ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Insecte qui se nourrit de sève des plantes. (Réorganisez les lettres : ELIPTMAE)",
+    "correctedAnswer": "TAPIE",
+    "correctedExplanation": "Le terme correct est 'TAPIE', qui désigne un insecte se nourrissant de sève.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_19"
+  },
+  {
+    "index": 2,
+    "id": "nature_insectes_f_20",
+    "issue": "Le mot 'FANTIR' n'est pas un insecte et ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Insecte connu pour sa capacité à se déplacer en groupe. (Réorganisez les lettres : NITARF)",
+    "correctedAnswer": "FANTIR",
+    "correctedExplanation": "Le terme correct est 'FANTIR', qui fait référence à des insectes sociaux comme les fourmis.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_20"
+  },
+  {
+    "index": 9,
+    "id": "nature_insectes_f_27",
+    "issue": "Le mot 'HARDODE' n'est pas un insecte et ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Insecte qui fait des trous dans le bois. (Réorganisez les lettres : DORDEH)",
+    "correctedAnswer": "HARDODE",
+    "correctedExplanation": "Le terme fait référence à un insecte qui peut causer des dommages au bois en y creusant des galeries.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_27"
+  },
+  {
+    "index": 10,
+    "id": "nature_insectes_f_28",
+    "issue": "Le mot 'MOUILP' n'est pas un insecte et ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Insecte qui produit des pigments colorés. (Réorganisez les lettres : LIPMOU)",
+    "correctedAnswer": "MOUILP",
+    "correctedExplanation": "Ce mot désigne un insecte souvent admiré pour ses couleurs vives, comme certains papillons.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_28"
+  },
+  {
+    "index": 18,
+    "id": "nature_insectes_f_36",
+    "issue": "Le mot 'PULMIRE' n'est pas un insecte et ne correspond pas à l'anagramme donné.",
+    "correctedPrompt": "Indice: Insecte qui produit de la soie. (Réorganisez les lettres : ILOMRPE)",
+    "correctedAnswer": "PULMIRE",
+    "correctedExplanation": "Le ver à soie, ou ver de terre, produit de la soie utilisée pour fabriquer des tissus.",
+    "correctedOptions": null,
+    "actual_id": "nature_insectes_f_36"
+  },
+  {
+    "index": 24,
+    "id": "tech_energie_f_34",
+    "issue": "L'anagramme donné ne forme pas le mot 'hydraulique'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "HYDRAULIQUE",
+    "correctedExplanation": "L'énergie hydraulique est liée à l'eau en mouvement.",
+    "correctedOptions": null,
+    "actual_id": "tech_energie_f_34"
+  },
+  {
+    "index": 5,
+    "id": "tech_medecine_f_35",
+    "issue": "L'anagramme 'tobom' ne correspond pas au mot 'robot'.",
+    "correctedPrompt": "Indice: Ce mot décrit un robot qui peut se déplacer de manière autonome. Anagramme: 'tobom', mot à deviner.",
+    "correctedAnswer": "BOT",
+    "correctedExplanation": "Le mot 'bot' se réfère à une machine capable d'effectuer des tâches automatiquement, souvent de manière autonome.",
+    "correctedOptions": null,
+    "actual_id": "tech_medecine_f_35"
+  },
+  {
+    "index": 7,
+    "id": "tech_medecine_f_12",
+    "issue": "Le mot 'RADIO' ne contient que 5 lettres, alors que l'indice indique 6 lettres.",
+    "correctedPrompt": "Indice: Une technique d'imagerie qui utilise des rayons X. (6 lettres)",
+    "correctedAnswer": "RADIOGRAPHIE",
+    "correctedExplanation": "La radiographie utilise des rayons X pour créer des images de l'intérieur du corps.",
+    "correctedOptions": null,
+    "actual_id": "tech_medecine_f_12"
+  },
+  {
+    "index": 8,
+    "id": "tech_medecine_f_13",
+    "issue": "Le mot 'SERINGUE' ne contient que 8 lettres, alors que l'indice indique 8 lettres.",
+    "correctedPrompt": "Indice: Utilisé pour administrer des médicaments par voie intraveineuse. (8 lettres)",
+    "correctedAnswer": "SERINGUE",
+    "correctedExplanation": "Une seringue est un dispositif médical utilisé pour injecter des liquides dans le corps.",
+    "correctedOptions": null,
+    "actual_id": "tech_medecine_f_13"
+  },
+  {
+    "index": 1,
+    "id": "tech_telescopes_f_36",
+    "issue": "L'anagramme donné ne correspond pas à la réponse fournie.",
+    "correctedPrompt": "Indice: Unité de mesure utilisée en astronomie. (Réorganiser : ALAIREUC)",
+    "correctedAnswer": "ANNÉE-LUMIÈRE",
+    "correctedExplanation": "L'année-lumière est une unité de distance utilisée pour mesurer les distances astronomiques, équivalente à la distance parcourue par la lumière en un an.",
+    "correctedOptions": null,
+    "actual_id": "tech_telescopes_f_36"
+  },
+  {
+    "index": 9,
+    "id": "tech_telescopes_f_44",
+    "issue": "L'anagramme donné ne correspond pas à la réponse fournie.",
+    "correctedPrompt": "Indice: Unité de mesure utilisée en astronomie. (Réorganiser : ROLUCNIA)",
+    "correctedAnswer": "UNITE AU",
+    "correctedExplanation": "L'unité astronomique (UA) est souvent utilisée pour mesurer les distances dans l'espace, équivalente à la distance moyenne entre la Terre et le Soleil.",
+    "correctedOptions": null,
+    "actual_id": "tech_telescopes_f_44"
+  },
+  {
+    "index": 19,
+    "id": "tech_jeux_f_10",
+    "issue": "Tennis for Two n'est pas considéré comme le premier jeu vidéo de l'histoire.",
+    "correctedPrompt": "Le ___ est souvent considéré comme le premier jeu vidéo de l'histoire.",
+    "correctedAnswer": "Pong",
+    "correctedExplanation": "Pong, créé en 1972, est souvent cité comme le premier jeu vidéo commercialement réussi et a joué un rôle clé dans l'histoire des jeux vidéo.",
+    "correctedOptions": [
+      "Tennis for Two",
+      "Pong",
+      "Space Invaders",
+      "Pac-Man"
+    ],
+    "actual_id": "tech_jeux_f_10"
+  },
+  {
+    "index": 4,
+    "id": "tech_jeux_f_20",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Dying Light'.",
+    "correctedPrompt": "Indice: Un jeu vidéo célèbre où les joueurs doivent survivre dans un monde ouvert rempli de zombies. Anagramme: 'DEREUOIRV'",
+    "correctedAnswer": "Dying Light",
+    "correctedExplanation": "Le jeu fait référence à 'Dying Light', un jeu de survie et d'action dans un monde de zombies.",
+    "correctedOptions": null,
+    "actual_id": "tech_jeux_f_20"
+  },
+  {
+    "index": 19,
+    "id": "tech_jeux_f_35",
+    "issue": "L'anagramme donné ne correspond pas au mot 'simulateur'.",
+    "correctedPrompt": "Indice: Un jeu vidéo populaire où les joueurs construisent et gèrent une ville. Anagramme: 'MÉNAGEURT'",
+    "correctedAnswer": "SimCity",
+    "correctedExplanation": "Le jeu fait référence à 'SimCity', un jeu où les joueurs construisent et gèrent des villes.",
+    "correctedOptions": null,
+    "actual_id": "tech_jeux_f_35"
+  },
+  {
+    "index": 20,
+    "id": "tech_jeux_f_36",
+    "issue": "L'anagramme donné ne correspond pas au mot 'KARTS'.",
+    "correctedPrompt": "Indice: Un célèbre jeu de course où les personnages utilisent des karts. Anagramme: 'KARTSDEUN'",
+    "correctedAnswer": "Mario Kart",
+    "correctedExplanation": "Le jeu fait référence à 'Mario Kart', une série de jeux de course où les personnages utilisent des karts.",
+    "correctedOptions": null,
+    "actual_id": "tech_jeux_f_36"
+  },
+  {
+    "index": 15,
+    "id": "tech_robots_f_35",
+    "issue": "L'anagramme 'spacrobot' ne forme pas le mot 'ROBOTSPAC'.",
+    "correctedPrompt": "Indice: Ce mot désigne un type de robot souvent utilisé pour explorer l'espace. Anagramme: 'spacrobot'.",
+    "correctedAnswer": "ROBOT SPATIAL",
+    "correctedExplanation": "Les robots spatiaux, comme les rovers, sont conçus pour explorer d'autres planètes.",
+    "correctedOptions": null,
+    "actual_id": "tech_robots_f_35"
+  },
+  {
+    "index": 20,
+    "id": "football_cm_f_20",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Allemagne'.",
+    "correctedPrompt": "Indice: Pays qui a remporté la Coupe en 1998.",
+    "correctedAnswer": "France",
+    "correctedExplanation": "La France a remporté la Coupe du Monde en 1998.",
+    "correctedOptions": null,
+    "actual_id": "football_cm_f_20"
+  },
+  {
+    "index": 7,
+    "id": "football_cdm_f_21",
+    "issue": "Manchester City n'a pas remporté la Ligue des Champions en 2024, car cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "football_cdm_f_21"
+  },
+  {
+    "index": 15,
+    "id": "football_cdm_f_29",
+    "issue": "Manchester City n'a pas remporté la Ligue des Champions 2023-2024, car cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "football_cdm_f_29"
+  },
+  {
+    "index": 23,
+    "id": "fo_pl_1",
+    "issue": "Manchester City n'a pas remporté le Premier League 2023-24, car cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "fo_pl_1"
+  },
+  {
+    "index": 24,
+    "id": "fo_pl_2",
+    "issue": "Liverpool n'a pas remporté le Premier League 2024-25, car cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "null",
+    "correctedOptions": null,
+    "actual_id": "fo_pl_2"
+  },
+  {
+    "index": 10,
+    "id": "football_liga_f_27",
+    "issue": "L'anagramme 'CLOAIMRE' ne forme pas le mot 'REALMADRID'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CLUBAMIRE",
+    "correctedExplanation": "L'anagramme correcte pour 'CLOAIMRE' est 'CLUBAMIRE', qui ne correspond pas à un club connu.",
+    "correctedOptions": null,
+    "actual_id": "football_liga_f_27"
+  },
+  {
+    "index": 11,
+    "id": "football_liga_f_28",
+    "issue": "L'anagramme 'OTARDOMI' ne forme pas le mot 'TOTTIMAR'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "TOTTIMAR",
+    "correctedExplanation": "L'anagramme correcte pour 'OTARDOMI' est 'TOTTIMAR', qui ne correspond pas à un joueur connu.",
+    "correctedOptions": null,
+    "actual_id": "football_liga_f_28"
+  },
+  {
+    "index": 17,
+    "id": "football_liga_f_34",
+    "issue": "Le trophée remis au champion de la Liga est appelé 'La Liga Trophy', ce qui est incorrect.",
+    "correctedPrompt": null,
+    "correctedAnswer": "La Liga Trophy",
+    "correctedExplanation": "Le trophée remis au champion de la Liga est communément appelé 'Trophée de la Liga' ou 'La Liga Trophy', mais le terme exact est 'Trophée de la Liga'.",
+    "correctedOptions": null,
+    "actual_id": "football_liga_f_34"
+  },
+  {
+    "index": 6,
+    "id": "football_ligue1_f_12",
+    "issue": "L'anagramme donnée ne correspond pas au mot 'AC Milan'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Lille",
+    "correctedExplanation": "L'anagramme fait référence au LOSC Lille, qui est un club de Ligue 1 et dont les couleurs sont rouge et noir.",
+    "correctedOptions": null,
+    "actual_id": "football_ligue1_f_12"
+  },
+  {
+    "index": 21,
+    "id": "football_ligue1_f_27",
+    "issue": "L'anagramme donnée ne correspond pas au club de Bordeaux.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Bordeaux",
+    "correctedExplanation": "L'anagramme fait référence au club de football de Bordeaux, qui est souvent en bleu et blanc.",
+    "correctedOptions": null,
+    "actual_id": "football_ligue1_f_27"
+  },
+  {
+    "index": 0,
+    "id": "football_pl_f_28",
+    "issue": "L'anagramme 'LCMANETSH' ne correspond pas à 'CHELSEA'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "CHELSEA",
+    "correctedExplanation": "Le mot 'LCMANETSH' ne forme pas un anagramme valide du club Chelsea.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_28"
+  },
+  {
+    "index": 8,
+    "id": "football_pl_f_36",
+    "issue": "L'anagramme 'CLNDAIHTE' ne correspond pas à un club de football connu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "DCLATHIEN",
+    "correctedExplanation": "L'anagramme 'CLNDAIHTE' ne forme pas un mot valide et ne fait pas référence à un club de football connu.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_36"
+  },
+  {
+    "index": 10,
+    "id": "fo_ls_2",
+    "issue": "Le FC Barcelone n'a pas remporté la Liga 2024-25.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Real Madrid",
+    "correctedExplanation": "Le Real Madrid a remporté la Liga 2024-25, pas le FC Barcelone.",
+    "correctedOptions": [
+      "FC Barcelone",
+      "Real Madrid",
+      "Atlético Madrid",
+      "Athletic Bilbao"
+    ],
+    "actual_id": "fo_ls_2"
+  },
+  {
+    "index": 12,
+    "id": "fo_ls_4",
+    "issue": "Napoli n'a pas remporté le Scudetto 2024-25.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Inter Milan",
+    "correctedExplanation": "L'Inter Milan a remporté le Scudetto 2024-25, pas Napoli.",
+    "correctedOptions": [
+      "Napoli",
+      "Inter Milan",
+      "Juventus",
+      "AC Milan"
+    ],
+    "actual_id": "fo_ls_4"
+  },
+  {
+    "index": 20,
+    "id": "football_liga_f_12",
+    "issue": "L'anagramme 'IVNACNTEA' ne correspond pas à 'CANTINEA'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "INTERMILAN",
+    "correctedExplanation": "L'anagramme 'IVNACNTEA' fait référence à l'Inter Milan, un des clubs les plus connus de la Serie A.",
+    "correctedOptions": null,
+    "actual_id": "football_liga_f_12"
+  },
+  {
+    "index": 2,
+    "id": "football_ligue1_f_33",
+    "issue": "L'anagramme donné ne correspond pas au mot 'MONTPELLIER'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "LILLE",
+    "correctedExplanation": "L'anagramme 'CAMEILLO' correspond au club de Lille, qui est souvent en rouge et noir.",
+    "correctedOptions": null,
+    "actual_id": "football_ligue1_f_33"
+  },
+  {
+    "index": 19,
+    "id": "football_transferts_f_14",
+    "issue": "Lionel Messi n'a pas rejoint la Juventus en 2021, il a rejoint le PSG.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Cristiano Ronaldo",
+    "correctedExplanation": "Cristiano Ronaldo a quitté la Juventus pour rejoindre Manchester United en 2021, tandis que Lionel Messi a quitté le FC Barcelone pour rejoindre le PSG.",
+    "correctedOptions": [
+      "Antoine Griezmann",
+      "Cristiano Ronaldo",
+      "Paul Pogba"
+    ],
+    "actual_id": "football_transferts_f_14"
+  },
+  {
+    "index": 24,
+    "id": "football_transferts_f_19",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Neymar'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "NEYMAR",
+    "correctedExplanation": "L'anagramme 'AIDNOLE' correspond au nom 'NEYMAR', ancien joueur du PSG.",
+    "correctedOptions": null,
+    "actual_id": "football_transferts_f_19"
+  },
+  {
+    "index": 12,
+    "id": "fo_cdm_1",
+    "issue": "La réponse indique que Manchester City a remporté la Ligue des Champions en 2023, mais il n'y a pas de mention de la date précise de la finale.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Manchester City",
+    "correctedExplanation": "Manchester City a battu Inter Milan 1-0 en finale de la Ligue des Champions 2023, qui s'est tenue le 10 juin 2023 à Istanbul.",
+    "correctedOptions": null,
+    "actual_id": "fo_cdm_1"
+  },
+  {
+    "index": 13,
+    "id": "fo_cdm_2",
+    "issue": "La réponse indique que le Real Madrid a remporté la Ligue des Champions en 2024, mais cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "La Ligue des Champions 2024 n'a pas encore eu lieu, donc il n'est pas possible de déterminer le vainqueur.",
+    "correctedOptions": null,
+    "actual_id": "fo_cdm_2"
+  },
+  {
+    "index": 14,
+    "id": "fo_cdm_3",
+    "issue": "Le PSG n'a pas encore remporté la Ligue des Champions en 2025, car cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "La finale de la Ligue des Champions 2025 n'a pas encore eu lieu, donc le score et le vainqueur ne peuvent pas être déterminés.",
+    "correctedOptions": null,
+    "actual_id": "fo_cdm_3"
+  },
+  {
+    "index": 15,
+    "id": "fo_cdm_4",
+    "issue": "La victoire du PSG en Ligue des Champions 2025 est mentionnée comme la première de l'histoire du club, mais cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "La victoire du PSG en Ligue des Champions 2025 n'a pas encore eu lieu, donc il n'est pas possible de dire si c'est la première.",
+    "correctedOptions": null,
+    "actual_id": "fo_cdm_4"
+  },
+  {
+    "index": 17,
+    "id": "football_cdm_f_6",
+    "issue": "La réponse indique que le PSG a remporté la Ligue des Champions en 2025, mais cela n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "null",
+    "correctedExplanation": "Le PSG n'a pas encore remporté la Ligue des Champions en 2025, car la finale n'a pas encore eu lieu.",
+    "correctedOptions": null,
+    "actual_id": "football_cdm_f_6"
+  },
+  {
+    "index": 19,
+    "id": "football_cdm_f_8",
+    "issue": "La réponse indique que la Ligue des Champions se joue chaque année depuis 1992, mais cela n'est pas exact car le format a changé.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "La Ligue des Champions, sous son format actuel, a été créée en 1992, mais elle a remplacé la Coupe d'Europe des clubs champions qui existait auparavant.",
+    "correctedOptions": null,
+    "actual_id": "football_cdm_f_8"
+  },
+  {
+    "index": 23,
+    "id": "football_cdm_f_12",
+    "issue": "L'anagramme donnée ne correspond pas au mot 'PARISSG'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "PARIS",
+    "correctedExplanation": "L'anagramme 'SAGIPRANT' correspond au Paris Saint-Germain, qui a remporté la Ligue des Champions en 2025.",
+    "correctedOptions": null,
+    "actual_id": "football_cdm_f_12"
+  },
+  {
+    "index": 24,
+    "id": "football_cdm_f_13",
+    "issue": "L'anagramme donnée ne correspond pas au mot 'MANCHESTER'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "MANCHESTER",
+    "correctedExplanation": "L'anagramme 'REDUNMTAI' correspond à Manchester United, une équipe anglaise connue dans la Ligue des Champions.",
+    "correctedOptions": null,
+    "actual_id": "football_cdm_f_13"
+  },
+  {
+    "index": 0,
+    "id": "football_ballon_f_9",
+    "issue": "L'explication indique que le Ballon d'Or féminin a été attribué pour la première fois en 2018, ce qui est correct, mais la question est mal formulée.",
+    "correctedPrompt": "Le Ballon d'Or féminin a été créé et attribué pour la première fois en 2018.",
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le Ballon d'Or féminin a été créé et attribué pour la première fois en 2018.",
+    "correctedOptions": null,
+    "actual_id": "football_ballon_f_9"
+  },
+  {
+    "index": 11,
+    "id": "football_ballon_f_20",
+    "issue": "L'anagramme donné ne correspond pas au mot 'CR7', qui fait référence à Cristiano Ronaldo.",
+    "correctedPrompt": "Indice: L'un des meilleurs joueurs de l'histoire du football, surnommé 'CR7'.",
+    "correctedAnswer": "RONALDO",
+    "correctedExplanation": "L'anagramme se réfère à Cristiano Ronaldo, un joueur célèbre connu sous le nom de 'CR7'.",
+    "correctedOptions": null,
+    "actual_id": "football_ballon_f_20"
+  },
+  {
+    "index": 18,
+    "id": "football_ballon_f_27",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Robalon'.",
+    "correctedPrompt": "Indice: Une récompense pour les footballeurs. (mot à trouver : 'Robalon')",
+    "correctedAnswer": "BALLON",
+    "correctedExplanation": "Le Ballon d'Or est une récompense prestigieuse dans le monde du football.",
+    "correctedOptions": null,
+    "actual_id": "football_ballon_f_27"
+  },
+  {
+    "index": 19,
+    "id": "football_ballon_f_28",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Donnor'.",
+    "correctedPrompt": "Indice: Une récompense pour les footballeurs. (mot à trouver : 'Donnor')",
+    "correctedAnswer": "BALLON",
+    "correctedExplanation": "Le Ballon d'Or est une récompense prestigieuse dans le monde du football.",
+    "correctedOptions": null,
+    "actual_id": "football_ballon_f_28"
+  },
+  {
+    "index": 0,
+    "id": "fo_pl_3",
+    "issue": "Mohamed Salah n'a pas remporté le Soulier d'Or du Premier League en 2024-25 avec 29 buts, c'est Erling Haaland qui a terminé avec ce nombre de buts.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Erling Haaland",
+    "correctedExplanation": "Erling Haaland a terminé la saison 2024-25 avec 29 buts, remportant le Soulier d'Or du Premier League.",
+    "correctedOptions": [
+      "Mohamed Salah",
+      "Erling Haaland",
+      "Alexander Isak",
+      "Cole Palmer"
+    ],
+    "actual_id": "fo_pl_3"
+  },
+  {
+    "index": 1,
+    "id": "fo_pl_4",
+    "issue": "Mohamed Salah n'a pas remporté son 4e Soulier d'Or en 2024-25, c'est Erling Haaland qui a remporté le Soulier d'Or cette saison.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Avec son 4e Soulier d'Or en 2024-25, Salah n'a pas rejoint Thierry Henry au sommet du palmarès du Soulier d'Or du Premier League, car c'est Erling Haaland qui a remporté le titre cette saison.",
+    "correctedOptions": null,
+    "actual_id": "fo_pl_4"
+  },
+  {
+    "index": 2,
+    "id": "fo_pl_5",
+    "issue": "Arne Slot n'a pas remplacé Jürgen Klopp comme entraîneur de Liverpool en 2024, Klopp était toujours en poste à cette date.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Jürgen Klopp n'a pas été remplacé par Arne Slot en 2024, il était toujours l'entraîneur de Liverpool à ce moment-là.",
+    "correctedOptions": null,
+    "actual_id": "fo_pl_5"
+  },
+  {
+    "index": 4,
+    "id": "football_pl_f_7",
+    "issue": "Ilkay Gundogan n'était pas le capitaine de Manchester City lors de la saison 2023-2024, c'était Ruben Dias.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Ruben Dias",
+    "correctedExplanation": "Ruben Dias a été le capitaine de Manchester City pendant la saison 2023-2024, et non Ilkay Gundogan.",
+    "correctedOptions": [
+      "Kevin De Bruyne",
+      "Ruben Dias",
+      "Ilkay Gundogan",
+      "Phil Foden"
+    ],
+    "actual_id": "football_pl_f_7"
+  },
+  {
+    "index": 8,
+    "id": "football_pl_f_11",
+    "issue": "Adrien Rabiot n'a pas rejoint Arsenal en 2023, il est resté à la Juventus.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Adrien Rabiot n'a pas signé pour Arsenal en 2023, il est resté à la Juventus.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_11"
+  },
+  {
+    "index": 12,
+    "id": "football_pl_f_15",
+    "issue": "La Premier League n'est pas composée de 20 équipes, mais de 18 équipes pour la saison 2023-24.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "La Premier League est composée de 18 équipes pour la saison 2023-24, et non de 20.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_15"
+  },
+  {
+    "index": 18,
+    "id": "football_pl_f_21",
+    "issue": "Arsenal n'a pas terminé à la troisième place de la Premier League 2023-24, c'est Manchester City qui a terminé à cette position.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Arsenal n'a pas fini la saison 2023-24 à la troisième place de la Premier League, c'est Manchester City qui a terminé à cette position.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_21"
+  },
+  {
+    "index": 20,
+    "id": "football_pl_f_23",
+    "issue": "La Premier League 2023-24 n'a pas été marquée par l'absence de VAR, le VAR était toujours utilisé durant cette saison.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Le VAR était effectivement utilisé durant la saison 2023-24 de la Premier League, et non absent.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_23"
+  },
+  {
+    "index": 22,
+    "id": "football_pl_f_25",
+    "issue": "Chelsea n'est pas le seul club de Premier League basé à Londres connu pour ses couleurs bleu, il y a aussi d'autres clubs.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "Chelsea est un club de football londonien dont les couleurs sont le bleu, mais il n'est pas le seul club de Premier League basé à Londres avec cette couleur.",
+    "correctedOptions": null,
+    "actual_id": "football_pl_f_25"
+  },
+  {
+    "index": 1,
+    "id": "football_transferts_f_21",
+    "issue": "La réponse indique un transfert en 2020, mais Ousmane Dembélé a été transféré en 2017.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Ousmane Dembélé",
+    "correctedExplanation": "Ousmane Dembélé a été transféré de Dortmund à Barcelone en 2017, et non en 2020.",
+    "correctedOptions": null,
+    "actual_id": "football_transferts_f_21"
+  },
+  {
+    "index": 7,
+    "id": "football_transferts_f_27",
+    "issue": "L'anagramme donné ne correspond pas au joueur mentionné.",
+    "correctedPrompt": "Indice: Joueur néerlandais, ancien du PSV Eindhoven. Anagramme : REIVNDEK.",
+    "correctedAnswer": "DEPAY",
+    "correctedExplanation": "Le joueur est Memphis Depay, connu pour son passage au PSV Eindhoven.",
+    "correctedOptions": null,
+    "actual_id": "football_transferts_f_27"
+  },
+  {
+    "index": 17,
+    "id": "fo_bo_1",
+    "issue": "La date de la victoire de Messi est incorrecte, le Ballon d'Or 2023 a été remis en octobre 2023.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Lionel Messi",
+    "correctedExplanation": "Messi a remporté son 8e Ballon d'Or en octobre 2023, principalement grâce à sa victoire en Coupe du Monde 2022 avec l'Argentine.",
+    "correctedOptions": null,
+    "actual_id": "fo_bo_1"
+  },
+  {
+    "index": 18,
+    "id": "fo_bo_2",
+    "issue": "Le Ballon d'Or 2024 n'a pas encore eu lieu, donc la réponse est incorrecte.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Rodri",
+    "correctedExplanation": "L'Espagnol Rodri, milieu de Manchester City, a remporté le Ballon d'Or 2024 pour sa saison Euro 2024 + triplé avec City. Premier milieu défensif primé depuis longtemps.",
+    "correctedOptions": null,
+    "actual_id": "fo_bo_2"
+  },
+  {
+    "index": 19,
+    "id": "fo_bo_3",
+    "issue": "Le Ballon d'Or 2025 n'a pas encore eu lieu, donc la réponse est incorrecte.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Ousmane Dembélé",
+    "correctedExplanation": "Dembélé a remporté son premier Ballon d'Or en septembre 2025 après sa saison de triplé avec le PSG (35 buts, 14 passes décisives), devenant le 6e Français primé.",
+    "correctedOptions": null,
+    "actual_id": "fo_bo_3"
+  },
+  {
+    "index": 21,
+    "id": "fo_bo_5",
+    "issue": "Aitana Bonmatí n'a pas encore remporté le Ballon d'Or féminin pour 2024 et 2025, donc la réponse est incorrecte.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Aitana Bonmatí",
+    "correctedExplanation": "L'Espagnole Aitana Bonmatí, milieu du FC Barcelone, a remporté le Ballon d'Or féminin en 2023, mais les résultats pour 2024 et 2025 ne sont pas encore connus.",
+    "correctedOptions": null,
+    "actual_id": "fo_bo_5"
+  },
+  {
+    "index": 12,
+    "id": "football_stars_f_24",
+    "issue": "L'anagramme donné ne forme pas le mot 'Real Madrid'.",
+    "correctedPrompt": "Indice: Équipe espagnole célèbre pour ses couleurs rouge et blanc.",
+    "correctedAnswer": "ATLETICO",
+    "correctedExplanation": "L'Atletico Madrid est l'une des équipes les plus prestigieuses au monde.",
+    "correctedOptions": null,
+    "actual_id": "football_stars_f_24"
+  },
+  {
+    "index": 23,
+    "id": "football_stars_f_35",
+    "issue": "L'anagramme donné ne forme pas le mot 'Ronaldo'.",
+    "correctedPrompt": "Indice: Joueur portugais ayant joué à Manchester United.",
+    "correctedAnswer": "RONALDO",
+    "correctedExplanation": "Cristiano Ronaldo est un joueur emblématique qui a joué à Manchester United.",
+    "correctedOptions": null,
+    "actual_id": "football_stars_f_35"
+  },
+  {
+    "index": 0,
+    "id": "football_euro_f_23",
+    "issue": "La réponse est incorrecte car l'Euro 2024 se déroulera en Allemagne.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "L'Euro 2024 se déroulera en Allemagne.",
+    "correctedOptions": null,
+    "actual_id": "football_euro_f_23"
+  },
+  {
+    "index": 10,
+    "id": "football_euro_f_33",
+    "issue": "Le Stade Olympique de Berlin n'est pas le stade principal de la finale de l'Euro 2024, c'est l'Allianz Arena.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Allianz Arena",
+    "correctedExplanation": "L'Allianz Arena à Munich est prévu pour accueillir la finale de l'Euro 2024.",
+    "correctedOptions": [
+      "Signal Iduna Park",
+      "Allianz Arena",
+      "Stade Olympique",
+      "Volksparkstadion"
+    ],
+    "actual_id": "football_euro_f_33"
+  },
+  {
+    "index": 14,
+    "id": "fo_sr_1",
+    "issue": "Lamine Yamal n'a pas été élu meilleur jeune joueur de l'Euro 2024 car le tournoi n'a pas encore eu lieu.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Lamine Yamal",
+    "correctedExplanation": "Lamine Yamal, né en 2007, est devenu titulaire du Barça et de l'équipe d'Espagne à 16-17 ans, mais il n'a pas encore été élu meilleur jeune joueur de l'Euro 2024 car le tournoi n'a pas eu lieu.",
+    "correctedOptions": null,
+    "actual_id": "fo_sr_1"
+  },
+  {
+    "index": 15,
+    "id": "fo_sr_2",
+    "issue": "La Coupe du Monde des Clubs 2025 n'a pas encore eu lieu, donc la réponse est spéculative.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Chelsea",
+    "correctedExplanation": "Chelsea a été annoncé comme le vainqueur de la Coupe du Monde des Clubs 2025, mais le tournoi n'a pas encore eu lieu.",
+    "correctedOptions": null,
+    "actual_id": "fo_sr_2"
+  },
+  {
+    "index": 17,
+    "id": "fo_sr_4",
+    "issue": "Les statistiques de Mohamed Salah sont incorrectes, car il n'a pas encore atteint 47 involvements en 2024-25.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "Avec 29 buts et 18 passes décisives, Salah a totalisé 47 involvements, mais ces chiffres sont basés sur des prévisions et non sur des résultats réels.",
+    "correctedOptions": null,
+    "actual_id": "fo_sr_4"
+  },
+  {
+    "index": 1,
+    "id": "football_ballon_f_35",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Ballon d'Or'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "BALLONDOR",
+    "correctedExplanation": "Le Ballon d'Or est la récompense la plus prestigieuse dans le monde du football.",
+    "correctedOptions": null,
+    "actual_id": "football_ballon_f_35"
+  },
+  {
+    "index": 2,
+    "id": "football_ballon_f_36",
+    "issue": "L'anagramme donné ne correspond pas au mot 'Ballon d'Or'.",
+    "correctedPrompt": null,
+    "correctedAnswer": "BALLONDOR",
+    "correctedExplanation": "Ce mot est un anagramme du prix prestigieux remis aux meilleurs footballeurs.",
+    "correctedOptions": null,
+    "actual_id": "football_ballon_f_36"
+  },
+  {
+    "index": 3,
+    "id": "fo_eu_1",
+    "issue": "L'Espagne n'a pas remporté l'Euro 2024, car cet événement n'a pas encore eu lieu.",
+    "correctedPrompt": "Quel pays a remporté l'Euro 2024 en Allemagne ?",
+    "correctedAnswer": null,
+    "correctedExplanation": "L'Euro 2024 n'a pas encore eu lieu, donc il n'y a pas de vainqueur.",
+    "correctedOptions": null,
+    "actual_id": "fo_eu_1"
+  },
+  {
+    "index": 4,
+    "id": "fo_eu_2",
+    "issue": "La finale de l'Euro 2024 n'a pas encore eu lieu, donc il n'y a pas de but vainqueur.",
+    "correctedPrompt": "Qui a marqué le but vainqueur de l'Espagne en finale de l'Euro 2024 ?",
+    "correctedAnswer": null,
+    "correctedExplanation": "La finale de l'Euro 2024 n'a pas encore eu lieu, donc il n'y a pas de but vainqueur.",
+    "correctedOptions": null,
+    "actual_id": "fo_eu_2"
+  },
+  {
+    "index": 5,
+    "id": "fo_eu_3",
+    "issue": "Lamine Yamal n'a pas encore été révélé comme le meilleur jeune joueur de l'Euro 2024, car cet événement n'a pas encore eu lieu.",
+    "correctedPrompt": "Quel joueur de 17 ans a été la révélation de l'Euro 2024 ?",
+    "correctedAnswer": null,
+    "correctedExplanation": "L'Euro 2024 n'a pas encore eu lieu, donc il n'y a pas de révélation.",
+    "correctedOptions": null,
+    "actual_id": "fo_eu_3"
+  },
+  {
+    "index": 6,
+    "id": "fo_eu_4",
+    "issue": "L'Euro 2024 n'a pas encore eu lieu, donc l'Angleterre n'a pas perdu cette finale.",
+    "correctedPrompt": "L'Angleterre a perdu deux finales d'Euro consécutives en 2020 et 2024.",
+    "correctedAnswer": "Faux",
+    "correctedExplanation": "L'Euro 2024 n'a pas encore eu lieu, donc l'Angleterre n'a pas perdu cette finale.",
+    "correctedOptions": null,
+    "actual_id": "fo_eu_4"
+  },
+  {
+    "index": 7,
+    "id": "fo_eu_5",
+    "issue": "La finale de l'Euro 2024 n'a pas encore eu lieu, donc il n'y a pas de ville hôte.",
+    "correctedPrompt": "Dans quelle ville s'est déroulée la finale de l'Euro 2024 ?",
+    "correctedAnswer": null,
+    "correctedExplanation": "La finale de l'Euro 2024 n'a pas encore eu lieu, donc il n'y a pas de ville hôte.",
+    "correctedOptions": null,
+    "actual_id": "fo_eu_5"
+  },
+  {
+    "index": 8,
+    "id": "football_euro_f_6",
+    "issue": "L'Allemagne n'a pas remporté l'Euro à trois reprises, mais à quatre reprises.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Allemagne",
+    "correctedExplanation": "L'Allemagne a remporté l'Euro à quatre reprises, plus que tout autre pays.",
+    "correctedOptions": null,
+    "actual_id": "football_euro_f_6"
+  },
+  {
+    "index": 9,
+    "id": "football_euro_f_7",
+    "issue": "L'Euro a lieu tous les quatre ans, mais il n'y a pas d'éditions tous les deux ans.",
+    "correctedPrompt": null,
+    "correctedAnswer": "Vrai",
+    "correctedExplanation": "L'Euro se déroule tous les quatre ans, sans éditions tous les deux ans.",
+    "correctedOptions": null,
+    "actual_id": "football_euro_f_7"
+  }
+]

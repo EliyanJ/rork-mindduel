@@ -1,0 +1,17 @@
+Total questions to scan: 3200
+Batches: 128 (size 25), workers 6
+  10/128 batches done, 16 corrections found, 12s elapsed
+  20/128 batches done, 24 corrections found, 18s elapsed
+  30/128 batches done, 56 corrections found, 25s elapsed
+  40/128 batches done, 70 corrections found, 32s elapsed
+  50/128 batches done, 114 corrections found, 44s elapsed
+  60/128 batches done, 179 corrections found, 54s elapsed
+  70/128 batches done, 225 corrections found, 63s elapsed
+  80/128 batches done, 268 corrections found, 72s elapsed
+  90/128 batches done, 284 corrections found, 79s elapsed
+  100/128 batches done, 329 corrections found, 85s elapsed
+  110/128 batches done, 346 corrections found, 92s elapsed
+  120/128 batches done, 371 corrections found, 102s elapsed
+  128/128 batches done, 417 corrections found, 115s elapsed
+
+Done. 417 corrections saved to tmp/scan_results.json

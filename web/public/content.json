@@ -407,7 +407,7 @@
                 {
                   "id": "histoire_antiquite_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Ancien peuple d'Italie, connu pour sa culture. Anagramme: NCTARIESE.",
+                  "prompt": "Indice: Ancien peuple d'Italie, connu pour sa culture. Anagramme: USSUETEQR.",
                   "answer": "ETRUSQUES",
                   "explanation": "Les Étrusques étaient un peuple qui a influencé la culture romaine.",
                   "familiarity": "pointu"
@@ -415,7 +415,7 @@
                 {
                   "id": "histoire_antiquite_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Un célèbre général romain. Anagramme: RUCUS.",
+                  "prompt": "Indice: Un célèbre général romain. Anagramme: RAÉCS.",
                   "answer": "CÉSAR",
                   "explanation": "Jules César est l'un des généraux les plus connus de l'histoire romaine.",
                   "familiarity": "pointu"
@@ -517,7 +517,7 @@
                 {
                   "id": "histoire_antiquite_f_45",
                   "type": "anagram",
-                  "prompt": "Indice: Ancienne cité-État grecque, connue pour sa culture et sa démocratie. Anagramme: ATHEEN",
+                  "prompt": "Indice: Ancienne cité-État grecque, connue pour sa culture et sa démocratie. Anagramme: TÈSEHNA",
                   "answer": "ATHÈNES",
                   "explanation": "Athènes était une cité-État importante de la Grèce antique, connue pour son rôle dans le développement de la démocratie.",
                   "familiarity": "pointu"
@@ -525,7 +525,7 @@
                 {
                   "id": "histoire_antiquite_f_46",
                   "type": "anagram",
-                  "prompt": "Indice: Un célèbre empereur romain. Anagramme: ARUC",
+                  "prompt": "Indice: Un célèbre empereur romain. Anagramme: EACARS",
                   "answer": "CAESAR",
                   "explanation": "Jules César est l'un des empereurs romains les plus connus, célèbre pour ses conquêtes et ses réformes.",
                   "familiarity": "pointu"
@@ -605,7 +605,7 @@
                 {
                   "id": "histoire_antiquite_f_53",
                   "type": "anagram",
-                  "prompt": "Indice: Ancienne cité-État connue pour sa culture et sa démocratie. Anagramme: ATHEEN",
+                  "prompt": "Indice: Ancienne cité-État connue pour sa culture et sa démocratie. Anagramme: ENSAHTE",
                   "answer": "ATHENES",
                   "explanation": "Athènes est célèbre pour avoir été le berceau de la démocratie et de la philosophie.",
                   "familiarity": "pointu"
@@ -613,7 +613,7 @@
                 {
                   "id": "histoire_antiquite_f_54",
                   "type": "anagram",
-                  "prompt": "Indice: Ancien peuple connu pour ses contributions à la culture romaine. Anagramme: SUETRQS",
+                  "prompt": "Indice: Ancien peuple connu pour ses contributions à la culture romaine. Anagramme: TEUSERQSU",
                   "answer": "ETRUSQUES",
                   "explanation": "Les Étrusques ont influencé la culture et les institutions de la Rome antique.",
                   "familiarity": "pointu"
@@ -693,7 +693,7 @@
                 {
                   "id": "histoire_antiquite_f_61",
                   "type": "anagram",
-                  "prompt": "Indice: Ancienne civilisation connue pour ses grandes pyramides. Anagramme: CIMÉGYPTE.",
+                  "prompt": "Indice: Ancienne civilisation connue pour ses grandes pyramides. Anagramme: YPÉTGE.",
                   "answer": "ÉGYPTE",
                   "explanation": "L'Égypte antique est célèbre pour ses pyramides et ses pharaons.",
                   "familiarity": "commun"
@@ -701,7 +701,7 @@
                 {
                   "id": "histoire_antiquite_f_62",
                   "type": "anagram",
-                  "prompt": "Indice: Un célèbre général carthaginois. Anagramme: ANICARTHAGE.",
+                  "prompt": "Indice: Un célèbre général carthaginois. Anagramme: NHAIBNAL.",
                   "answer": "HANNIBAL",
                   "explanation": "Hannibal est connu pour avoir mené son armée à travers les Alpes pour attaquer Rome.",
                   "familiarity": "moyen"
@@ -886,7 +886,7 @@
                   "id": "hi_ma_f_15",
                   "type": "anagram",
                   "prompt": "Système politique médiéval basé sur les liens entre seigneurs et vassaux",
-                  "answer": "FEODALITE",
+                  "answer": "FÉODALITÉ",
                   "explanation": "Dans le système féodal, le vassal jurait fidélité à son seigneur en échange de protection et d'une terre (le fief). Cette pyramide du pouvoir structura toute la société médiévale européenne pendant des siècles.",
                   "familiarity": "moyen"
                 },
@@ -1023,7 +1023,7 @@
                 {
                   "id": "histoire_moyen_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Monarque de France au Moyen Âge, réorganisateur de l'État. (anagramme : LERHINÉ)",
+                  "prompt": "Indice: Monarque de France au Moyen Âge, réorganisateur de l'État. (anagramme : REHNI)",
                   "answer": "HENRI",
                   "explanation": "Henri est un nom de plusieurs rois de France qui ont joué un rôle important au Moyen Âge.",
                   "familiarity": "pointu"
@@ -1031,7 +1031,7 @@
                 {
                   "id": "histoire_moyen_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Titre donné aux nobles de l'époque médiévale. (anagramme : SELIGNE)",
+                  "prompt": "Indice: Titre donné aux nobles de l'époque médiévale. (anagramme : RGIENESU)",
                   "answer": "SEIGNEUR",
                   "explanation": "Le seigneur était un noble qui possédait des terres et avait des vassaux.",
                   "familiarity": "pointu"
@@ -1111,7 +1111,7 @@
                 {
                   "id": "histoire_moyen_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Ville où se tenait la célèbre université au Moyen Âge. (anagramme : LIRPA)",
+                  "prompt": "Indice: Ville où se tenait la célèbre université au Moyen Âge. (anagramme : RIPAS)",
                   "answer": "PARIS",
                   "explanation": "Paris était un centre intellectuel majeur pendant le Moyen Âge, notamment grâce à l'Université de Paris.",
                   "familiarity": "pointu"
@@ -1119,7 +1119,7 @@
                 {
                   "id": "histoire_moyen_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Nom donné aux artisans et marchands au Moyen Âge. (anagramme : GNALDES)",
+                  "prompt": "Indice: Nom donné aux artisans et marchands au Moyen Âge. (anagramme : IGLDES)",
                   "answer": "GILDES",
                   "explanation": "Les gildes étaient des associations de marchands et d'artisans qui régulaient le commerce et la production dans les villes médiévales.",
                   "familiarity": "pointu"
@@ -1199,7 +1199,7 @@
                 {
                   "id": "histoire_moyen_f_43",
                   "type": "anagram",
-                  "prompt": "Indice: Ville française célèbre pour sa cathédrale gothique. (anagramme : REIMSE)",
+                  "prompt": "Indice: Ville française célèbre pour sa cathédrale gothique. (anagramme : REMIS)",
                   "answer": "REIMS",
                   "explanation": "Reims est connue pour sa cathédrale où de nombreux rois de France ont été couronnés.",
                   "familiarity": "moyen"
@@ -1207,7 +1207,7 @@
                 {
                   "id": "histoire_moyen_f_44",
                   "type": "anagram",
-                  "prompt": "Indice: Nom de la célèbre bataille qui a marqué la fin de la guerre de Cent Ans. (anagramme : RONLACET)",
+                  "prompt": "Indice: Nom de la célèbre bataille qui a marqué la fin de la guerre de Cent Ans. (anagramme : CNYRRUBTAE)",
                   "answer": "CANTERBURY",
                   "explanation": "La bataille de Cantorbéry a été un événement marquant de cette guerre.",
                   "familiarity": "pointu"
@@ -2081,7 +2081,7 @@
                     "L'Empire guarani"
                   ],
                   "answer": "L'Empire inca",
-                  "explanation": "Pizarro conquit l'Empire inca du Pérou entre 1532 et 1572 avec moins de 200 hommes. Il captura l'Inca Atahualpa et le fit exécuter après avoir reçu une rançon fabuleuse en or et argent.",
+                  "explanation": "Pizarro conquit l'Empire inca du Pérou en 1532 avec moins de 200 hommes. Il captura l'Inca Atahualpa et le fit exécuter après avoir reçu une rançon fabuleuse en or et argent.",
                   "familiarity": "commun"
                 },
                 {
@@ -2225,7 +2225,7 @@
                 {
                   "id": "histoire_decouvertes_f_25",
                   "type": "anagram",
-                  "prompt": "Indice: Explorateur qui a découvert le Brésil. Anagramme: 'BOLCCOHRIT'",
+                  "prompt": "Indice: Explorateur qui a découvert le Brésil. Anagramme: 'CBMLOO'",
                   "answer": "COLOMB",
                   "explanation": "Christophe Colomb est souvent associé à la découverte des Amériques, bien qu'il ait découvert le Brésil par erreur.",
                   "familiarity": "pointu"
@@ -2341,7 +2341,7 @@
                 {
                   "id": "histoire_decouvertes_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Explorateur qui a découvert le Brésil. Anagramme: 'PIZARROF'",
+                  "prompt": "Indice: Explorateur qui a découvert le Brésil. Anagramme: 'RABCLA'",
                   "answer": "CABRAL",
                   "explanation": "Pedro Álvares Cabral est l'explorateur connu pour avoir découvert le Brésil en 1500.",
                   "familiarity": "pointu"
@@ -2349,7 +2349,7 @@
                 {
                   "id": "histoire_decouvertes_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Explorateur qui a cherché un passage vers l'Asie. Anagramme: 'GAMAVOS'",
+                  "prompt": "Indice: Explorateur qui a cherché un passage vers l'Asie. Anagramme: 'VCAOS'",
                   "answer": "VASCO",
                   "explanation": "Vasco de Gama est célèbre pour avoir trouvé la route maritime vers l'Inde en contournant l'Afrique.",
                   "familiarity": "pointu"
@@ -2429,7 +2429,7 @@
                 {
                   "id": "histoire_decouvertes_f_43",
                   "type": "anagram",
-                  "prompt": "Indice: Explorateur qui a découvert le Canada. Anagramme: 'CARTJACQ'",
+                  "prompt": "Indice: Explorateur qui a découvert le Canada. Anagramme: 'TACEARURCSJQEI'",
                   "answer": "JACQUESCARTIER",
                   "explanation": "Jacques Cartier est l'explorateur connu pour avoir exploré le Canada au XVIème siècle.",
                   "familiarity": "pointu"
@@ -2509,7 +2509,7 @@
                 {
                   "id": "histoire_decouvertes_f_50",
                   "type": "anagram",
-                  "prompt": "Indice: Explorateur qui a découvert le fleuve Amazone. Anagramme: 'ALFNOCREO'",
+                  "prompt": "Indice: Explorateur qui a découvert le fleuve Amazone. Anagramme: 'ORLNELAA'",
                   "answer": "ORELLANA",
                   "explanation": "Francisco de Orellana est connu pour avoir exploré le fleuve Amazone.",
                   "familiarity": "pointu"
@@ -2517,7 +2517,7 @@
                 {
                   "id": "histoire_decouvertes_f_51",
                   "type": "anagram",
-                  "prompt": "Indice: Explorateur qui a découvert l'Amérique en 1492. Anagramme: 'BLOCCOHM'",
+                  "prompt": "Indice: Explorateur qui a découvert l'Amérique en 1492. Anagramme: 'MOBCLO'",
                   "answer": "COLOMB",
                   "explanation": "Christophe Colomb est célèbre pour avoir découvert l'Amérique en 1492.",
                   "familiarity": "pointu"
@@ -6332,7 +6332,7 @@
                 {
                   "id": "sciences_genetique_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: un type de molécule qui aide à fabriquer des protéines. Réorganisez: ROPÉTINE",
+                  "prompt": "Indice: un type de molécule qui aide à fabriquer des protéines. Réorganisez: IBUEORNCQEIUL",
                   "answer": "RIBONUCLEIQUE",
                   "explanation": "L'ARN, ou acide ribonucléique, est essentiel pour la synthèse des protéines dans les cellules.",
                   "familiarity": "moyen"
@@ -6412,7 +6412,7 @@
                 {
                   "id": "sciences_genetique_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Un type de cellule impliqué dans la réponse immunitaire. Réorganisez: LUCYTE",
+                  "prompt": "Indice: Un type de cellule impliqué dans la réponse immunitaire. Réorganisez: LUECETY",
                   "answer": "LEUCYTE",
                   "explanation": "Les leucocytes, ou globules blancs, jouent un rôle essentiel dans le système immunitaire.",
                   "familiarity": "moyen"
@@ -6500,7 +6500,7 @@
                 {
                   "id": "sciences_genetique_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Un type de cellule impliqué dans la transmission de l'information génétique. Réorganisez: LUCYTE",
+                  "prompt": "Indice: Un type de cellule impliqué dans la transmission de l'information génétique. Réorganisez: LEYUTCE",
                   "answer": "LEUCYTE",
                   "explanation": "Les leucocytes, ou globules blancs, jouent un rôle dans le système immunitaire, mais ne sont pas directement liés à la transmission génétique.",
                   "familiarity": "pointu"
@@ -6508,7 +6508,7 @@
                 {
                   "id": "sciences_genetique_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Une molécule essentielle pour traduire l'ADN en protéines. Réorganisez: TRÉPINEO",
+                  "prompt": "Indice: Une molécule essentielle pour traduire l'ADN en protéines. Réorganisez: IOAERTPN",
                   "answer": "ARNOPETI",
                   "explanation": "L'ARN messager (ARNm) est crucial pour la synthèse des protéines à partir de l'ADN.",
                   "familiarity": "pointu"
@@ -6588,7 +6588,7 @@
                 {
                   "id": "sciences_genetique_f_43",
                   "type": "anagram",
-                  "prompt": "Indice: Un type de cellule impliqué dans la transmission de l'information génétique. Réorganisez: TOSÉLUC",
+                  "prompt": "Indice: Un type de cellule impliqué dans la transmission de l'information génétique. Réorganisez: TSEOCLU",
                   "answer": "LEUCOST",
                   "explanation": "Les leucocytes sont des cellules du système immunitaire, mais le terme exact ici est leucocyte, qui joue un rôle dans la transmission génétique.",
                   "familiarity": "pointu"
@@ -6676,7 +6676,7 @@
                 {
                   "id": "sciences_genetique_f_51",
                   "type": "anagram",
-                  "prompt": "Indice: Un type de cellule impliqué dans la reproduction. Réorganisez: ZGEMRATOIS.",
+                  "prompt": "Indice: Un type de cellule impliqué dans la reproduction. Réorganisez: DPETSSZÏMOAEOR.",
                   "answer": "SPERMATOZOÏDES",
                   "explanation": "Les spermatozoïdes sont essentiels à la reproduction en transmettant l'ADN du père.",
                   "familiarity": "pointu"
@@ -6684,7 +6684,7 @@
                 {
                   "id": "sciences_genetique_f_52",
                   "type": "anagram",
-                  "prompt": "Indice: Un type de mutation d'un gène. Réorganisez: LOMOTIAUN.",
+                  "prompt": "Indice: Un type de mutation d'un gène. Réorganisez: AOUNMTIT.",
                   "answer": "MUTATION",
                   "explanation": "Les mutations sont des changements dans la séquence d'ADN qui peuvent affecter les caractéristiques d'un organisme.",
                   "familiarity": "pointu"
@@ -7015,7 +7015,7 @@
                   "id": "sciences_chimie_f_28",
                   "type": "anagram",
                   "prompt": "Indice: Cet élément est essentiel pour l'eau, symbole H.",
-                  "answer": "HIDROGENE",
+                  "answer": "HYDROGÈNE",
                   "explanation": "L'hydrogène est un élément clé de la molécule d'eau (H2O).",
                   "familiarity": "commun"
                 },
@@ -10247,7 +10247,7 @@
                 {
                   "id": "geo_france_f_51",
                   "type": "anagram",
-                  "prompt": "Indice: Ville célèbre pour sa gastronomie et son festival de musique. Anagramme: RALYE.",
+                  "prompt": "Indice: Ville célèbre pour sa gastronomie et son festival de musique. Anagramme: YLON.",
                   "answer": "LYON",
                   "explanation": "Lyon est réputée pour sa gastronomie et son festival de musique.",
                   "familiarity": "pointu"
@@ -10255,7 +10255,7 @@
                 {
                   "id": "geo_france_f_52",
                   "type": "anagram",
-                  "prompt": "Indice: Région célèbre pour ses plages et sa culture. Anagramme: MONDPE.",
+                  "prompt": "Indice: Région célèbre pour ses plages et sa culture. Anagramme: MOERN.",
                   "answer": "NORME",
                   "explanation": "La Normandie est connue pour ses plages et son riche patrimoine culturel.",
                   "familiarity": "pointu"
@@ -12617,7 +12617,7 @@
                 {
                   "id": "geo_asie_f_51",
                   "type": "anagram",
-                  "prompt": "Indice: Un pays d'Asie connu pour ses temples anciens. Réorganisez: NIDOEANISIE",
+                  "prompt": "Indice: Un pays d'Asie connu pour ses temples anciens. Réorganisez: ÉONISNEID",
                   "answer": "INDONÉSIE",
                   "explanation": "L'Indonésie est célèbre pour ses temples anciens, notamment ceux de Borobudur et Prambanan.",
                   "familiarity": "pointu"
@@ -12773,7 +12773,7 @@
                 {
                   "id": "geo_afrique_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Ville célèbre d'Afrique du Sud et lieu d'une importante conférence. (anagramme: NVACRAE)",
+                  "prompt": "Indice: Ville célèbre d'Afrique du Sud et lieu d'une importante conférence. (anagramme: AVNRCE)",
                   "answer": "CAVERN",
                   "explanation": "L'anagramme se réfère à 'CAVERN', un jeu de mots sur 'CAPE TOWN', connue pour sa beauté naturelle.",
                   "familiarity": "pointu"
@@ -12781,7 +12781,7 @@
                 {
                   "id": "geo_afrique_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est célèbre pour le Pyramides. (anagramme: GEYPT)",
+                  "prompt": "Indice: Ce pays est célèbre pour le Pyramides. (anagramme: PTGEÉY)",
                   "answer": "ÉGYPTE",
                   "explanation": "L'anagramme 'GEYPT' se réorganise pour former 'ÉGYPTE', connu pour ses pyramides.",
                   "familiarity": "commun"
@@ -12861,7 +12861,7 @@
                 {
                   "id": "geo_afrique_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est connu pour sa faune variée et ses safaris. (anagramme: NAIRG)",
+                  "prompt": "Indice: Ce pays est connu pour sa faune variée et ses safaris. (anagramme: ANGHA)",
                   "answer": "GHANA",
                   "explanation": "Le Ghana est célèbre pour sa biodiversité et ses safaris.",
                   "familiarity": "moyen"
@@ -12941,7 +12941,7 @@
                 {
                   "id": "geo_afrique_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est célèbre pour ses paysages désertiques et ses dunes. (anagramme: DNEIEMRTA)",
+                  "prompt": "Indice: Ce pays est célèbre pour ses paysages désertiques et ses dunes. (anagramme: IEIAMNB)",
                   "answer": "NAMIBIE",
                   "explanation": "La Namibie est connue pour le désert du Namib et ses paysages spectaculaires.",
                   "familiarity": "pointu"
@@ -12949,7 +12949,7 @@
                 {
                   "id": "geo_afrique_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est célèbre pour ses routes et sa faune diversifiée. (anagramme: CADNIS)",
+                  "prompt": "Indice: Ce pays est célèbre pour ses routes et sa faune diversifiée. (anagramme: LSGÉAÉN)",
                   "answer": "SÉNÉGAL",
                   "explanation": "Le Sénégal est renommé pour sa biodiversité et ses parcs nationaux.",
                   "familiarity": "pointu"
@@ -13029,7 +13029,7 @@
                 {
                   "id": "geo_afrique_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est célèbre pour ses montagnes et sa faune. (anagramme: ACNIGR)",
+                  "prompt": "Indice: Ce pays est célèbre pour ses montagnes et sa faune. (anagramme: NGHAA)",
                   "answer": "GHANA",
                   "explanation": "Le Ghana est un pays d'Afrique de l'Ouest avec des paysages variés.",
                   "familiarity": "pointu"
@@ -13037,7 +13037,7 @@
                 {
                   "id": "geo_afrique_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est connu pour ses plages et sa culture. (anagramme: SEBRAZIL)",
+                  "prompt": "Indice: Ce pays est connu pour ses plages et sa culture. (anagramme: BAEIMZ)",
                   "answer": "ZAMBIE",
                   "explanation": "La Zambie est célèbre pour ses paysages naturels et ses plages.",
                   "familiarity": "moyen"
@@ -13205,7 +13205,7 @@
                 {
                   "id": "geo_afrique_f_51",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est célèbre pour ses pyramides. (anagramme: EGYPT)",
+                  "prompt": "Indice: Ce pays est célèbre pour ses pyramides. (anagramme: EYÉTGP)",
                   "answer": "ÉGYPTE",
                   "explanation": "L'Égypte est renommée pour ses monuments anciens, y compris les pyramides.",
                   "familiarity": "commun"
@@ -13213,7 +13213,7 @@
                 {
                   "id": "geo_afrique_f_52",
                   "type": "anagram",
-                  "prompt": "Indice: Ce pays est connu pour sa faune diversifiée et ses safaris. (anagramme: GANAIR)",
+                  "prompt": "Indice: Ce pays est connu pour sa faune diversifiée et ses safaris. (anagramme: NGAHA)",
                   "answer": "GHANA",
                   "explanation": "Le Ghana est un pays d'Afrique de l'Ouest célèbre pour sa biodiversité et ses safaris.",
                   "familiarity": "pointu"
@@ -13970,7 +13970,7 @@
                 {
                   "id": "litt_ecrivains_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain du XXe siècle, connu pour ses œuvres sur l'absurde. Anagramme : LCAUMC.",
+                  "prompt": "Indice: Écrivain du XXe siècle, connu pour ses œuvres sur l'absurde. Anagramme : SAUMC.",
                   "answer": "CAMUS",
                   "explanation": "Albert Camus est un écrivain majeur du XXe siècle, reconnu pour ses réflexions sur l'absurde.",
                   "familiarity": "moyen"
@@ -13978,7 +13978,7 @@
                 {
                   "id": "litt_ecrivains_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Auteur de « Le Rouge et le Noir ». Anagramme : GNEOTFAL.",
+                  "prompt": "Indice: Auteur de « Le Rouge et le Noir ». Anagramme : LNDHTEAS.",
                   "answer": "STENDHAL",
                   "explanation": "Stendhal est l'auteur du roman « Le Rouge et le Noir », une œuvre emblématique de la littérature française.",
                   "familiarity": "moyen"
@@ -14050,7 +14050,7 @@
                 {
                   "id": "litt_ecrivains_f_19",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain du XIXe siècle, connu pour son œuvre « La Chartreuse de Parme ». Anagramme : RALDIO",
+                  "prompt": "Indice: Écrivain du XIXe siècle, connu pour son œuvre « La Chartreuse de Parme ». Anagramme : INAROD",
                   "answer": "DORIAN",
                   "explanation": "L'écrivain est Stendhal, connu pour son roman « La Chartreuse de Parme ». L'anagramme fait référence à son nom.",
                   "familiarity": "moyen"
@@ -14058,7 +14058,7 @@
                 {
                   "id": "litt_ecrivains_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain célèbre pour ses romans d'aventure. Anagramme : LALROA",
+                  "prompt": "Indice: Écrivain célèbre pour ses romans d'aventure. Anagramme : RELOLA",
                   "answer": "ALLORE",
                   "explanation": "L'anagramme fait référence à Jules Verne, un écrivain connu pour ses romans d'aventure comme « Vingt Mille Lieues sous les mers ».",
                   "familiarity": "pointu"
@@ -14138,7 +14138,7 @@
                 {
                   "id": "litt_ecrivains_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain connu pour ses œuvres sur le surréalisme. Anagramme : ELAOSNDRI.",
+                  "prompt": "Indice: Écrivain connu pour ses œuvres sur le surréalisme. Anagramme : RDNEA.",
                   "answer": "ANDRE",
                   "explanation": "André Breton est l'un des fondateurs du surréalisme en littérature.",
                   "familiarity": "pointu"
@@ -14146,7 +14146,7 @@
                 {
                   "id": "litt_ecrivains_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain français célèbre pour « Les Rougon-Macquart ». Anagramme : ZALOE.",
+                  "prompt": "Indice: Écrivain français célèbre pour « Les Rougon-Macquart ». Anagramme : ALOZ.",
                   "answer": "ZOLA",
                   "explanation": "Émile Zola est l'auteur de la série romanesque « Les Rougon-Macquart » qui explore la société française.",
                   "familiarity": "pointu"
@@ -14226,7 +14226,7 @@
                 {
                   "id": "litt_ecrivains_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain connu pour ses œuvres sur le surréalisme. Anagramme : RALNEOSD.",
+                  "prompt": "Indice: Écrivain connu pour ses œuvres sur le surréalisme. Anagramme : REOSDNA.",
                   "answer": "SORENDA",
                   "explanation": "L'indice fait référence à André Breton, un écrivain surréaliste influent.",
                   "familiarity": "pointu"
@@ -14322,7 +14322,7 @@
                 {
                   "id": "litt_ecrivains_f_44",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain du XIXe siècle, connu pour ses contes. Anagramme : OLLTNEV.",
+                  "prompt": "Indice: Écrivain du XIXe siècle, connu pour ses contes. Anagramme : OTVENL.",
                   "answer": "VOLTEN",
                   "explanation": "VOLTEN est l'un des grands noms de la littérature française du XIXe siècle.",
                   "familiarity": "moyen"
@@ -14402,7 +14402,7 @@
                 {
                   "id": "litt_ecrivains_f_51",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain du XIXe siècle, connu pour ses contes. Anagramme : ARLIVNER.",
+                  "prompt": "Indice: Écrivain du XIXe siècle, connu pour ses contes. Anagramme : NRIEVLEA.",
                   "answer": "VERLAINE",
                   "explanation": "Paul Verlaine est un poète français du XIXe siècle, connu pour ses contes lyriques.",
                   "familiarity": "pointu"
@@ -14410,7 +14410,7 @@
                 {
                   "id": "litt_ecrivains_f_52",
                   "type": "anagram",
-                  "prompt": "Indice: Écrivain français célèbre pour « Les Rougon-Macquart ». Anagramme : AZOLÉ.",
+                  "prompt": "Indice: Écrivain français célèbre pour « Les Rougon-Macquart ». Anagramme : ALZO.",
                   "answer": "ZOLA",
                   "explanation": "Émile Zola est l'auteur de la série de romans Les Rougon-Macquart, qui explore la société française.",
                   "familiarity": "pointu"
@@ -15919,8 +15919,8 @@
                   "id": "litt_bd_f_29",
                   "type": "multipleChoice",
                   "prompt": "Quel personnage est un extraterrestre vert dans la bande dessinée 'Les Schtroumpfs' ?",
-                  "answer": "Schtroumpfette",
-                  "explanation": "Schtroumpfette est un personnage emblématique de la bande dessinée 'Les Schtroumpfs' créée par Peyo.",
+                  "answer": "Faux",
+                  "explanation": "Schtroumpfette est un personnage de la bande dessinée « Les Schtroumpfs » créée par Peyo, mais elle n'est pas une extraterrestre — c'est une schtroumpf créée par Gargamel.",
                   "familiarity": "pointu",
                   "options": [
                     "Gargamel",
@@ -16418,7 +16418,7 @@
                   "type": "anagram",
                   "prompt": "Indice: Prix littéraire français, 5 lettres.",
                   "answer": "RENAUDOT",
-                  "explanation": "Le Prix Renaudot est un prix littéraire important en France, créé en 1926.",
+                  "explanation": "Le Prix Renaudot a été créé en 1926, décerné pour la première fois la même année que le Prix Goncourt.",
                   "familiarity": "moyen"
                 },
                 {
@@ -17447,8 +17447,8 @@
                   "id": "litt_femmes_f_7",
                   "type": "multipleChoice",
                   "prompt": "Quelle autrice est connue pour son roman « Les Rougon-Macquart » ?",
-                  "answer": "George Sand",
-                  "explanation": "George Sand est une figure emblématique de la littérature française du XIXe siècle, mais c'est Émile Zola qui a écrit la série des Rougon-Macquart.",
+                  "answer": "Émile Zola",
+                  "explanation": "Émile Zola est l'auteur de la série des Rougon-Macquart (20 romans), qui explore la société française du XIXe siècle sous le Second Empire.",
                   "familiarity": "commun",
                   "options": [
                     "Émile Zola",
@@ -17491,14 +17491,14 @@
                   "id": "litt_femmes_f_11",
                   "type": "fillBlank",
                   "prompt": "L'écrivaine ___ a remporté le prix Goncourt en 1984.",
-                  "answer": "Marie NDiaye",
-                  "explanation": "Marie NDiaye a remporté le prix Goncourt pour son roman « Trois femmes puissantes » en 2009.",
+                  "answer": "Marguerite Duras",
+                  "explanation": "Marguerite Duras a remporté le prix Goncourt en 1984 pour « L'Amant ». Marie NDiaye l'a remporté en 2009 pour « Trois femmes puissantes ».",
                   "familiarity": "commun",
                   "options": [
                     "Marguerite Duras",
                     "Annie Ernaux",
-                    "Alice Ferney",
-                    "Marie NDiaye"
+                    "Marie NDiaye",
+                    "Alice Ferney"
                   ]
                 },
                 {
@@ -17674,7 +17674,7 @@
                   "type": "anagram",
                   "prompt": "Indice: Autrice connue pour son œuvre « La Femme rompue ».",
                   "answer": "BEAUVOIR",
-                  "explanation": "Simone de Beauvoir est l'autrice de « La Femme rompue », un recueil de nouvelles.",
+                  "explanation": "Simone de Beauvoir est l'autrice de « La Femme rompue », un recueil de trois nouvelles publié en 1967.",
                   "familiarity": "moyen"
                 },
                 {
@@ -21959,7 +21959,7 @@
                 {
                   "id": "arts_mode_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot désigne une technique de couture essentielle dans la mode. Anagramme: 'coudure'",
+                  "prompt": "Indice: Ce mot désigne une technique de couture essentielle dans la mode. Anagramme: 'UDOCER'",
                   "answer": "COUDRE",
                   "explanation": "Coudre est une technique fondamentale pour créer des vêtements.",
                   "familiarity": "moyen"
@@ -22215,7 +22215,7 @@
                 {
                   "id": "arts_mode_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot désigne un tissu léger souvent utilisé pour des vêtements d'été. Anagramme: 'linmou'",
+                  "prompt": "Indice: Ce mot désigne un tissu léger souvent utilisé pour des vêtements d'été. Anagramme: 'NLI'",
                   "answer": "LIN",
                   "explanation": "Le lin est un tissu léger et respirant, idéal pour les vêtements d'été.",
                   "familiarity": "pointu"
@@ -22303,7 +22303,7 @@
                 {
                   "id": "arts_mode_f_44",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot désigne un accessoire de mode souvent porté à la main. Anagramme: 'cabasot'",
+                  "prompt": "Indice: Ce mot désigne un accessoire de mode souvent porté à la main. Anagramme: 'ACS'",
                   "answer": "SAC",
                   "explanation": "Le sac est un accessoire de mode essentiel pour transporter des objets personnels.",
                   "familiarity": "pointu"
@@ -22444,8 +22444,8 @@
                   "id": "arts_opera_f_11",
                   "type": "trueFalse",
                   "prompt": "L'Opéra de Paris a été inauguré en 1875.",
-                  "answer": "Faux",
-                  "explanation": "L'Opéra de Paris, connu sous le nom de Palais Garnier, a été inauguré en 1875, mais il s'agit d'un bâtiment distinct de l'Opéra Bastille.",
+                  "answer": "Vrai",
+                  "explanation": "L'Opéra de Paris, connu sous le nom de Palais Garnier, a bien été inauguré en 1875. L'Opéra Bastille, autre salle de l'Opéra de Paris, a été inaugurée en 1989.",
                   "familiarity": "moyen"
                 },
                 {
@@ -25460,7 +25460,7 @@
                 {
                   "id": "nature_oiseaux_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Un oiseau qui est souvent vu en train de picorer le sol. (anagramme: OISNEAU)",
+                  "prompt": "Indice: Un oiseau qui est souvent vu en train de picorer le sol. (anagramme: UORSSI)",
                   "answer": "SOURIS",
                   "explanation": "L'anagramme de 'OISNEAU' est 'SOURIS' qui ne correspond pas, mais c'était un exemple d'oiseau qui picore.",
                   "familiarity": "pointu"
@@ -25540,7 +25540,7 @@
                 {
                   "id": "nature_oiseaux_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Un oiseau qui est souvent entendu au printemps. (anagramme: ELVOTE)",
+                  "prompt": "Indice: Un oiseau qui est souvent entendu au printemps. (anagramme: ETLVO)",
                   "answer": "TOVEL",
                   "explanation": "Le 'TOVEL' fait référence à un oiseau typique du printemps, souvent reconnu pour son chant.",
                   "familiarity": "pointu"
@@ -25716,7 +25716,7 @@
                 {
                   "id": "nature_oiseaux_f_43",
                   "type": "anagram",
-                  "prompt": "Indice: Un oiseau qui se distingue par son plumage coloré et qui vit dans les forêts tropicales. (anagramme: LANTUR)",
+                  "prompt": "Indice: Un oiseau qui se distingue par son plumage coloré et qui vit dans les forêts tropicales. (anagramme: LTTERU)",
                   "answer": "TURTLE",
                   "explanation": "Cet oiseau se trouve souvent dans les forêts tropicales et a un plumage vibrant.",
                   "familiarity": "pointu"
@@ -25724,7 +25724,7 @@
                 {
                   "id": "nature_oiseaux_f_44",
                   "type": "anagram",
-                  "prompt": "Indice: Un oiseau reconnu pour sa capacité à chanter et à imiter d'autres sons. (anagramme: TUIRAP)",
+                  "prompt": "Indice: Un oiseau reconnu pour sa capacité à chanter et à imiter d'autres sons. (anagramme: APYRP)",
                   "answer": "PAPYR",
                   "explanation": "Cet oiseau est souvent apprécié pour sa voix et ses capacités d'imitation.",
                   "familiarity": "pointu"
@@ -26372,7 +26372,7 @@
                 {
                   "id": "nature_reptiles_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Un reptile qui change de couleur pour se camoufler. (anagramme: EELCAEMO)",
+                  "prompt": "Indice: Un reptile qui change de couleur pour se camoufler. (anagramme: ALÉOCÉMN)",
                   "answer": "CAMÉLÉON",
                   "explanation": "Le caméléon est un reptile célèbre pour sa capacité à changer de couleur.",
                   "familiarity": "pointu"
@@ -26380,7 +26380,7 @@
                 {
                   "id": "nature_reptiles_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Amphibien souvent trouvé dans les jardins. (anagramme: NUEAOGNRE)",
+                  "prompt": "Indice: Amphibien souvent trouvé dans les jardins. (anagramme: LNIEROGELU)",
                   "answer": "GRENOUILLE",
                   "explanation": "La grenouille est un amphibien commun dans de nombreux habitats.",
                   "familiarity": "moyen"
@@ -26460,7 +26460,7 @@
                 {
                   "id": "nature_reptiles_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Amphibien qui vit souvent dans les forêts humides. (anagramme: REPTILUN)",
+                  "prompt": "Indice: Amphibien qui vit souvent dans les forêts humides. (anagramme: OTNRTI)",
                   "answer": "TRITON",
                   "explanation": "Le triton est un amphibien qui préfère les habitats humides tels que les forêts.",
                   "familiarity": "pointu"
@@ -26540,7 +26540,7 @@
                 {
                   "id": "nature_reptiles_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Un amphibien souvent trouvé dans les rivières. (anagramme: DRAEONF)",
+                  "prompt": "Indice: Un amphibien souvent trouvé dans les rivières. (anagramme: RDAGEFNO)",
                   "answer": "FROGNEAD",
                   "explanation": "Cet amphibien est souvent associé à des habitats aquatiques.",
                   "familiarity": "pointu"
@@ -26628,7 +26628,7 @@
                 {
                   "id": "nature_reptiles_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Un amphibien qui vit souvent dans les marais. (anagramme: NERAGNOI)",
+                  "prompt": "Indice: Un amphibien qui vit souvent dans les marais. (anagramme: ULOGNRLEIE)",
                   "answer": "GRENOUILLE",
                   "explanation": "Les grenouilles sont souvent trouvées dans les marais et les zones humides.",
                   "familiarity": "pointu"
@@ -26716,7 +26716,7 @@
                 {
                   "id": "nature_reptiles_f_43",
                   "type": "anagram",
-                  "prompt": "Indice: Un amphibien qui vit souvent dans les marais. (anagramme: RAEGOUND)",
+                  "prompt": "Indice: Un amphibien qui vit souvent dans les marais. (anagramme: LUGOLEEINR)",
                   "answer": "GRENOUILLE",
                   "explanation": "La grenouille est un amphibien qui préfère les milieux humides comme les marais.",
                   "familiarity": "pointu"
@@ -26724,7 +26724,7 @@
                 {
                   "id": "nature_reptiles_f_44",
                   "type": "anagram",
-                  "prompt": "Indice: Un reptile connu pour sa rapidité. (anagramme: REDALEZ)",
+                  "prompt": "Indice: Un reptile connu pour sa rapidité. (anagramme: RZDÉAL)",
                   "answer": "LÉZARD",
                   "explanation": "Le lézard est un reptile rapide et agile, souvent vu dans les zones ensoleillées.",
                   "familiarity": "moyen"
@@ -28054,7 +28054,7 @@
                 {
                   "id": "nature_ecosystemes_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Écosystème riche en biodiversité marine. (Anagramme : CILERF)",
+                  "prompt": "Indice: Écosystème riche en biodiversité marine. (Anagramme : IFÉCR)",
                   "answer": "RÉCIF",
                   "explanation": "Les récifs de corail sont des écosystèmes marins très diversifiés et vitaux pour l'environnement.",
                   "familiarity": "pointu"
@@ -28134,7 +28134,7 @@
                 {
                   "id": "nature_ecosystemes_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Écosystème terrestre où poussent des plantes adaptées à la sécheresse. (Anagramme : TERESD)",
+                  "prompt": "Indice: Écosystème terrestre où poussent des plantes adaptées à la sécheresse. (Anagramme : ESTRÉD)",
                   "answer": "DÉSERT",
                   "explanation": "Le désert est un écosystème où les conditions climatiques sont très sèches.",
                   "familiarity": "pointu"
@@ -28142,7 +28142,7 @@
                 {
                   "id": "nature_ecosystemes_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Écosystème aquatique riche en biodiversité marine. (Anagramme : ECRIF)",
+                  "prompt": "Indice: Écosystème aquatique riche en biodiversité marine. (Anagramme : FRCIÉ)",
                   "answer": "RÉCIF",
                   "explanation": "Les récifs coralliens sont parmi les écosystèmes les plus riches en biodiversité marine.",
                   "familiarity": "moyen"
@@ -29214,8 +29214,8 @@
                   "id": "tech_inventions_f_40",
                   "type": "trueFalse",
                   "prompt": "Le premier ordinateur personnel a été lancé dans les années 1980.",
-                  "answer": "Vrai",
-                  "explanation": "Le premier ordinateur personnel, l'Apple II, a été lancé en 1977, mais la popularité des ordinateurs personnels a vraiment explosé dans les années 1980.",
+                  "answer": "Faux",
+                  "explanation": "Le premier ordinateur personnel largement commercialisé, l'Apple II, a été lancé en 1977, bien avant les années 1980.",
                   "familiarity": "moyen"
                 },
                 {
@@ -30499,7 +30499,7 @@
                 {
                   "id": "tech_internet_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: C'est un système de noms de domaine. Anagramme: 'CEANRDSI'",
+                  "prompt": "Indice: C'est un système de noms de domaine. Anagramme: 'NDS'",
                   "answer": "DNS",
                   "explanation": "DNS signifie Domain Name System, et il est essentiel pour traduire les noms de domaine en adresses IP.",
                   "familiarity": "pointu"
@@ -30587,7 +30587,7 @@
                 {
                   "id": "tech_internet_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: C'est un type de logiciel qui permet de naviguer sur Internet. Anagramme: 'GEBRAOSN'",
+                  "prompt": "Indice: C'est un type de logiciel qui permet de naviguer sur Internet. Anagramme: 'RSREWBO'",
                   "answer": "BROWSER",
                   "explanation": "Le mot 'BROWSER' désigne un logiciel utilisé pour naviguer sur le web.",
                   "familiarity": "pointu"
@@ -31417,7 +31417,7 @@
                 {
                   "id": "tech_jeux_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Un jeu de tir à la première personne célèbre, connu pour sa série. Anagramme: 'DUTYCAL'",
+                  "prompt": "Indice: Un jeu de tir à la première personne célèbre, connu pour sa série. Anagramme: 'OLACLUDFTY'",
                   "answer": "CALLOFDUTY",
                   "explanation": "Call of Duty est une franchise de jeux de tir très populaire.",
                   "familiarity": "moyen"
@@ -31425,7 +31425,7 @@
                 {
                   "id": "tech_jeux_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Un jeu de plateforme emblématique avec un personnage en costume rouge. Anagramme: 'RIMOSU'",
+                  "prompt": "Indice: Un jeu de plateforme emblématique avec un personnage en costume rouge. Anagramme: 'IAROM'",
                   "answer": "MARIO",
                   "explanation": "Mario est le personnage principal de nombreux jeux de plateforme de Nintendo.",
                   "familiarity": "moyen"
@@ -31585,7 +31585,7 @@
                 {
                   "id": "tech_jeux_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Un jeu vidéo où le joueur doit résoudre des énigmes dans un univers fantastique. Anagramme: 'DEUQUÉNIE'",
+                  "prompt": "Indice: Un jeu vidéo où le joueur doit résoudre des énigmes dans un univers fantastique. Anagramme: 'EÉNGMI'",
                   "answer": "ÉNIGME",
                   "explanation": "Les jeux d'énigmes sont souvent caractérisés par des défis intellectuels et des mystères à résoudre.",
                   "familiarity": "pointu"
@@ -31593,7 +31593,7 @@
                 {
                   "id": "tech_jeux_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Un jeu vidéo où les joueurs doivent survivre sur une île déserte. Anagramme: 'TROESURVIE'",
+                  "prompt": "Indice: Un jeu vidéo où les joueurs doivent survivre sur une île déserte. Anagramme: 'EVRSIU'",
                   "answer": "SURVIE",
                   "explanation": "Les jeux de survie impliquent souvent la gestion des ressources et la survie dans des environnements hostiles.",
                   "familiarity": "pointu"
@@ -31673,7 +31673,7 @@
                 {
                   "id": "tech_jeux_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Un jeu vidéo populaire où les joueurs construisent et gèrent une ville. Anagramme: 'MÉNAGEURT'",
+                  "prompt": "Indice: Un jeu vidéo populaire où les joueurs construisent et gèrent une ville. Anagramme: 'AMIRUUTSLE'",
                   "answer": "SIMULATEUR",
                   "explanation": "Le terme 'simulateur' décrit un genre de jeux où les joueurs gèrent des ressources et construisent des environnements.",
                   "familiarity": "moyen"
@@ -31681,7 +31681,7 @@
                 {
                   "id": "tech_jeux_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Un célèbre jeu de course où les personnages utilisent des karts. Anagramme: 'KARTSDEUN'",
+                  "prompt": "Indice: Un célèbre jeu de course où les personnages utilisent des karts. Anagramme: 'SRTKA'",
                   "answer": "KARTS",
                   "explanation": "Les jeux de course de karts, comme 'Mario Kart', sont très populaires et permettent aux joueurs de s'affronter sur des circuits variés.",
                   "familiarity": "moyen"
@@ -32233,7 +32233,7 @@
                 {
                   "id": "tech_robots_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot décrit un robot qui peut se déplacer de manière autonome. Anagramme: 'tobom', mot à deviner.",
+                  "prompt": "Indice: Ce mot décrit un robot qui peut se déplacer de manière autonome. Anagramme: 'BOROT', mot à deviner.",
                   "answer": "ROBOT",
                   "explanation": "Le mot 'robot' se réfère à une machine capable d'effectuer des tâches automatiquement.",
                   "familiarity": "moyen"
@@ -32313,7 +32313,7 @@
                 {
                   "id": "tech_robots_f_19",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot décrit un robot capable de se déplacer en utilisant des roues. Anagramme: 'boteur'.",
+                  "prompt": "Indice: Ce mot décrit un robot capable de se déplacer en utilisant des roues. Anagramme: 'BROOT'.",
                   "answer": "ROBOT",
                   "explanation": "Le mot 'robot' désigne une machine pouvant se déplacer, souvent sur des roues.",
                   "familiarity": "pointu"
@@ -32393,7 +32393,7 @@
                 {
                   "id": "tech_robots_f_26",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot décrit un robot qui peut se déplacer en utilisant des pattes. Anagramme: 'tibroa'.",
+                  "prompt": "Indice: Ce mot décrit un robot qui peut se déplacer en utilisant des pattes. Anagramme: 'OORBT'.",
                   "answer": "ROBOT",
                   "explanation": "Le mot 'robot' décrit un appareil capable d'effectuer des actions de manière autonome, parfois avec des pattes.",
                   "familiarity": "pointu"
@@ -32401,7 +32401,7 @@
                 {
                   "id": "tech_robots_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Ce terme désigne un type d'intelligence artificielle. Anagramme: 'cinitel'.",
+                  "prompt": "Indice: Ce terme désigne un type d'intelligence artificielle. Anagramme: 'EICENLTLT'.",
                   "answer": "INTELLECT",
                   "explanation": "L'intellect est souvent associé à l'intelligence artificielle et à sa capacité de raisonnement.",
                   "familiarity": "pointu"
@@ -32481,7 +32481,7 @@
                 {
                   "id": "tech_robots_f_34",
                   "type": "anagram",
-                  "prompt": "Indice: Ce mot décrit un robot qui peut se déplacer de manière autonome. Anagramme: 'mouvetn'.",
+                  "prompt": "Indice: Ce mot décrit un robot qui peut se déplacer de manière autonome. Anagramme: 'TMVONEEMU'.",
                   "answer": "MOUVEMENT",
                   "explanation": "Le mouvement est essentiel pour qu'un robot puisse se déplacer de manière autonome.",
                   "familiarity": "pointu"
@@ -33474,7 +33474,7 @@
                 {
                   "id": "football_cdm_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Un club français ayant gagné la Ligue des Champions. Anagramme: 'SAGIPRANT'.",
+                  "prompt": "Indice: Un club français ayant gagné la Ligue des Champions. Anagramme: 'IGSSARP'.",
                   "answer": "PARISSG",
                   "explanation": "L'anagramme fait référence au Paris Saint-Germain, qui a remporté la Ligue des Champions en 2025.",
                   "familiarity": "pointu"
@@ -33482,7 +33482,7 @@
                 {
                   "id": "football_cdm_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Une équipe anglaise célèbre. Anagramme: 'REDUNMTAI'.",
+                  "prompt": "Indice: Une équipe anglaise célèbre. Anagramme: 'NRSEAETCHM'.",
                   "answer": "MANCHESTER",
                   "explanation": "L'anagramme fait référence à Manchester United, une équipe anglaise connue dans la Ligue des Champions.",
                   "familiarity": "pointu"
@@ -33554,7 +33554,7 @@
                 {
                   "id": "football_cdm_f_19",
                   "type": "anagram",
-                  "prompt": "Indice: Un club anglais célèbre. Anagramme: 'RIBMTOAHEC'.",
+                  "prompt": "Indice: Un club anglais célèbre. Anagramme: 'ECSELAH'.",
                   "answer": "CHELSEA",
                   "explanation": "Chelsea est un club de football anglais reconnu qui a participé à la Ligue des Champions.",
                   "familiarity": "pointu"
@@ -33562,7 +33562,7 @@
                 {
                   "id": "football_cdm_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Un club italien ayant souvent été compétitif. Anagramme: 'LANAMILAC'.",
+                  "prompt": "Indice: Un club italien ayant souvent été compétitif. Anagramme: 'MCNLIAA'.",
                   "answer": "ACMILAN",
                   "explanation": "AC Milan est un club italien qui a remporté plusieurs fois la Ligue des Champions.",
                   "familiarity": "pointu"
@@ -33656,7 +33656,7 @@
                 {
                   "id": "football_cdm_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Un club espagnol célèbre. Anagramme: 'RLEABFECNO'.",
+                  "prompt": "Indice: Un club espagnol célèbre. Anagramme: 'LENCEBCAFOR'.",
                   "answer": "FCBARCELONE",
                   "explanation": "Le FC Barcelone est l'un des clubs les plus célèbres et victorieux en Espagne.",
                   "familiarity": "pointu"
@@ -33736,7 +33736,7 @@
                 {
                   "id": "football_cdm_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Un club allemand célèbre. Anagramme: 'RABYENNUC'.",
+                  "prompt": "Indice: Un club allemand célèbre. Anagramme: 'ARNBEY'.",
                   "answer": "BAYERN",
                   "explanation": "Bayern Munich est un club allemand très connu qui a remporté plusieurs fois la Ligue des Champions.",
                   "familiarity": "pointu"
@@ -33744,7 +33744,7 @@
                 {
                   "id": "football_cdm_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Un club italien souvent compétitif. Anagramme: 'RACIMILA'.",
+                  "prompt": "Indice: Un club italien souvent compétitif. Anagramme: 'MALNI'.",
                   "answer": "MILAN",
                   "explanation": "L'AC Milan est un club italien célèbre qui a également remporté plusieurs Ligues des Champions.",
                   "familiarity": "pointu"
@@ -33898,7 +33898,7 @@
                 {
                   "id": "football_pl_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Ce club est situé à Manchester. Anagramme: MNUITEHACD.",
+                  "prompt": "Indice: Ce club est situé à Manchester. Anagramme: ESMHCETRAN.",
                   "answer": "MANCHESTER",
                   "explanation": "L'anagramme se décompose pour former 'Manchester', qui est le nom de la ville où joue le club.",
                   "familiarity": "pointu"
@@ -33986,7 +33986,7 @@
                 {
                   "id": "football_pl_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Ce club est situé à Londres. Anagramme: NSTGIEAONH.",
+                  "prompt": "Indice: Ce club est situé à Londres. Anagramme: ELHASCE.",
                   "answer": "CHELSEA",
                   "explanation": "Chelsea FC est un club de football londonien connu.",
                   "familiarity": "pointu"
@@ -34066,7 +34066,7 @@
                 {
                   "id": "football_pl_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Ce club est situé à Londres. Anagramme: RLEAASNO.",
+                  "prompt": "Indice: Ce club est situé à Londres. Anagramme: LSAANRE.",
                   "answer": "ARSENAL",
                   "explanation": "Le mot 'RLEAASNO' est un anagramme du club Arsenal.",
                   "familiarity": "pointu"
@@ -34074,7 +34074,7 @@
                 {
                   "id": "football_pl_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Ce club a un lion sur son blason. Anagramme: LCMANETSH.",
+                  "prompt": "Indice: Ce club a un lion sur son blason. Anagramme: EHEASLC.",
                   "answer": "CHELSEA",
                   "explanation": "Le mot 'LCMANETSH' est un anagramme du club Chelsea.",
                   "familiarity": "pointu"
@@ -34154,7 +34154,7 @@
                 {
                   "id": "football_pl_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Ce club a une histoire riche et est souvent en compétition pour le titre. Anagramme: REHNAMNCTIYOS.",
+                  "prompt": "Indice: Ce club a une histoire riche et est souvent en compétition pour le titre. Anagramme: ANEMRESHCT.",
                   "answer": "MANCHESTER",
                   "explanation": "L'anagramme fait référence à Manchester, une ville avec deux grands clubs de football.",
                   "familiarity": "pointu"
@@ -34316,7 +34316,7 @@
                 {
                   "id": "football_liga_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Un club célèbre de Serie A. Anagramme: 'IVNACNTEA'",
+                  "prompt": "Indice: Un club célèbre de Serie A. Anagramme: 'IACNAETN'",
                   "answer": "CANTINEA",
                   "explanation": "Cet anagramme fait référence à l'Inter Milan, un des clubs les plus connus de la Serie A.",
                   "familiarity": "pointu"
@@ -34324,7 +34324,7 @@
                 {
                   "id": "football_liga_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Un club rival du FC Barcelone. Anagramme: 'DRIMLAEA'",
+                  "prompt": "Indice: Un club rival du FC Barcelone. Anagramme: 'RAMLIRADED'",
                   "answer": "REALMADRID",
                   "explanation": "Cet anagramme fait référence au Real Madrid, grand rival du FC Barcelone en Liga.",
                   "familiarity": "pointu"
@@ -34404,7 +34404,7 @@
                 {
                   "id": "football_liga_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Un club célèbre de Liga. Anagramme: 'ALMIECRD'",
+                  "prompt": "Indice: Un club célèbre de Liga. Anagramme: 'EMAARDRDLI'",
                   "answer": "REALMADRID",
                   "explanation": "Real Madrid est l'un des clubs les plus titrés de la Liga.",
                   "familiarity": "pointu"
@@ -34484,7 +34484,7 @@
                 {
                   "id": "football_liga_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Un club célèbre de Liga. Anagramme: 'CLOAIMRE'.",
+                  "prompt": "Indice: Un club célèbre de Liga. Anagramme: 'MARRDEILDA'.",
                   "answer": "REALMADRID",
                   "explanation": "Le Real Madrid est l'un des clubs les plus connus et titrés de Liga.",
                   "familiarity": "pointu"
@@ -34492,7 +34492,7 @@
                 {
                   "id": "football_liga_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Un joueur emblématique de la Serie A. Anagramme: 'OTARDOMI'.",
+                  "prompt": "Indice: Un joueur emblématique de la Serie A. Anagramme: 'IMTOARTT'.",
                   "answer": "TOTTIMAR",
                   "explanation": "Francesco Totti est un joueur emblématique de la Serie A, ayant joué toute sa carrière à l'AS Roma.",
                   "familiarity": "pointu"
@@ -34572,7 +34572,7 @@
                 {
                   "id": "football_liga_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Un club célèbre de Serie A. Anagramme: 'TAROMILN'",
+                  "prompt": "Indice: Un club célèbre de Serie A. Anagramme: 'NILAM'",
                   "answer": "MILAN",
                   "explanation": "Le club célèbre de Serie A est l'AC Milan.",
                   "familiarity": "pointu"
@@ -34580,7 +34580,7 @@
                 {
                   "id": "football_liga_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Un club connu en Liga. Anagramme: 'DIALREOFC'",
+                  "prompt": "Indice: Un club connu en Liga. Anagramme: 'LEROCEFNBCA'",
                   "answer": "FCBARCELONE",
                   "explanation": "Le FC Barcelone est un club emblématique de la Liga.",
                   "familiarity": "pointu"
@@ -34734,7 +34734,7 @@
                 {
                   "id": "football_ligue1_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Un club de Ligue 1, souvent en rouge et noir. (Anagramme: CAMEILLO)",
+                  "prompt": "Indice: Un club de Ligue 1, souvent en rouge et noir. (Anagramme: LIMOCLA)",
                   "answer": "ACMILLO",
                   "explanation": "Cette anagramme fait référence à l'AC Milan, bien que ce club ne soit pas en Ligue 1, il y a une confusion avec les couleurs.",
                   "familiarity": "pointu"
@@ -34742,7 +34742,7 @@
                 {
                   "id": "football_ligue1_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Un club avec un lion sur son logo. (Anagramme: ROLMONECO)",
+                  "prompt": "Indice: Un club avec un lion sur son logo. (Anagramme: ACOONM)",
                   "answer": "MONACO",
                   "explanation": "Cette anagramme fait référence à l'AS Monaco, connu pour son logo représentant un lion.",
                   "familiarity": "pointu"
@@ -34910,7 +34910,7 @@
                 {
                   "id": "football_ligue1_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Un club de Ligue 1, souvent en jaune et bleu. (Anagramme: ERNOSTALC)",
+                  "prompt": "Indice: Un club de Ligue 1, souvent en jaune et bleu. (Anagramme: ENTSAN)",
                   "answer": "NANTES",
                   "explanation": "L'anagramme fait référence au FC Nantes, un club bien connu en Ligue 1.",
                   "familiarity": "pointu"
@@ -34968,7 +34968,7 @@
                 {
                   "id": "football_ligue1_f_33",
                   "type": "anagram",
-                  "prompt": "Indice: Un club de Ligue 1, souvent en rouge et noir. (Anagramme: CAMEILLO)",
+                  "prompt": "Indice: Un club de Ligue 1, souvent en rouge et noir. (Anagramme: ETOLEIPLNRM)",
                   "answer": "MONTPELLIER",
                   "explanation": "Montpellier Hérault Sport Club est le club correspondant à l'anagramme.",
                   "familiarity": "pointu"
@@ -35158,7 +35158,7 @@
                 {
                   "id": "football_transferts_f_12",
                   "type": "anagram",
-                  "prompt": "Indice: Joueur français, ancien du Real Madrid. Anagramme : EALVIRE",
+                  "prompt": "Indice: Joueur français, ancien du Real Madrid. Anagramme : IAAVREL",
                   "answer": "RIVALAE",
                   "explanation": "Il s'agit d'un jeu de lettres qui peut désigner un joueur en lien avec le football.",
                   "familiarity": "pointu"
@@ -35166,7 +35166,7 @@
                 {
                   "id": "football_transferts_f_13",
                   "type": "anagram",
-                  "prompt": "Indice: Club anglais, connu pour ses succès en Premier League. Anagramme : EDNIEHCTE",
+                  "prompt": "Indice: Club anglais, connu pour ses succès en Premier League. Anagramme : CHESELA",
                   "answer": "CHELSEA",
                   "explanation": "Le mot 'CHELSEA' est désordonné pour former un anagramme.",
                   "familiarity": "pointu"
@@ -35232,7 +35232,7 @@
                 {
                   "id": "football_transferts_f_19",
                   "type": "anagram",
-                  "prompt": "Indice: Joueur brésilien, ancien du PSG. Anagramme : AIDNOLE",
+                  "prompt": "Indice: Joueur brésilien, ancien du PSG. Anagramme : NDMOALE",
                   "answer": "NEMOALD",
                   "explanation": "L'anagramme fait référence à Neymar, ancien joueur du PSG.",
                   "familiarity": "pointu"
@@ -35240,7 +35240,7 @@
                 {
                   "id": "football_transferts_f_20",
                   "type": "anagram",
-                  "prompt": "Indice: Club espagnol, connu pour ses titres en Liga. Anagramme : EALCRABO",
+                  "prompt": "Indice: Club espagnol, connu pour ses titres en Liga. Anagramme : CONBEAELR",
                   "answer": "BARCELONE",
                   "explanation": "L'anagramme fait référence au club de Barcelone, célèbre en Liga.",
                   "familiarity": "pointu"
@@ -35320,7 +35320,7 @@
                 {
                   "id": "football_transferts_f_27",
                   "type": "anagram",
-                  "prompt": "Indice: Joueur néerlandais, ancien du PSV Eindhoven. Anagramme : REIVNDEK.",
+                  "prompt": "Indice: Joueur néerlandais, ancien du PSV Eindhoven. Anagramme : EDKRRIVEN.",
                   "answer": "KINDERVER",
                   "explanation": "Le joueur est Memphis Depay, connu pour son passage au PSV Eindhoven.",
                   "familiarity": "pointu"
@@ -35328,7 +35328,7 @@
                 {
                   "id": "football_transferts_f_28",
                   "type": "anagram",
-                  "prompt": "Indice: Club espagnol, connu pour ses succès en Liga. Anagramme : REAEMD.",
+                  "prompt": "Indice: Club espagnol, connu pour ses succès en Liga. Anagramme : DRMAEDRLIA.",
                   "answer": "REALMADRID",
                   "explanation": "Le Real Madrid est l'un des clubs les plus emblématiques et victorieux d'Espagne.",
                   "familiarity": "pointu"
@@ -35408,7 +35408,7 @@
                 {
                   "id": "football_transferts_f_35",
                   "type": "anagram",
-                  "prompt": "Indice: Joueur français, ancien du FC Nantes. Anagramme : RIEEGO",
+                  "prompt": "Indice: Joueur français, ancien du FC Nantes. Anagramme : REMNAGIZ",
                   "answer": "GRIEZMAN",
                   "explanation": "Antoine Griezmann, ancien joueur du FC Nantes, est une star du football français.",
                   "familiarity": "pointu"
@@ -35416,7 +35416,7 @@
                 {
                   "id": "football_transferts_f_36",
                   "type": "anagram",
-                  "prompt": "Indice: Club italien, connu pour ses succès en Serie A. Anagramme : ATIACMILLON",
+                  "prompt": "Indice: Club italien, connu pour ses succès en Serie A. Anagramme : IAANLMC",
                   "answer": "ACMILAN",
                   "explanation": "L'AC Milan est l'un des clubs les plus titrés de l'histoire du football italien.",
                   "familiarity": "pointu"
@@ -36119,8 +36119,8 @@
                   "id": "football_euro_f_23",
                   "type": "trueFalse",
                   "prompt": "L'Euro 2024 aura lieu en Allemagne.",
-                  "answer": "Faux",
-                  "explanation": "L'Euro 2024 se déroulera en Allemagne, mais la question est erronée car elle est basée sur une information future.",
+                  "answer": "Vrai",
+                  "explanation": "L'Euro 2024 s'est déroulé en Allemagne du 14 juin au 14 juillet 2024.",
                   "familiarity": "moyen"
                 },
                 {
