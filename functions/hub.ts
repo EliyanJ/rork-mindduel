@@ -225,20 +225,46 @@ export class Hub extends DurableObject {
     }
     const elo = clampElo(initialElo ?? 1000);
     const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠";
-    let code = generateFriendCode();
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const clash = this.ctx.storage.sql
-        .exec("SELECT user_id FROM players WHERE friend_code = ?", code)
-        .toArray();
-      if (clash.length === 0) break;
-      code = generateFriendCode();
-    }
+    const code = this.generateFriendCodeFor(name);
     this.ctx.storage.sql.exec(
       `INSERT INTO players (user_id, name, emoji, elo, wins, losses, draws, friend_code, last_seen_at)
        VALUES (?, ?, ?, ?, 0, 0, 0, ?, ?)`,
       userId, name.slice(0, 24), emoji, elo, code, Date.now(),
     );
     return rowToProfile(this.playerRow(userId)!);
+  }
+
+  /** Builds a `Firstname#NNN` friend code, NNN being a per-first-name sequential counter. */
+  private generateFriendCodeFor(rawName: string): string {
+    const cleanName = cleanFirstNameForCode(rawName);
+    if (!cleanName) {
+      let fallback = generateFriendCode();
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const clash = this.ctx.storage.sql
+          .exec("SELECT user_id FROM players WHERE friend_code = ?", fallback)
+          .toArray();
+        if (clash.length === 0) break;
+        fallback = generateFriendCode();
+      }
+      return fallback;
+    }
+    const existingCount = this.ctx.storage.sql
+      .exec<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM players WHERE friend_code LIKE ?",
+        `${cleanName}#%`,
+      )
+      .toArray()[0]?.n ?? 0;
+    let counter = existingCount + 1;
+    let code = `${cleanName}#${String(counter).padStart(3, "0")}`;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const clash = this.ctx.storage.sql
+        .exec("SELECT user_id FROM players WHERE friend_code = ?", code)
+        .toArray();
+      if (clash.length === 0) break;
+      counter += 1;
+      code = `${cleanName}#${String(counter).padStart(3, "0")}`;
+    }
+    return code;
   }
 
   private playerRow(userId: string): PlayerRow | null {
@@ -324,12 +350,15 @@ export class Hub extends DurableObject {
 
   private sendFriendRequest(userId: string, userName: string, rawCode: string): Response {
     this.ensureProfile(userId, userName);
-    const code = rawCode.trim().toUpperCase();
+    // Codes now look like "Firstname#003" (mixed case). Keep the lookup
+    // case-insensitive so "florent#003", "FLORENT#003" etc. all resolve —
+    // the '#' and digits are unaffected by case.
+    const code = rawCode.trim();
     if (code.length < 4) {
       return Response.json({ error: "Code ami invalide" }, { status: 400 });
     }
     const target = this.ctx.storage.sql
-      .exec<PlayerRow>("SELECT * FROM players WHERE friend_code = ?", code)
+      .exec<PlayerRow>("SELECT * FROM players WHERE UPPER(friend_code) = UPPER(?)", code)
       .toArray()[0];
     if (!target) {
       return Response.json({ error: "Aucun joueur avec ce code" }, { status: 404 });
@@ -661,6 +690,20 @@ function generateFriendCode(): string {
     code += alphabet[Math.floor(Math.random() * alphabet.length)];
   }
   return code;
+}
+
+/** Strips accents/spaces/punctuation and title-cases a first name for use in friend codes. */
+function cleanFirstNameForCode(rawName: string): string | null {
+  const firstToken = rawName.trim().split(/\s+/)[0] ?? "";
+  const normalized = firstToken
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z]/g, "");
+  if (normalized.length < 2) return null;
+  const generic = new Set(["joueur", "player", "user", "guest", "invite", "invit"]);
+  if (generic.has(normalized.toLowerCase())) return null;
+  const capped = normalized.slice(0, 16);
+  return capped.charAt(0).toUpperCase() + capped.slice(1).toLowerCase();
 }
 
 function randomSeed(): string {

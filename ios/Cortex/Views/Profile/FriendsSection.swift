@@ -85,7 +85,7 @@ struct FriendsSection: View {
 
     private var addFriendField: some View {
         HStack(spacing: 10) {
-            TextField("Code ami (ex : K7M2XR)", text: $codeInput)
+            TextField("Code ami (ex : Florent#003)", text: $codeInput)
                 .font(.system(.body, design: .rounded, weight: .bold))
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()

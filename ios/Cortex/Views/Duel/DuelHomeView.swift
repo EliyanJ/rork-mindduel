@@ -8,6 +8,8 @@ struct DuelHomeView: View {
     @State private var isTrainingPresented: Bool = false
     @State private var isLeaderboardPresented: Bool = false
     @State private var isSignInPresented: Bool = false
+    @State private var isHelpPresented: Bool = false
+    @State private var isFriendsPresented: Bool = false
     @State private var selectedDuelDisciplineId: String? = nil
     @State private var showThemePicker: Bool = false
     @State private var pendingMode: DuelMode = .training
@@ -24,7 +26,7 @@ struct DuelHomeView: View {
                 VStack(spacing: 20) {
                     rankedCard
                     trainingCard
-                    rulesCard
+                    leaderboardPreviewCard
                 }
                 .padding(16)
                 .padding(.bottom, 32)
@@ -42,6 +44,12 @@ struct DuelHomeView: View {
         }
         .sheet(isPresented: $isSignInPresented) {
             SignInSheet()
+        }
+        .sheet(isPresented: $isHelpPresented) {
+            DuelHelpView()
+        }
+        .sheet(isPresented: $isFriendsPresented) {
+            FriendsView()
         }
         .sheet(isPresented: $showThemePicker) {
             DuelThemePickerView(
@@ -74,15 +82,27 @@ struct DuelHomeView: View {
                     .foregroundStyle(Theme.inkMuted)
             }
             Spacer()
-            Button {
-                Haptics.tap()
-                isLeaderboardPresented = true
-            } label: {
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Theme.gold)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Theme.gold.opacity(0.14)))
+            HStack(spacing: 10) {
+                Button {
+                    Haptics.tap()
+                    isFriendsPresented = true
+                } label: {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Theme.primary)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.primary.opacity(0.14)))
+                }
+                Button {
+                    Haptics.tap()
+                    isHelpPresented = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.card))
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -179,20 +199,69 @@ struct DuelHomeView: View {
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
     }
 
-    private var rulesCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Comment ça marche")
-                .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.ink)
-            ruleRow(icon: "globe", color: Theme.duelAccent.mix(with: .black, by: 0.2), text: "Match classé : un vrai joueur de ton niveau, même question au même moment.")
-            ruleRow(icon: "hare.fill", color: Theme.gold.mix(with: .black, by: 0.1), text: "Bonne réponse rapide = jackpot. Lente = moins de points. Erreur = 0, sans pénalité.")
-            ruleRow(icon: "chart.line.uptrend.xyaxis", color: Theme.success, text: "Ton ELO mondial monte ou descend à chaque match classé. Abandon = défaite.")
-            ruleRow(icon: "person.2.fill", color: Theme.primary, text: "Ajoute des amis avec leur code dans ton profil et compare vos classements.")
+    /// Compact top-3 preview of the world leaderboard, tappable to open the
+    /// full `LeaderboardView` (the trophy shortcut moved here from the header).
+    private var leaderboardPreviewCard: some View {
+        Button {
+            Haptics.tap()
+            isLeaderboardPresented = true
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Classement mondial", systemImage: "trophy.fill")
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+                if let top = online.leaderboard?.top, !top.isEmpty {
+                    VStack(spacing: 8) {
+                        ForEach(top.prefix(3)) { entry in
+                            topRow(entry)
+                        }
+                    }
+                } else {
+                    Text("Joue un match classé pour apparaître ici !")
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(Theme.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+        .buttonStyle(.plain)
+        .task { await online.refreshLeaderboard() }
+    }
+
+    private func topRow(_ entry: RankedEntry) -> some View {
+        HStack(spacing: 10) {
+            Text(rankLabel(entry.rank))
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .frame(width: 28, alignment: .leading)
+            Text(entry.emoji).font(.system(size: 20))
+            Text(entry.name)
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+            Spacer()
+            Text("\(entry.elo)")
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.duelAccent.mix(with: .black, by: 0.2))
+        }
+    }
+
+    private func rankLabel(_ rank: Int) -> String {
+        switch rank {
+        case 1: return "🥇"
+        case 2: return "🥈"
+        case 3: return "🥉"
+        default: return "#\(rank)"
+        }
     }
 
     private func presentRankedDuel() {

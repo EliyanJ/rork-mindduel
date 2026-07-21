@@ -6,6 +6,7 @@ struct ProfileView: View {
     @State private var isSignInPresented: Bool = false
     @State private var didCopyCode: Bool = false
     @State private var isSettingsPresented: Bool = false
+    @State private var isFriendsPresented: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -14,7 +15,7 @@ struct ProfileView: View {
                 VStack(spacing: 20) {
                     accountCard
                     if online.isSignedIn {
-                        FriendsSection()
+                        friendsShortcutCard
                     }
                     streakCard
                     statsGrid
@@ -30,6 +31,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView()
+        }
+        .sheet(isPresented: $isFriendsPresented) {
+            FriendsView()
         }
         .task {
             if online.isSignedIn {
@@ -182,6 +186,46 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+    }
+
+    /// Compact entry point to the full-screen `FriendsView` (moved out of
+    /// the profile so the Duel screen can also open it — see DuelHomeView).
+    private var friendsShortcutCard: some View {
+        Button {
+            Haptics.tap()
+            isFriendsPresented = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Theme.primary)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(Theme.primary.opacity(0.12)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Amis")
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Text(online.friends.isEmpty ? "Ajoute des amis avec leur code" : "\(online.friends.count) ami\(online.friends.count > 1 ? "s" : "")")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+                Spacer()
+                if !online.incomingRequests.isEmpty {
+                    Text("\(online.incomingRequests.count)")
+                        .font(.system(.caption2, design: .rounded, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(Theme.danger))
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.inkMuted)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
     }
 
     private func statColumn(value: String, label: String, color: Color) -> some View {
