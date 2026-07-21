@@ -101,13 +101,12 @@ struct HomeView: View {
             }
             Spacer()
             HStack(spacing: 6) {
-                StatPill(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)")
-                StatPill(icon: "text.book.closed.fill", color: Theme.gold, value: "\(model.store.progress.xp)")
+                StatPill(icon: "bolt.fill", color: Theme.gold, value: "\(model.store.progress.xp)")
                 Button {
                     Haptics.tap()
                     isShopPresented = true
                 } label: {
-                    StatPill(icon: "books.vertical.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+                    StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
                 }
                 .buttonStyle(.plain)
             }

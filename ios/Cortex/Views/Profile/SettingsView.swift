@@ -43,7 +43,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
-                    row(icon: "books.vertical.fill", title: "Acheter des livres") {
+                    row(icon: "diamond.fill", title: "Acheter des rubis") {
                         isShopPresented = true
                     }
                     if store.isPremium {

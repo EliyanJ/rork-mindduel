@@ -50,7 +50,7 @@ struct ReviewView: View {
                 Haptics.tap()
                 isShopPresented = true
             } label: {
-                StatPill(icon: "books.vertical.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+                StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
             }
             .buttonStyle(.plain)
         }

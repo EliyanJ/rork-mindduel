@@ -1,7 +1,7 @@
 import SwiftUI
 import RevenueCat
 
-/// Sheet listing the four one-time livres packs (S/M/L/XL). Purchases are
+/// Sheet listing the four one-time rubis packs (S/M/L/XL). Purchases are
 /// credited straight to the local wallet through `ProgressStore`.
 struct LivresShopView: View {
     @Environment(StoreViewModel.self) private var store
@@ -34,7 +34,7 @@ struct LivresShopView: View {
                 .padding(20)
             }
             .background(Theme.background)
-            .navigationTitle("Packs de livres")
+            .navigationTitle("Packs de rubis")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -54,12 +54,12 @@ struct LivresShopView: View {
 
     private var header: some View {
         VStack(spacing: 6) {
-            Text("📚")
+            Text("💎")
                 .font(.system(size: 44))
-            Text("Solde actuel : \(progressStore.livresBalance) 📚")
+            Text("Solde actuel : \(progressStore.livresBalance) 💎")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.ink)
-            Text("Les livres servent à débloquer des leçons et des révisions en plus de ton quota gratuit du jour.")
+            Text("Les rubis servent à débloquer des leçons et des révisions en plus de ton quota gratuit du jour.")
                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                 .foregroundStyle(Theme.inkMuted)
                 .multilineTextAlignment(.center)
@@ -83,13 +83,13 @@ struct LivresShopView: View {
             }
         } label: {
             HStack(spacing: 14) {
-                Text("📚")
+                Text("💎")
                     .font(.system(size: 30))
                     .frame(width: 48, height: 48)
                     .background(Circle().fill(Theme.livres.opacity(0.14)))
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text("\(amount) livres")
+                        Text("\(amount) rubis")
                             .font(.system(.headline, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
                         if isBest {

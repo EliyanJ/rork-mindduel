@@ -300,7 +300,7 @@ struct ProfileView: View {
         let progress = model.store.progress
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             statCard(icon: "text.book.closed.fill", color: Theme.gold, value: "\(progress.xp)", label: "XP total")
-            statCard(icon: "books.vertical.fill", color: Theme.livres, value: "\(progress.livresBalance)", label: "Livres")
+            statCard(icon: "diamond.fill", color: Theme.livres, value: "\(progress.livresBalance)", label: "Rubis")
             statCard(icon: "crown.fill", color: Theme.primary, value: "\(model.store.masteredChaptersCount)", label: "Étapes maîtrisées")
             statCard(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(progress.duelsWon)", label: "Duels gagnés")
             statCard(icon: "chart.line.uptrend.xyaxis", color: Theme.success, value: online.profile.map { "\($0.elo)" } ?? "\(progress.elo)", label: online.profile != nil ? "ELO mondial" : "ELO local")

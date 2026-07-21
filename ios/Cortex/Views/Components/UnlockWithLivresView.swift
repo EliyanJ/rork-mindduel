@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Shared "quota reached" screen for both lessons and reviews: explains the
-/// daily free limit, offers to spend livres or watch a rewarded ad to top
-/// up the balance, and always shows a way to buy more livres or subscribe.
+/// daily free limit, offers to spend rubis or watch a rewarded ad to top
+/// up the balance, and always shows a way to buy more rubis or subscribe.
 struct UnlockWithLivresView: View {
     enum Kind {
         case lesson
@@ -11,8 +11,8 @@ struct UnlockWithLivresView: View {
         var title: String { self == .lesson ? "Leçon du jour terminée" : "Révisions du jour terminées" }
         var message: String {
             self == .lesson
-                ? "Tu as utilisé ta leçon gratuite d'aujourd'hui. Débloque-en une de plus avec des livres, ou reviens demain."
-                : "Tu as atteint tes 10 cartes gratuites d'aujourd'hui. Débloque 5 cartes de plus avec des livres, ou reviens demain."
+                ? "Tu as utilisé ta leçon gratuite d'aujourd'hui. Débloque-en une de plus avec des rubis, ou reviens demain."
+                : "Tu as atteint tes 10 cartes gratuites d'aujourd'hui. Débloque 5 cartes de plus avec des rubis, ou reviens demain."
         }
         var cost: Int { self == .lesson ? ProgressStore.extraLessonCost : ProgressStore.extraReviewCost }
         var unlockLabel: String { self == .lesson ? "Débloquer cette leçon" : "Débloquer 5 cartes" }
@@ -32,7 +32,7 @@ struct UnlockWithLivresView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer(minLength: 8)
-                Text("📚")
+                Text("💎")
                     .font(.system(size: 56))
                 VStack(spacing: 8) {
                     Text(kind.title)
@@ -47,7 +47,7 @@ struct UnlockWithLivresView: View {
                 }
                 .padding(.horizontal, 12)
 
-                Text("Solde : \(progressStore.livresBalance) 📚")
+                Text("Solde : \(progressStore.livresBalance) 💎")
                     .font(.system(.headline, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.livres)
 
@@ -58,7 +58,7 @@ struct UnlockWithLivresView: View {
                         Haptics.medium()
                         unlock()
                     } label: {
-                        Label("\(kind.unlockLabel) — \(kind.cost) 📚", systemImage: "lock.open.fill")
+                        Label("\(kind.unlockLabel) — \(kind.cost) 💎", systemImage: "lock.open.fill")
                     }
                     .buttonStyle(ChunkyButtonStyle(color: Theme.livres))
                     .disabled(progressStore.livresBalance < kind.cost)
@@ -70,7 +70,7 @@ struct UnlockWithLivresView: View {
                         Haptics.tap()
                         isShopPresented = true
                     } label: {
-                        Text("Acheter des livres")
+                        Text("Acheter des rubis")
                     }
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(Theme.inkMuted)
@@ -123,7 +123,7 @@ struct UnlockWithLivresView: View {
                 if isWatchingAd {
                     ProgressView().tint(.white)
                 } else {
-                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) 📚)", systemImage: "play.rectangle.fill")
+                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) 💎)", systemImage: "play.rectangle.fill")
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
