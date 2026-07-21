@@ -32,7 +32,7 @@ struct UnlockWithLivresView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer(minLength: 8)
-                Text("💎")
+                Text("♦️")
                     .font(.system(size: 56))
                 VStack(spacing: 8) {
                     Text(kind.title)
@@ -47,7 +47,7 @@ struct UnlockWithLivresView: View {
                 }
                 .padding(.horizontal, 12)
 
-                Text("Solde : \(progressStore.livresBalance) 💎")
+                Text("Solde : \(progressStore.livresBalance) ♦️")
                     .font(.system(.headline, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.livres)
 
@@ -58,7 +58,7 @@ struct UnlockWithLivresView: View {
                         Haptics.medium()
                         unlock()
                     } label: {
-                        Label("\(kind.unlockLabel) — \(kind.cost) 💎", systemImage: "lock.open.fill")
+                        Label("\(kind.unlockLabel) — \(kind.cost) ♦️", systemImage: "lock.open.fill")
                     }
                     .buttonStyle(ChunkyButtonStyle(color: Theme.livres))
                     .disabled(progressStore.livresBalance < kind.cost)
@@ -123,7 +123,7 @@ struct UnlockWithLivresView: View {
                 if isWatchingAd {
                     ProgressView().tint(.white)
                 } else {
-                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) 💎)", systemImage: "play.rectangle.fill")
+                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) ♦️)", systemImage: "play.rectangle.fill")
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))

@@ -54,9 +54,9 @@ struct LivresShopView: View {
 
     private var header: some View {
         VStack(spacing: 6) {
-            Text("💎")
+            Text("♦️")
                 .font(.system(size: 44))
-            Text("Solde actuel : \(progressStore.livresBalance) 💎")
+            Text("Solde actuel : \(progressStore.livresBalance) ♦️")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.ink)
             Text("Les rubis servent à débloquer des leçons et des révisions en plus de ton quota gratuit du jour.")
@@ -83,7 +83,7 @@ struct LivresShopView: View {
             }
         } label: {
             HStack(spacing: 14) {
-                Text("💎")
+                Text("♦️")
                     .font(.system(size: 30))
                     .frame(width: 48, height: 48)
                     .background(Circle().fill(Theme.livres.opacity(0.14)))
