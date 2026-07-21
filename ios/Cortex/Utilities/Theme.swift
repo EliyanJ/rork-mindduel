@@ -12,9 +12,9 @@ enum Theme {
     static let danger = Color(hex: "E5484D")
     static let gold = Color(hex: "FFB020")
     static let lockedFill = Color(hex: "E3D9C8")
-    /// Distinct accent for the livres currency, kept visually separate from
-    /// the gold XP counter (a colorful stack vs. a single closed book).
-    static let livres = Color(hex: "6C63FF")
+    /// Distinct accent for the rubis currency, kept visually separate from
+    /// the gold XP counter — a deep ruby red, not blue.
+    static let livres = Color(hex: "D81E3A")
 
     /// Colors cycled along the unified learning path, one per stage.
     static let pathPalette: [Color] = [
