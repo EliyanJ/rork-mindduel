@@ -56,6 +56,14 @@ struct ChapterBrowserView: View {
     }
 
     private func state(for chapter: Chapter, discipline: Discipline) -> ChapterState {
+        // Chapter-by-chapter sequential gate: the first chapter is always
+        // available, the next one only unlocks once the previous chapter
+        // was cleared on its Facile level (same 60%/80% thresholds as the
+        // mixed path in AppModel.state(of:)).
+        guard isChapterUnlocked(chapter, in: discipline) else { return .locked }
+
+        // Once the chapter itself is reachable, isLevelUnlocked still
+        // governs unlocking Intermédiaire/Difficile/etc. within it.
         let hasAnyUnlocked = chapter.availableLevels.contains { level in
             model.store.isLevelUnlocked(level, for: discipline) && !model.store.isChapterLevelCompleted(disciplineId: discipline.id, chapterId: chapter.id, level: level)
         }
@@ -67,8 +75,20 @@ struct ChapterBrowserView: View {
         let allCompleted = chapter.availableLevels.allSatisfy { level in
             model.store.isChapterLevelCompleted(disciplineId: discipline.id, chapterId: chapter.id, level: level)
         }
-        if allCompleted { return .mastered }
-        return index(of: chapter, in: discipline) == 0 ? .available : .locked
+        return allCompleted ? .mastered : .available
+    }
+
+    /// A chapter unlocks sequentially: the first one is free, the next ones
+    /// require the previous chapter's Facile level to be cleared at >= 60%
+    /// best score (same unlock threshold used by the mixed path).
+    private func isChapterUnlocked(_ chapter: Chapter, in discipline: Discipline) -> Bool {
+        let idx = index(of: chapter, in: discipline)
+        guard idx > 0 else { return true }
+        let previous = discipline.chapters[idx - 1]
+        let previousBestScore = model.store.chapterProgress(
+            disciplineId: discipline.id, chapterId: previous.id, level: .facile
+        )?.bestScore ?? 0
+        return previousBestScore >= 0.6
     }
 
     private func index(of chapter: Chapter, in discipline: Discipline) -> Int {
