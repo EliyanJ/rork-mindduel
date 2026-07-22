@@ -535,6 +535,13 @@ const AdminReview = () => {
             </Link>
             <span className="text-white/20">|</span>
             <span className="text-sm font-bold">Modération des questions</span>
+            <span className="text-white/20">|</span>
+            <Link
+              to="/admin-generator"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 transition hover:bg-amber-500/20"
+            >
+              Generator Admin →
+            </Link>
             {hasDraft && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">BROUILLON LOCAL</span>}
           </div>
           <div className="flex items-center gap-3">

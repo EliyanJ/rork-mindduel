@@ -481,6 +481,13 @@ const AdminGenerator = () => {
             </Link>
             <span className="text-white/20">|</span>
             <span className="text-sm font-bold">Generator Admin</span>
+            <span className="text-white/20">|</span>
+            <Link
+              to="/admin-review"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20"
+            >
+              Modération des questions →
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <button
