@@ -192,6 +192,29 @@ async function handleAiReviewProxy(request: Request): Promise<Response> {
       return Response.json({ content: data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "" });
     }
 
+    if (provider === "perplexity") {
+      // Perplexity Sonar models search the web in real-time and return citations.
+      const res = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt ?? "" },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 2000,
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        return Response.json({ error: `Perplexity ${res.status}: ${errText.slice(0, 300)}` }, { status: 502 });
+      }
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      return Response.json({ content: data?.choices?.[0]?.message?.content ?? "" });
+    }
+
     return Response.json({ error: "Fournisseur inconnu" }, { status: 400 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

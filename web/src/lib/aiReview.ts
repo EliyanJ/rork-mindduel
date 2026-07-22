@@ -21,7 +21,7 @@ export type AiReviewResult = {
   } | null;
 };
 
-export type AiProvider = "anthropic" | "openai" | "google";
+export type AiProvider = "anthropic" | "openai" | "google" | "perplexity";
 
 export type AiConfig = {
   provider: AiProvider;
@@ -39,11 +39,13 @@ function buildSystemPrompt(): string {
 
 function buildUserPrompt(item: FlatQuestion): string {
   const q = item.question;
-  return `Analyse cette question de quiz et vérifie quatre points précis :
+  return `Analyse cette question de quiz et vérifie cinq points précis. Tu as accès à internet : utilise-le pour vérifier les faits concrets, dates, noms, records, palmarès, événements historiques, et toute affirmation susceptible d'être vérifiable en ligne. Ne te fie pas à ta mémoire pour les faits précis.
+
 1. Orthographe et grammaire françaises (prompt, options, explication).
-2. La réponse indiquée comme correcte est-elle réellement exacte (vérifie le fait si besoin) ?
+2. La réponse indiquée comme correcte est-elle réellement exacte ? Pour les faits précis, fais une recherche web dans ta tête et vérifie plusieurs sources si elles se contredisent. Exemples de piège : "Ronaldo a eu le Soulier d'Or 2020" → faux, c'est Lewandowski. "La guerre de 14-18 a duré jusqu'en 1919" → faux, armistice le 11 novembre 1918. Si tu as un doute, baisse la confiance et explique.
 3. La question est-elle formulée clairement, sans ambiguïté ?
 4. Les mauvaises réponses proposées sont-elles plausibles mais clairement fausses ?
+5. L'explication est-elle factuellement correcte et cohérente avec la bonne réponse ?
 
 Contexte : discipline "${item.disciplineName}", chapitre "${item.chapterTitle}", niveau "${item.level}".
 
@@ -54,15 +56,15 @@ Réponds UNIQUEMENT avec ce JSON exact :
 {
   "decision": "approve" | "reject" | "edit",
   "confidence": <entier 0-100>,
-  "notes": "<explication brève en français de ton analyse et de ta décision>",
+  "notes": "<explication brève en français. Mentionne explicitement si tu as fait une vérification factuelle et si tu as trouvé une contradiction>",
   "correctedQuestion": null ou { "prompt": "...", "options": [...] (si applicable au type), "answer": "...", "explanation": "..." }
 }
 
 Règles :
 - "approve" si tout est correct tel quel — correctedQuestion doit être null.
-- "edit" si tu identifies un problème réparable (faute, réponse imprécise, formulation à clarifier) — fournis correctedQuestion complet avec la version corrigée.
-- "reject" seulement si la question est irrécupérable (absurde, invérifiable, hors sujet, dupliquée).
-- confidence doit refléter ta certitude réelle — mets une valeur basse (< 60) dès que tu as un doute ou un fait difficile à vérifier avec certitude.
+- "edit" si tu identifies un problème réparable (faute, réponse imprécise, formulation à clarifier, fait à corriger) — fournis correctedQuestion complet avec la version corrigée.
+- "reject" seulement si la question est irrécupérable (absurde, invérifiable malgré la recherche, hors sujet, dupliquée).
+- confidence doit refléter ta certitude réelle — mets une valeur basse (< 60) dès que tu as un doute ou que les sources se contredisent. Pour une question purement locale (orthographe/clarté) sans fait vérifiable, tu peux mettre une confiance plus élevée.
 Pas de texte hors JSON, pas de backticks.`;
 }
 

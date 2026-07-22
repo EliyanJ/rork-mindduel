@@ -120,13 +120,18 @@ export const LEVEL_LABEL: Record<string, string> = {
 export type AiModelOption = {
   id: string;
   label: string;
-  provider: "anthropic" | "openai" | "google";
+  provider: "anthropic" | "openai" | "google" | "perplexity";
   model: string;
 };
 
 /** Curated model shortlist — the exact model string can still be overridden
  * in the UI if a provider renames/retires an alias. */
 export const AI_MODELS: AiModelOption[] = [
+  // Perplexity Sonar models search the web in real-time — preferred for fact-checking.
+  { id: "perplexity-sonar-pro", label: "Perplexity Sonar Pro (recherche web)", provider: "perplexity", model: "sonar-pro" },
+  { id: "perplexity-sonar", label: "Perplexity Sonar (recherche web)", provider: "perplexity", model: "sonar" },
+  { id: "perplexity-sonar-reasoning", label: "Perplexity Sonar Reasoning (recherche web)", provider: "perplexity", model: "sonar-reasoning" },
+  // Classic models — no native web search, rely on training data.
   { id: "claude-sonnet", label: "Claude Sonnet 3.5", provider: "anthropic", model: "claude-3-5-sonnet-latest" },
   { id: "claude-opus", label: "Claude Opus 3", provider: "anthropic", model: "claude-3-opus-latest" },
   { id: "gpt-4o", label: "GPT-4o", provider: "openai", model: "gpt-4o" },
