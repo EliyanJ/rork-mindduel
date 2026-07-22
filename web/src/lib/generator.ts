@@ -14,6 +14,11 @@ export const FAMILIARITY_LABEL: Record<Familiarity, string> = {
   pointu: "Pointu / expert",
 };
 
+/** Moderation lifecycle for a question — defaults to "pending" when absent
+ * (all pre-existing questions start untouched, nothing is auto-approved). */
+export type ModerationStatus = "pending" | "approved" | "rejected";
+export type ModeratedBy = "human" | "ai";
+
 export type Question = {
   id: string;
   type: QuestionType;
@@ -23,6 +28,10 @@ export type Question = {
   explanation: string;
   /** Optional for backward-compat with old content.json entries that predate this field. */
   familiarity?: Familiarity;
+  /** Moderation metadata written by the admin review tool. Absent = pending. */
+  moderationStatus?: ModerationStatus;
+  moderatedBy?: ModeratedBy;
+  moderatedAt?: number;
 };
 
 export type Level = {

@@ -35,6 +35,15 @@ export default {
       return withCors(res);
     }
 
+    // Admin question-review tool: stateless AI proxy. The caller's API key is
+    // used only for this single outbound request and is never stored, logged,
+    // or forwarded anywhere except straight to the chosen provider — this
+    // avoids browser CORS restrictions on Anthropic/Google without ever
+    // persisting the key server-side.
+    if (url.pathname === "/api/moderation/ai-review" && request.method === "POST") {
+      return withCors(await handleAiReviewProxy(request));
+    }
+
     // Hub routes (auth required — the platform stamps X-Rork-User-Id when
     // the Bearer token is valid; the Hub itself rejects missing identity).
     if (url.pathname.startsWith("/api/hub/")) {
@@ -94,4 +103,98 @@ function withCors(res: Response): Response {
 
 function corsResponse(res: Response): Response {
   return withCors(res);
+}
+
+type AiProxyBody = {
+  provider?: "anthropic" | "openai" | "google";
+  apiKey?: string;
+  model?: string;
+  systemPrompt?: string;
+  userPrompt?: string;
+};
+
+async function handleAiReviewProxy(request: Request): Promise<Response> {
+  let body: AiProxyBody;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "JSON invalide" }, { status: 400 });
+  }
+  const { provider, apiKey, model, systemPrompt, userPrompt } = body;
+  if (!provider || !apiKey || !model || !userPrompt) {
+    return Response.json({ error: "Paramètres manquants (provider, apiKey, model, userPrompt)" }, { status: 400 });
+  }
+
+  try {
+    if (provider === "openai") {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt ?? "" },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 1500,
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        return Response.json({ error: `OpenAI ${res.status}: ${errText.slice(0, 300)}` }, { status: 502 });
+      }
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      return Response.json({ content: data?.choices?.[0]?.message?.content ?? "" });
+    }
+
+    if (provider === "anthropic") {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          system: systemPrompt ?? "",
+          messages: [{ role: "user", content: userPrompt }],
+          max_tokens: 1500,
+          temperature: 0.2,
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        return Response.json({ error: `Anthropic ${res.status}: ${errText.slice(0, 300)}` }, { status: 502 });
+      }
+      const data = (await res.json()) as { content?: { text?: string }[] };
+      return Response.json({ content: data?.content?.[0]?.text ?? "" });
+    }
+
+    if (provider === "google") {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${systemPrompt ?? ""}\n\n${userPrompt}` }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 1500 },
+          }),
+        },
+      );
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        return Response.json({ error: `Google ${res.status}: ${errText.slice(0, 300)}` }, { status: 502 });
+      }
+      const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      return Response.json({ content: data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "" });
+    }
+
+    return Response.json({ error: "Fournisseur inconnu" }, { status: 400 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return Response.json({ error: `Erreur proxy IA: ${msg}` }, { status: 500 });
+  }
 }
