@@ -97,6 +97,19 @@ export class Hub extends DurableObject {
         updated_at INTEGER NOT NULL
       )
     `);
+    // Moderation review state — every admin decision (approve/reject/edit/
+    // delete/move) and every AI review note is persisted here in real time,
+    // keyed by question id, so the admin-review page never loses history on
+    // refresh or across devices. kind: "change" | "note".
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS review_state (
+        kind TEXT NOT NULL,
+        question_id TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (kind, question_id)
+      )
+    `);
   }
 
   override async fetch(request: Request): Promise<Response> {
@@ -115,6 +128,14 @@ export class Hub extends DurableObject {
     }
     if (path === "/api/content/publish" && request.method === "POST") {
       return this.publishContent(await request.json());
+    }
+    // Review-state routes — real-time persistence of moderation decisions and
+    // AI notes for the admin review tool (password-protected).
+    if (path === "/api/review/state" && request.method === "GET") {
+      return this.getReviewState(url.searchParams.get("password"));
+    }
+    if (path === "/api/review/state" && request.method === "POST") {
+      return this.saveReviewState(await request.json());
     }
 
     const userId = request.headers.get("X-Rork-User-Id");
@@ -662,6 +683,63 @@ export class Hub extends DurableObject {
       questionCount,
       updatedAt: now,
     });
+  }
+
+  // MARK: review state (real-time moderation persistence)
+
+  private getReviewState(password: string | null): Response {
+    if (password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const rows = this.ctx.storage.sql
+      .exec<{ kind: string; question_id: string; payload: string; updated_at: number }>(
+        "SELECT kind, question_id, payload, updated_at FROM review_state",
+      )
+      .toArray();
+    const changes: Record<string, unknown> = {};
+    const notes: Record<string, unknown> = {};
+    for (const row of rows) {
+      try {
+        const parsed = JSON.parse(row.payload) as unknown;
+        if (row.kind === "change") changes[row.question_id] = parsed;
+        else if (row.kind === "note") notes[row.question_id] = parsed;
+      } catch {
+        // corrupted row — skip silently
+      }
+    }
+    return Response.json({ changes, notes, count: rows.length });
+  }
+
+  private saveReviewState(body: unknown): Response {
+    const payload = body as {
+      password?: string;
+      upserts?: Array<{ kind?: string; questionId?: string; payload?: unknown }>;
+      deletes?: Array<{ kind?: string; questionId?: string }>;
+    };
+    if (payload.password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const now = Date.now();
+    let upserted = 0;
+    let deleted = 0;
+    for (const u of payload.upserts ?? []) {
+      if ((u.kind !== "change" && u.kind !== "note") || !u.questionId || u.payload === undefined) continue;
+      this.ctx.storage.sql.exec(
+        `INSERT INTO review_state (kind, question_id, payload, updated_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(kind, question_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+        u.kind, u.questionId, JSON.stringify(u.payload), now,
+      );
+      upserted += 1;
+    }
+    for (const d of payload.deletes ?? []) {
+      if ((d.kind !== "change" && d.kind !== "note") || !d.questionId) continue;
+      this.ctx.storage.sql.exec(
+        "DELETE FROM review_state WHERE kind = ? AND question_id = ?",
+        d.kind, d.questionId,
+      );
+      deleted += 1;
+    }
+    return Response.json({ ok: true, upserted, deleted, savedAt: now });
   }
 }
 

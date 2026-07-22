@@ -35,6 +35,13 @@ export default {
       return withCors(res);
     }
 
+    // Admin review-state routes — real-time persistence of moderation
+    // decisions and AI notes (password checked inside the Hub DO).
+    if (url.pathname === "/api/review/state" && (request.method === "GET" || request.method === "POST")) {
+      const res = await dispatchToDo(env, "Hub", "global", request);
+      return withCors(res);
+    }
+
     // Admin question-review tool: stateless AI proxy. The caller's API key is
     // used only for this single outbound request and is never stored, logged,
     // or forwarded anywhere except straight to the chosen provider — this

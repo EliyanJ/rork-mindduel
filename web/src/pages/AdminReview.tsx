@@ -68,6 +68,54 @@ type PendingChange = { ref: QuestionRef; question: Question | null; moveTo?: Que
  * increasing difficulty) — used by the categorization tab's dropdown. */
 const DIFFICULTY_LEVELS = ["facile", "intermediaire", "difficile", "maitre", "legende"];
 
+const FN_URL: string =
+  (import.meta.env.VITE_RORK_FUNCTIONS_URL as string | undefined) ??
+  (import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL as string | undefined) ??
+  "https://mindduel-kqfozex-backend.rork.app";
+
+/** Reads a JSON map from localStorage, tolerating absence/corruption. */
+function readLocal<T>(key: string): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : ({} as T);
+  } catch {
+    return {} as T;
+  }
+}
+
+/** Fetches the server-persisted review state (moderation decisions + AI notes). */
+async function fetchReviewState(): Promise<{ changes: Record<string, PendingChange>; notes: Record<string, AiReviewResult> }> {
+  const res = await fetch(`${FN_URL}/api/review/state?password=${encodeURIComponent(ADMIN_PASSWORD)}`);
+  if (!res.ok) throw new Error(`serveur ${res.status}`);
+  const data = (await res.json()) as { changes?: Record<string, PendingChange>; notes?: Record<string, AiReviewResult> };
+  return { changes: data.changes ?? {}, notes: data.notes ?? {} };
+}
+
+/** Replays a set of moderation decisions on top of a content snapshot —
+ * shared by page load (rebuild the working copy) and publish (merge on the
+ * freshest server version). */
+function replayChanges(
+  base: Content,
+  changes: Record<string, PendingChange>,
+): { merged: Content; applied: number; skipped: number } {
+  let merged = base;
+  let applied = 0;
+  let skipped = 0;
+  for (const [questionId, change] of Object.entries(changes)) {
+    const before = merged;
+    if (change.question === null) {
+      merged = deleteQuestion(merged, change.ref, questionId);
+    } else if (change.moveTo) {
+      merged = moveQuestion(merged, change.ref, change.moveTo, questionId, change.question);
+    } else {
+      merged = updateQuestion(merged, change.ref, questionId, () => change.question as Question);
+    }
+    if (merged === before) skipped += 1;
+    else applied += 1;
+  }
+  return { merged, applied, skipped };
+}
+
 const AdminReview = () => {
   const [authed, setAuthed] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
@@ -79,7 +127,14 @@ const AdminReview = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [publishedInfo, setPublishedInfo] = useState<{ version: number; questionCount: number } | null>(null);
-  const [hasDraft, setHasDraft] = useState(false);
+
+  // Real-time server sync of moderation decisions + AI notes.
+  const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [syncRetryTick, setSyncRetryTick] = useState(0);
+  const lastSyncedChanges = useRef<Record<string, PendingChange>>({});
+  const lastSyncedNotes = useRef<Record<string, AiReviewResult>>({});
+  const syncEnabledRef = useRef(false);
 
   // filters (shared across tabs)
   const [search, setSearch] = useState("");
@@ -136,40 +191,43 @@ const AdminReview = () => {
     }
   };
 
-  const loadFromServer = useCallback(async () => {
+  /** Loads the freshest server content + the server-saved review state
+   * (decisions and AI notes), merges in any local backup entries the server
+   * doesn't know about yet, then replays every pending decision on top of the
+   * content — the page always reopens exactly where you left off, on any
+   * device, even after a refresh. */
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const c = await fetchContent();
-      setContent(c);
+      // The legacy full-content draft regularly exceeded the browser storage
+      // quota (silent write failure = lost history on refresh). The server
+      // review-state has replaced it as the source of truth.
       localStorage.removeItem(DRAFT_KEY);
-      setHasDraft(false);
-      addLog("info", `content.json rechargé depuis le serveur : ${c.disciplines.length} disciplines`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      addLog("error", `Erreur chargement content.json : ${msg}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [addLog]);
-
-  const loadInitial = useCallback(async () => {
-    setLoading(true);
-    try {
-      const draftRaw = localStorage.getItem(DRAFT_KEY);
-      if (draftRaw) {
-        const draft = JSON.parse(draftRaw) as { content: Content; savedAt: number };
-        setContent(draft.content);
-        setHasDraft(true);
-        addLog("info", `Brouillon local restauré (sauvegardé le ${new Date(draft.savedAt).toLocaleString("fr-FR")})`);
-      } else {
-        const c = await fetchContent();
-        setContent(c);
-        addLog("info", `content.json chargé : ${c.disciplines.length} disciplines`);
-      }
-      const notesRaw = localStorage.getItem(NOTES_KEY);
-      if (notesRaw) setAiNotes(JSON.parse(notesRaw));
-      const changesRaw = localStorage.getItem(CHANGES_KEY);
-      if (changesRaw) setPendingChanges(JSON.parse(changesRaw));
+      const [serverContent, serverState] = await Promise.all([
+        fetchContent(),
+        fetchReviewState().catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          addLog("warn", `État de revue serveur indisponible (${msg}) — repli sur la sauvegarde locale du navigateur.`);
+          return null;
+        }),
+      ]);
+      const localChanges = readLocal<Record<string, PendingChange>>(CHANGES_KEY);
+      const localNotes = readLocal<Record<string, AiReviewResult>>(NOTES_KEY);
+      // Server wins on conflict; local-only entries (e.g. saved while offline)
+      // are kept and automatically re-pushed by the live sync below.
+      const changes: Record<string, PendingChange> = { ...localChanges, ...(serverState?.changes ?? {}) };
+      const notes: Record<string, AiReviewResult> = { ...localNotes, ...(serverState?.notes ?? {}) };
+      const { merged, applied } = replayChanges(serverContent, changes);
+      lastSyncedChanges.current = serverState?.changes ?? {};
+      lastSyncedNotes.current = serverState?.notes ?? {};
+      syncEnabledRef.current = true;
+      setContent(merged);
+      setPendingChanges(changes);
+      setAiNotes(notes);
+      addLog(
+        "info",
+        `Contenu chargé : ${serverContent.disciplines.length} disciplines · ${Object.keys(changes).length} décision(s) non publiée(s) et ${Object.keys(notes).length} avis IA restaurés${applied > 0 ? ` (${applied} rejouée(s) sur la version serveur)` : ""}.`,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       addLog("error", `Erreur chargement : ${msg}`);
@@ -180,24 +238,10 @@ const AdminReview = () => {
 
   useEffect(() => {
     if (authed && !content && !loading) {
-      loadInitial();
+      loadAll();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed]);
-
-  // Autosave the working content to localStorage so a closed tab never loses progress.
-  useEffect(() => {
-    if (!content) return;
-    const t = setTimeout(() => {
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, savedAt: Date.now() }));
-        setHasDraft(true);
-      } catch {
-        // storage full — silently skip, publish/download still work
-      }
-    }, 800);
-    return () => clearTimeout(t);
-  }, [content]);
 
   // Persist AI notes too (small, and never includes the API key).
   useEffect(() => {
@@ -223,6 +267,51 @@ const AdminReview = () => {
     }, 500);
     return () => clearTimeout(t);
   }, [pendingChanges]);
+
+  // Real-time server sync — every decision and AI note is diffed against the
+  // last state the server acknowledged, and pushed within ~1 s. Refreshing the
+  // page, closing the tab, or switching device never loses history anymore.
+  useEffect(() => {
+    if (!syncEnabledRef.current) return;
+    const t = setTimeout(async () => {
+      type Upsert = { kind: "change" | "note"; questionId: string; payload: unknown };
+      type Del = { kind: "change" | "note"; questionId: string };
+      const upserts: Upsert[] = [];
+      const deletes: Del[] = [];
+      for (const [id, ch] of Object.entries(pendingChanges)) {
+        const prev = lastSyncedChanges.current[id];
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(ch)) upserts.push({ kind: "change", questionId: id, payload: ch });
+      }
+      for (const id of Object.keys(lastSyncedChanges.current)) {
+        if (!(id in pendingChanges)) deletes.push({ kind: "change", questionId: id });
+      }
+      for (const [id, note] of Object.entries(aiNotes)) {
+        const prev = lastSyncedNotes.current[id];
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(note)) upserts.push({ kind: "note", questionId: id, payload: note });
+      }
+      for (const id of Object.keys(lastSyncedNotes.current)) {
+        if (!(id in aiNotes)) deletes.push({ kind: "note", questionId: id });
+      }
+      if (upserts.length === 0 && deletes.length === 0) return;
+      setSyncState("saving");
+      try {
+        const res = await fetch(`${FN_URL}/api/review/state`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes }),
+        });
+        if (!res.ok) throw new Error(`serveur ${res.status}`);
+        lastSyncedChanges.current = pendingChanges;
+        lastSyncedNotes.current = aiNotes;
+        setSyncState("saved");
+        setLastSavedAt(Date.now());
+      } catch {
+        setSyncState("error");
+        window.setTimeout(() => setSyncRetryTick((n) => n + 1), 10000);
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [pendingChanges, aiNotes, syncRetryTick]);
 
   const recordChange = useCallback((ref: QuestionRef, questionId: string, question: Question | null) => {
     setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question } }));
@@ -306,6 +395,13 @@ const AdminReview = () => {
   const aiAssessedPendingCount = useMemo(
     () => flatQuestions.reduce((n, f) => (questionStatus(f.question) === "pending" && aiNotes[f.question.id] ? n + 1 : n), 0),
     [flatQuestions, aiNotes],
+  );
+
+  // Questions the AI batch can actually take on: pending, matching the current
+  // filters, and never assessed by the AI before (no existing note).
+  const aiEligibleCount = useMemo(
+    () => flatQuestions.reduce((n, f) => (questionStatus(f.question) === "pending" && !aiNotes[f.question.id] && matchesFilters(f) ? n + 1 : n), 0),
+    [flatQuestions, aiNotes, matchesFilters],
   );
 
   // Combined tally: officially applied (human or AI) + AI suggestions still
@@ -514,6 +610,79 @@ const AdminReview = () => {
     });
   };
 
+  /** Applies every pending AI suggestion in one shot — the AI's decisions
+   * become definitive (validée / rejetée / corrigée), leave the review queue,
+   * and are synced to the server like any manual decision. */
+  const applyAllAiSuggestions = useCallback(() => {
+    const items = flatQuestions.filter((f) => questionStatus(f.question) === "pending" && aiNotes[f.question.id]);
+    if (items.length === 0) return;
+    if (!window.confirm(`Appliquer définitivement les ${items.length} suggestion(s) de l'IA (valider / rejeter / corriger selon son avis) ?`)) return;
+    let approvedCount = 0;
+    let rejectedCount = 0;
+    const updates: Record<string, { ref: QuestionRef; question: Question }> = {};
+    for (const item of items) {
+      const note = aiNotes[item.question.id];
+      if (!note) continue;
+      let next: Question;
+      if (note.decision === "reject") {
+        next = markStatus(item.question, "rejected", "ai");
+        rejectedCount += 1;
+      } else {
+        next = markStatus(
+          note.decision === "edit" && note.correctedQuestion
+            ? {
+                ...item.question,
+                prompt: note.correctedQuestion.prompt ?? item.question.prompt,
+                options: note.correctedQuestion.options ?? item.question.options,
+                answer: note.correctedQuestion.answer ?? item.question.answer,
+                explanation: note.correctedQuestion.explanation ?? item.question.explanation,
+              }
+            : item.question,
+          "approved",
+          "ai",
+        );
+        approvedCount += 1;
+      }
+      updates[item.question.id] = { ref: refOf(item), question: next };
+    }
+    // Single clone + in-place patch: applying hundreds of suggestions one by
+    // one (each cloning the full 3000+ question tree) would freeze the page.
+    setContent((prev) => {
+      if (!prev) return prev;
+      const clone = JSON.parse(JSON.stringify(prev)) as Content;
+      const applyArr = (arr?: Question[]) => {
+        if (!arr) return;
+        for (let i = 0; i < arr.length; i += 1) {
+          const u = updates[arr[i].id];
+          if (u) arr[i] = u.question;
+        }
+      };
+      for (const disc of clone.disciplines) {
+        for (const ch of disc.chapters) {
+          applyArr(ch.questions);
+          if (ch.levels) {
+            for (const lvl of Object.values(ch.levels)) applyArr(lvl.questions);
+          }
+        }
+      }
+      return clone;
+    });
+    setPendingChanges((prev) => {
+      const next = { ...prev };
+      for (const [id, u] of Object.entries(updates)) next[id] = { ...next[id], ref: u.ref, question: u.question };
+      return next;
+    });
+    setAiNotes((prev) => {
+      const next = { ...prev };
+      for (const id of Object.keys(updates)) delete next[id];
+      return next;
+    });
+    addLog(
+      "success",
+      `${items.length} suggestion(s) IA appliquée(s) définitivement — ${approvedCount} validée(s), ${rejectedCount} rejetée(s). Clique « Publier » pour les mettre en ligne.`,
+    );
+  }, [flatQuestions, aiNotes, addLog]);
+
   const runAiBatch = useCallback(async () => {
     if (!content || aiRunningRef.current) return;
     if (!aiApiKey.trim()) {
@@ -522,11 +691,14 @@ const AdminReview = () => {
     }
     const modelCfg = AI_MODELS.find((m) => m.id === aiModelId);
     if (!modelCfg) return;
+    // Never re-send a question the AI has already assessed (existing note) —
+    // reviewing the same 600 questions twice wastes crédits API et fausse les
+    // compteurs. Seules les questions vraiment intouchées sont éligibles.
     const targets = flatQuestions
-      .filter((f) => questionStatus(f.question) === "pending" && matchesFilters(f))
+      .filter((f) => questionStatus(f.question) === "pending" && !aiNotes[f.question.id] && matchesFilters(f))
       .slice(0, Math.max(1, aiBatchSize));
     if (targets.length === 0) {
-      addLog("info", "Aucune question en attente à confier à l'IA (selon les filtres actuels)");
+      addLog("info", "Aucune question éligible : toutes les questions en attente (selon les filtres) ont déjà un avis IA ou sont déjà traitées.");
       return;
     }
     aiRunningRef.current = true;
@@ -579,7 +751,7 @@ const AdminReview = () => {
     );
     addLog("success", "Lot IA terminé");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, aiApiKey, aiModelId, aiBatchSize, aiAutoApply, aiConfidenceThreshold, flatQuestions, matchesFilters, addLog]);
+  }, [content, aiApiKey, aiModelId, aiBatchSize, aiAutoApply, aiConfidenceThreshold, flatQuestions, matchesFilters, addLog, aiNotes]);
 
   const stopAiBatch = () => {
     aiRunningRef.current = false;
@@ -590,9 +762,6 @@ const AdminReview = () => {
   const handlePublish = async () => {
     if (!content) return;
     setPublishing(true);
-    const fnUrl = import.meta.env.VITE_RORK_FUNCTIONS_URL
-      ?? import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL
-      ?? "https://mindduel-kqfozex-backend.rork.app";
     try {
       // Never publish the local working copy as-is: someone else (or the
       // Generator tool) may have published new questions to the server since
@@ -602,27 +771,13 @@ const AdminReview = () => {
       // can never silently un-publish a decision made from another tab.
       addLog("info", "Publication : récupération de la version la plus récente du serveur avant fusion…");
       const freshContent = await fetchContent();
-      let merged = freshContent;
-      let appliedCount = 0;
-      let skippedCount = 0;
-      for (const [questionId, change] of Object.entries(pendingChanges)) {
-        const before = merged;
-        if (change.question === null) {
-          merged = deleteQuestion(merged, change.ref, questionId);
-        } else if (change.moveTo) {
-          merged = moveQuestion(merged, change.ref, change.moveTo, questionId, change.question);
-        } else {
-          merged = updateQuestion(merged, change.ref, questionId, () => change.question as Question);
-        }
-        if (merged === before) skippedCount += 1;
-        else appliedCount += 1;
-      }
+      const { merged, applied: appliedCount, skipped: skippedCount } = replayChanges(freshContent, pendingChanges);
       if (skippedCount > 0) {
         addLog("warn", `${skippedCount} décision(s) locale(s) n'ont pas pu être retrouvées dans la version serveur (question déjà supprimée/déplacée ailleurs) — ignorée(s) sans risque.`);
       }
       addLog("info", `${appliedCount} décision(s) de modération réappliquée(s) sur la version fraîche du serveur.`);
 
-      const res = await fetch(`${fnUrl}/api/content/publish`, {
+      const res = await fetch(`${FN_URL}/api/content/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: merged, password: ADMIN_PASSWORD }),
@@ -636,10 +791,11 @@ const AdminReview = () => {
         // Reflect the true published state locally (includes anything generated
         // elsewhere), and clear the replayed decisions since they're now live.
         setContent(merged);
+        // Clearing the decisions also auto-deletes them server-side via the
+        // live sync — their statuses are now baked into the published content.
         setPendingChanges({});
         localStorage.removeItem(CHANGES_KEY);
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: merged, savedAt: Date.now() }));
-        addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne.`);
+        addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne. Les statuts de modération font partie du contenu publié.`);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -715,12 +871,20 @@ const AdminReview = () => {
             >
               Generator Admin →
             </Link>
-            {hasDraft && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">BROUILLON LOCAL</span>}
+            {syncState === "saving" ? (
+              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-300">SAUVEGARDE…</span>
+            ) : syncState === "error" ? (
+              <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-300">⚠ SYNC SERVEUR ÉCHOUÉE — RÉESSAI AUTO</span>
+            ) : lastSavedAt ? (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                SAUVEGARDÉ ✓ {new Date(lastSavedAt).toLocaleTimeString("fr-FR")}
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={loadFromServer}
+              onClick={loadAll}
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/5 disabled:opacity-50"
             >
@@ -785,9 +949,20 @@ const AdminReview = () => {
               />
             </div>
           </div>
-          <p className="mt-2 text-[11px] text-white/30">
-            Restantes (compteur officiel, ce qui détermine la file de révision) : <b className="text-white/50">{stats.pending}</b> — dont {aiAssessedPendingCount} déjà commentée(s) par l'IA, il ne reste plus qu'à cliquer « Appliquer la suggestion » pour les faire sortir de la file.
-          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[11px] text-white/30">
+              Restantes (compteur officiel, ce qui détermine la file de révision) : <b className="text-white/50">{stats.pending}</b> — dont {aiAssessedPendingCount} déjà commentée(s) par l'IA. Toutes les décisions sont sauvegardées sur le serveur en temps réel.
+            </p>
+            {aiAssessedPendingCount > 0 && (
+              <button
+                type="button"
+                onClick={applyAllAiSuggestions}
+                className="shrink-0 rounded-lg bg-sky-500/20 px-3 py-1.5 text-[11px] font-bold text-sky-300 transition hover:bg-sky-500/30"
+              >
+                Appliquer définitivement les {aiAssessedPendingCount} suggestion(s) IA
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filters */}
@@ -1061,7 +1236,7 @@ const AdminReview = () => {
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 px-4 py-3 text-sm font-bold text-[#0b0f1a] transition hover:brightness-105 disabled:opacity-40"
                 >
                   <Bot className="h-4 w-4" />
-                  Lancer l'IA sur {Math.min(aiBatchSize, pendingItems.length)} question(s)
+                  Lancer l'IA sur {Math.min(aiBatchSize, aiEligibleCount)} question(s) jamais évaluées
                 </button>
               )}
 
