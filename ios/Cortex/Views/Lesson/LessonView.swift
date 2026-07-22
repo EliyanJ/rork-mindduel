@@ -8,6 +8,39 @@ struct LessonLaunch: Identifiable {
     var disciplineId: String? = nil
     var level: DifficultyLevel? = nil
     var chapterIdRaw: String? = nil
+    /// Pre-lesson snapshot used to detect newly-unlocked content once the
+    /// lesson completes successfully. Nil for mixed/themed path stages.
+    var unlockSnapshot: UnlockSnapshot? = nil
+}
+
+/// Captures what was locked right before starting a chapter-level lesson,
+/// so the completion flow can tell whether this lesson just unlocked the
+/// next chapter or the next difficulty tier.
+struct UnlockSnapshot {
+    let disciplineId: String
+    let chapterId: String
+    let level: DifficultyLevel
+    let nextChapterTitle: String?
+    let nextChapterWasLocked: Bool
+    let nextLevelWasLocked: Bool
+
+    /// Compares this snapshot against the current store state to decide
+    /// whether a chapter or a difficulty tier just got unlocked.
+    func resolveUnlockKind(model: AppModel) -> UnlockCelebrationView.Kind? {
+        guard let discipline = model.discipline(withId: disciplineId) else { return nil }
+        if nextChapterWasLocked, let nextChapterTitle {
+            let newBest = model.store.chapterProgress(
+                disciplineId: disciplineId, chapterId: chapterId, level: .facile
+            )?.bestScore ?? 0
+            if newBest >= 0.6 {
+                return .chapter(title: nextChapterTitle)
+            }
+        }
+        if nextLevelWasLocked, let nextLevel = level.next, model.store.isLevelUnlocked(nextLevel, for: discipline) {
+            return .level(nextLevel, disciplineName: discipline.name)
+        }
+        return nil
+    }
 }
 
 struct LessonView: View {
@@ -17,6 +50,8 @@ struct LessonView: View {
     @Environment(AppModel.self) private var model
     @State private var session: LessonSession
     @State private var isWatchingAd = false
+    @State private var postScreenQueue: [PostLessonScreen] = []
+    @State private var currentPostScreen: PostLessonScreen?
     private let title: String
     private let onRetry: (LessonLaunch) -> Void
 
@@ -48,12 +83,16 @@ struct LessonView: View {
                             onRetry: retryNow,
                             onLater: { dismiss() }
                         )
+                    } else if let screen = currentPostScreen {
+                        postScreenView(screen)
                     } else {
                         LessonCompleteView(
                             xp: session.xpEarned,
                             accuracy: session.accuracy,
                             streak: session.streakAfterCompletion,
-                            onDone: { dismiss() },
+                            masteredCount: session.correctCount,
+                            toReinforceCount: session.wrongAnswers.count,
+                            onDone: advancePostLesson,
                             sessionLabel: completionSessionLabel,
                             needsAnotherSession: session.needsAnotherSession,
                             levelJustValidated: session.levelJustValidated
@@ -83,6 +122,52 @@ struct LessonView: View {
         } message: {
             Text(AdsManager.shared.lastError ?? "")
         }
+        .onChange(of: session.phase) { _, newPhase in
+            guard newPhase == .completed, !session.isLevelFailed else { return }
+            buildPostLessonQueueIfNeeded()
+        }
+    }
+
+    /// A screen shown after `LessonCompleteView`, before the player is
+    /// finally released back to the app: streak celebration, then any
+    /// content-unlock celebration.
+    private enum PostLessonScreen {
+        case streak
+        case unlock(UnlockCelebrationView.Kind)
+    }
+
+    @ViewBuilder
+    private func postScreenView(_ screen: PostLessonScreen) -> some View {
+        switch screen {
+        case .streak:
+            StreakCelebrationView(
+                streak: session.streakAfterCompletion,
+                week: session.weekActivity,
+                onContinue: advancePostLesson
+            )
+        case .unlock(let kind):
+            UnlockCelebrationView(kind: kind, onClaim: advancePostLesson)
+        }
+    }
+
+    private func advancePostLesson() {
+        if postScreenQueue.isEmpty {
+            dismiss()
+        } else {
+            currentPostScreen = postScreenQueue.removeFirst()
+        }
+    }
+
+    private func buildPostLessonQueueIfNeeded() {
+        guard postScreenQueue.isEmpty, currentPostScreen == nil else { return }
+        var queue: [PostLessonScreen] = []
+        if session.isFirstLessonToday {
+            queue.append(.streak)
+        }
+        if let snapshot = launch.unlockSnapshot, let kind = snapshot.resolveUnlockKind(model: model) {
+            queue.append(.unlock(kind))
+        }
+        postScreenQueue = queue
     }
 
     private func retryNow() {

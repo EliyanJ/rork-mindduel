@@ -4,6 +4,8 @@ struct LessonCompleteView: View {
     let xp: Int
     let accuracy: Double
     let streak: Int
+    let masteredCount: Int
+    let toReinforceCount: Int
     let onDone: () -> Void
     /// Optional multi-session indicator, e.g. "Manche 1/2" or "Niveau validé".
     var sessionLabel: String? = nil
@@ -14,26 +16,51 @@ struct LessonCompleteView: View {
 
     @State private var hasAppeared: Bool = false
 
+    private var gaugeColor: Color {
+        if accuracy >= 0.8 { return Theme.success }
+        if accuracy >= 0.5 { return Theme.gold }
+        return Theme.danger
+    }
+
+    private var headline: String {
+        if accuracy == 1 { return "Bravo ! Connaissances maîtrisées" }
+        if accuracy >= 0.8 { return "Bravo ! Très bon travail" }
+        if accuracy >= 0.5 { return "Continue comme ça, ça rentre !" }
+        return "Courage, tu progresses"
+    }
+
     var body: some View {
-        VStack(spacing: 28) {
-            Spacer()
-            ZStack {
-                Circle()
-                    .fill(Theme.primary.opacity(0.14))
-                    .frame(width: 170, height: 170)
-                Image(accuracy == 1 ? "MascotJump" : "MascotWave")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 132)
-                    .accessibilityHidden(true)
+        VStack(spacing: 22) {
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                Label("+\(xp) XP", systemImage: "bolt.fill")
+                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.gold.mix(with: .black, by: 0.1))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.gold.opacity(0.14)))
+                if streak > 0 {
+                    Label("\(streak)", systemImage: "flame.fill")
+                        .font(.system(.caption, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.primary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.primary.opacity(0.12)))
+                }
             }
-            .scaleEffect(hasAppeared ? 1 : 0.3)
+            .opacity(hasAppeared ? 1 : 0)
+
+            CircularPercentGauge(percent: accuracy, color: gaugeColor)
+                .scaleEffect(hasAppeared ? 1 : 0.5)
+                .opacity(hasAppeared ? 1 : 0)
 
             VStack(spacing: 6) {
-                Text("Leçon terminée !")
-                    .font(.system(.largeTitle, design: .rounded, weight: .heavy))
+                Text(headline)
+                    .font(.system(.title2, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.ink)
-                Text(accuracy == 1 ? "Sans faute, bravo 🎉" : "Continue comme ça, ça rentre !")
+                    .multilineTextAlignment(.center)
+                Text("Ta culture générale vient de progresser.")
                     .font(.system(.body, design: .rounded, weight: .semibold))
                     .foregroundStyle(Theme.inkMuted)
             }
@@ -46,9 +73,8 @@ struct LessonCompleteView: View {
             }
 
             HStack(spacing: 12) {
-                statCard(title: "XP", value: "+\(xp)", icon: "bolt.fill", color: Theme.gold)
-                statCard(title: "Précision", value: "\(Int(accuracy * 100)) %", icon: "target", color: Theme.success)
-                statCard(title: "Série", value: "\(streak)", icon: "flame.fill", color: Theme.primary)
+                statCard(title: "Maîtrisés", value: "\(masteredCount)", icon: "checkmark.seal.fill", color: Theme.success)
+                statCard(title: "À renforcer", value: "\(toReinforceCount)", icon: "arrow.triangle.2.circlepath", color: Theme.gold)
             }
             .opacity(hasAppeared ? 1 : 0)
             .offset(y: hasAppeared ? 0 : 24)
@@ -107,4 +133,15 @@ struct LessonCompleteView: View {
         .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 1.5))
     }
+}
+
+#Preview {
+    LessonCompleteView(
+        xp: 30,
+        accuracy: 1,
+        streak: 4,
+        masteredCount: 10,
+        toReinforceCount: 0,
+        onDone: {}
+    )
 }

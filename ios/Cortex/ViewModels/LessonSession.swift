@@ -38,12 +38,26 @@ final class LessonSession {
     private(set) var xpEarned: Int = 0
     private(set) var streakAfterCompletion: Int = 0
     private(set) var wrongAnswers: [WrongAnswer] = []
+    /// True when this lesson was the first one completed today (before it,
+    /// the player hadn't registered any activity today). Drives the streak
+    /// celebration screen shown right after completion.
+    private(set) var isFirstLessonToday: Bool = false
+    /// Last 7 days (oldest first, today last) with their activity status,
+    /// for the streak celebration's weekly row.
+    private(set) var weekActivity: [DayActivity] = []
 
     struct WrongAnswer: Identifiable, Hashable {
         let id = UUID()
         let question: Question
         let selectedAnswer: String
         let disciplineId: String
+    }
+
+    /// A single day in the streak celebration's weekly strip.
+    struct DayActivity: Identifiable {
+        let id = UUID()
+        let date: Date
+        let isActive: Bool
     }
 
     init(items: [LessonItem], chapterId: String?, store: ProgressStore,
@@ -131,9 +145,12 @@ final class LessonSession {
     }
 
     private func complete() {
+        let wasActiveToday = Self.isActiveToday(store: store)
         if correctCount == items.count { xpEarned += 20 }
         store.addXP(xpEarned)
         store.registerActivity()
+        isFirstLessonToday = !wasActiveToday
+        weekActivity = Self.computeWeekActivity(store: store)
         if let chapterId {
             store.recordChapterResult(chapterId: chapterId, score: accuracy)
         }
@@ -168,6 +185,21 @@ final class LessonSession {
             return false
         }
         return cp.isCompleted && !cp.passed
+    }
+
+    private static func isActiveToday(store: ProgressStore) -> Bool {
+        guard let last = store.progress.lastActiveDay else { return false }
+        return Calendar.current.isDate(last, inSameDayAs: .now)
+    }
+
+    private static func computeWeekActivity(store: ProgressStore) -> [DayActivity] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        return (0..<7).reversed().compactMap { offset -> DayActivity? in
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { return nil }
+            let active = store.progress.activeDays.contains { calendar.isDate($0, inSameDayAs: day) }
+            return DayActivity(date: day, isActive: active)
+        }
     }
 
     private func prepareQuestion() {

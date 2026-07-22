@@ -219,8 +219,8 @@ struct HomeView: View {
             return
         }
         Haptics.medium()
-        let chapter = model.catalog.disciplines.first { $0.id == disciplineId }?
-            .chapters.first { $0.id == chapterId }
+        let discipline = model.catalog.disciplines.first { $0.id == disciplineId }
+        let chapter = discipline?.chapters.first { $0.id == chapterId }
         let title = "\(chapter?.title ?? "Chapitre") · \(level.displayName)"
         let freshItems = makeFreshLevelItems(
             disciplineId: disciplineId,
@@ -234,7 +234,35 @@ struct HomeView: View {
             items: freshItems,
             disciplineId: disciplineId,
             level: level,
-            chapterIdRaw: chapterId
+            chapterIdRaw: chapterId,
+            unlockSnapshot: makeUnlockSnapshot(discipline: discipline, chapterId: chapterId, level: level)
+        )
+    }
+
+    /// Captures, right before launching a chapter-level lesson, whether the
+    /// next chapter and the next difficulty tier are currently locked —
+    /// so the completion flow can tell if this lesson just unlocked them.
+    private func makeUnlockSnapshot(discipline: Discipline?, chapterId: String, level: DifficultyLevel) -> UnlockSnapshot? {
+        guard let discipline else { return nil }
+        let chapters = discipline.chapters
+        let chapterIdx = chapters.firstIndex { $0.id == chapterId }
+        let nextChapter = chapterIdx.flatMap { idx in idx + 1 < chapters.count ? chapters[idx + 1] : nil }
+        let currentFacileBest = model.store.chapterProgress(
+            disciplineId: discipline.id, chapterId: chapterId, level: .facile
+        )?.bestScore ?? 0
+        let nextChapterWasLocked = nextChapter != nil && currentFacileBest < 0.6
+        let nextLevelWasLocked: Bool = {
+            guard let nextLevel = level.next else { return false }
+            return !model.store.isLevelUnlocked(nextLevel, for: discipline)
+        }()
+        guard nextChapterWasLocked || nextLevelWasLocked else { return nil }
+        return UnlockSnapshot(
+            disciplineId: discipline.id,
+            chapterId: chapterId,
+            level: level,
+            nextChapterTitle: nextChapter?.title,
+            nextChapterWasLocked: nextChapterWasLocked,
+            nextLevelWasLocked: nextLevelWasLocked
         )
     }
 

@@ -3,20 +3,33 @@ import SwiftUI
 struct ContentView: View {
     @State private var model = AppModel()
     @State private var onboardingStore = OnboardingStore()
+    @State private var showSplash = true
     @Environment(OnlineModel.self) private var online
 
     var body: some View {
-        Group {
-            if onboardingStore.isCompleted {
-                mainTabs
-                    .transition(.opacity)
-            } else {
-                OnboardingView(store: onboardingStore, onFinished: finishOnboarding)
-                    .environment(model)
-                    .transition(.opacity)
+        ZStack {
+            Group {
+                if onboardingStore.isCompleted {
+                    mainTabs
+                        .transition(.opacity)
+                } else {
+                    OnboardingView(store: onboardingStore, onFinished: finishOnboarding)
+                        .environment(model)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.35), value: onboardingStore.isCompleted)
+
+            if showSplash {
+                SplashView {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showSplash = false
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(10)
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: onboardingStore.isCompleted)
     }
 
     private func finishOnboarding() {
