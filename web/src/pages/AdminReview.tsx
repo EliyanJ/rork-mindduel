@@ -274,7 +274,17 @@ const AdminReview = () => {
   // tab — defaults to the question's current location until you pick something else.
   const [categorizeSelection, setCategorizeSelection] = useState<Record<string, QuestionRef>>({});
 
+  // One-at-a-time position in the categorization tab, mirroring the review flow.
+  const [categorizeIndex, setCategorizeIndex] = useState(0);
+
   const categorizeItems = useMemo(() => flatQuestions.filter(matchesFilters), [flatQuestions, matchesFilters]);
+
+  // Clamp the position whenever the filtered list shrinks/grows (filters change, a move happens, etc).
+  useEffect(() => {
+    setCategorizeIndex((i) => Math.min(i, Math.max(0, categorizeItems.length - 1)));
+  }, [categorizeItems.length]);
+
+  const categorizeItem = categorizeItems[categorizeIndex] ?? null;
 
   const stats = useMemo(() => {
     let approved = 0;
@@ -398,6 +408,14 @@ const AdminReview = () => {
     },
     [addLog, recordMove],
   );
+
+  const categorizeGoNext = useCallback(() => {
+    setCategorizeIndex((i) => (categorizeItems.length > 0 ? (i + 1) % categorizeItems.length : 0));
+  }, [categorizeItems.length]);
+
+  const categorizeGoPrev = useCallback(() => {
+    setCategorizeIndex((i) => (categorizeItems.length > 0 ? (i - 1 + categorizeItems.length) % categorizeItems.length : 0));
+  }, [categorizeItems.length]);
 
   const openEdit = useCallback((item: FlatQuestion) => {
     setEditingItem(item);
@@ -1115,112 +1133,149 @@ const AdminReview = () => {
         )}
 
         {tab === "categorize" && (
-          <div className="space-y-3">
-            <p className="rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3 text-xs text-sky-200">
-              Recatégorise manuellement une question par thème (discipline/chapitre) et par difficulté. Chaque changement est appliqué immédiatement à ton brouillon local et sera repris tel quel à la publication — même si le serveur a évolué entre-temps.
-            </p>
-            {categorizeItems.length === 0 ? (
-              <p className="py-12 text-center text-sm text-white/30">Aucune question pour ces filtres.</p>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/10">
-                <table className="w-full text-sm">
-                  <thead className="bg-white/[0.03] text-left text-xs uppercase tracking-wider text-white/40">
-                    <tr>
-                      <th className="px-4 py-2.5">Question</th>
-                      <th className="px-4 py-2.5">Actuel</th>
-                      <th className="px-4 py-2.5">Nouvelle discipline</th>
-                      <th className="px-4 py-2.5">Nouveau chapitre</th>
-                      <th className="px-4 py-2.5">Nouvelle difficulté</th>
-                      <th className="px-4 py-2.5"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {categorizeItems.slice(0, 300).map((item) => {
-                      const currentRef = refOf(item);
-                      const sel = categorizeSelection[item.question.id] ?? currentRef;
-                      const chapters = chaptersByDiscipline.get(sel.disciplineId) ?? [];
-                      const changed = sel.disciplineId !== currentRef.disciplineId || sel.chapterId !== currentRef.chapterId || sel.level !== currentRef.level;
-                      const setSel = (patch: Partial<QuestionRef>) => {
-                        setCategorizeSelection((prev) => {
-                          const base = prev[item.question.id] ?? currentRef;
-                          const next = { ...base, ...patch };
-                          // Switching discipline invalidates the chapter choice — fall back to its first chapter.
-                          if (patch.disciplineId && patch.disciplineId !== base.disciplineId) {
-                            next.chapterId = chaptersByDiscipline.get(patch.disciplineId)?.[0]?.id ?? "";
-                          }
-                          return { ...prev, [item.question.id]: next };
-                        });
-                      };
-                      return (
-                        <tr key={item.question.id} className="hover:bg-white/[0.02]">
-                          <td className="max-w-xs truncate px-4 py-2.5 text-white/80">{item.question.prompt}</td>
-                          <td className="px-4 py-2.5 text-xs text-white/40">
-                            {item.disciplineName}
-                            <br />
-                            {item.chapterTitle} · {LEVEL_LABEL[item.level] ?? item.level}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <select
-                              value={sel.disciplineId}
-                              onChange={(e) => setSel({ disciplineId: e.target.value })}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-sky-500/50 focus:outline-none"
-                            >
-                              {disciplineOptions.map(([id, name]) => (
-                                <option key={id} value={id} className="bg-[#0b0f1a]">{name}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <select
-                              value={sel.chapterId}
-                              onChange={(e) => setSel({ chapterId: e.target.value })}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-sky-500/50 focus:outline-none"
-                            >
-                              {chapters.map((c) => (
-                                <option key={c.id} value={c.id} className="bg-[#0b0f1a]">{c.title}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <select
-                              value={sel.level === "legacy" ? "facile" : sel.level}
-                              onChange={(e) => setSel({ level: e.target.value })}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-sky-500/50 focus:outline-none"
-                            >
-                              {DIFFICULTY_LEVELS.map((l) => (
-                                <option key={l} value={l} className="bg-[#0b0f1a]">{LEVEL_LABEL[l] ?? l}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <button
-                              type="button"
-                              disabled={!changed}
-                              onClick={() => {
-                                handleMove(item, sel);
-                                setCategorizeSelection((prev) => {
-                                  const next = { ...prev };
-                                  delete next[item.question.id];
-                                  return next;
-                                });
-                              }}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-30"
-                            >
-                              Recatégoriser
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {categorizeItems.length > 300 && (
-                  <p className="border-t border-white/5 px-4 py-2 text-center text-xs text-white/30">
-                    {categorizeItems.length - 300} question(s) de plus — affine la recherche/les filtres pour les voir.
-                  </p>
-                )}
-              </div>
-            )}
+          <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
+            <div className="flex flex-col items-center gap-4">
+              {categorizeItem ? (
+                <PhoneQuestionPreview
+                  question={categorizeItem.question}
+                  disciplineName={categorizeItem.disciplineName}
+                  disciplineColor={`#${categorizeItem.disciplineColor.replace("#", "")}`}
+                  position={categorizeIndex + 1}
+                  total={categorizeItems.length}
+                />
+              ) : (
+                <div className="flex h-[700px] w-[360px] items-center justify-center rounded-[3rem] border-4 border-dashed border-white/10 text-center text-sm text-white/30">
+                  Aucune question pour ces filtres.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="mb-4 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3 text-xs text-sky-200">
+                Recatégorise une question à la fois par thème (discipline/chapitre) et par difficulté. Chaque changement est appliqué immédiatement à ton brouillon local et sera repris tel quel à la publication.
+              </p>
+              {categorizeItem ? (
+                (() => {
+                  const item = categorizeItem;
+                  const currentRef = refOf(item);
+                  const sel = categorizeSelection[item.question.id] ?? currentRef;
+                  const chapters = chaptersByDiscipline.get(sel.disciplineId) ?? [];
+                  const changed = sel.disciplineId !== currentRef.disciplineId || sel.chapterId !== currentRef.chapterId || sel.level !== currentRef.level;
+                  const setSel = (patch: Partial<QuestionRef>) => {
+                    setCategorizeSelection((prev) => {
+                      const base = prev[item.question.id] ?? currentRef;
+                      const next = { ...base, ...patch };
+                      if (patch.disciplineId && patch.disciplineId !== base.disciplineId) {
+                        next.chapterId = chaptersByDiscipline.get(patch.disciplineId)?.[0]?.id ?? "";
+                      }
+                      return { ...prev, [item.question.id]: next };
+                    });
+                  };
+                  return (
+                    <>
+                      <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-white/60">
+                        Question {categorizeIndex + 1} / {categorizeItems.length}
+                      </h2>
+                      <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                        <p className="mb-3 text-base font-bold leading-snug text-white/90">{item.question.prompt}</p>
+                        {(item.question.options ?? []).length > 0 && (
+                          <ul className="mb-3 space-y-1.5">
+                            {(item.question.options ?? []).map((opt, i) => (
+                              <li
+                                key={i}
+                                className={`rounded-lg px-3 py-1.5 text-sm ${
+                                  opt.trim().toLowerCase() === item.question.answer.trim().toLowerCase()
+                                    ? "bg-emerald-500/15 font-bold text-emerald-300"
+                                    : "bg-white/5 text-white/60"
+                                }`}
+                              >
+                                {opt}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {item.question.type === "anagram" && (
+                          <p className="mb-3 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-sm font-bold text-emerald-300">Réponse : {item.question.answer}</p>
+                        )}
+                        <p className="text-xs text-white/40">{item.question.explanation}</p>
+                      </div>
+
+                      <p className="mb-4 text-xs text-white/40">
+                        Actuellement classée dans <b className="text-white/70">{item.disciplineName}</b> · <b className="text-white/70">{item.chapterTitle}</b> · <b className="text-white/70">{LEVEL_LABEL[item.level] ?? item.level}</b>
+                      </p>
+
+                      <label className="mb-1 block text-xs text-white/50">Nouvelle discipline</label>
+                      <select
+                        value={sel.disciplineId}
+                        onChange={(e) => setSel({ disciplineId: e.target.value })}
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-sky-500/50 focus:outline-none"
+                      >
+                        {disciplineOptions.map(([id, name]) => (
+                          <option key={id} value={id} className="bg-[#0b0f1a]">{name}</option>
+                        ))}
+                      </select>
+
+                      <label className="mb-1 block text-xs text-white/50">Nouveau chapitre</label>
+                      <select
+                        value={sel.chapterId}
+                        onChange={(e) => setSel({ chapterId: e.target.value })}
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-sky-500/50 focus:outline-none"
+                      >
+                        {chapters.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-[#0b0f1a]">{c.title}</option>
+                        ))}
+                      </select>
+
+                      <label className="mb-1 block text-xs text-white/50">Nouvelle difficulté</label>
+                      <select
+                        value={sel.level === "legacy" ? "facile" : sel.level}
+                        onChange={(e) => setSel({ level: e.target.value })}
+                        className="mb-5 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-sky-500/50 focus:outline-none"
+                      >
+                        {DIFFICULTY_LEVELS.map((l) => (
+                          <option key={l} value={l} className="bg-[#0b0f1a]">{LEVEL_LABEL[l] ?? l}</option>
+                        ))}
+                      </select>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={categorizeGoPrev}
+                          className="rounded-xl border border-white/10 px-3 py-2.5 text-sm font-bold text-white/60 transition hover:bg-white/5"
+                        >
+                          ← Précédente
+                        </button>
+                        <button
+                          type="button"
+                          onClick={categorizeGoNext}
+                          className="rounded-xl border border-white/10 px-3 py-2.5 text-sm font-bold text-white/60 transition hover:bg-white/5"
+                        >
+                          Passer / Suivante →
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!changed}
+                        onClick={() => {
+                          handleMove(item, sel);
+                          setCategorizeSelection((prev) => {
+                            const next = { ...prev };
+                            delete next[item.question.id];
+                            return next;
+                          });
+                          categorizeGoNext();
+                        }}
+                        className="mt-2 w-full rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 px-4 py-3 text-sm font-bold text-[#0b0f1a] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        Recatégoriser et passer à la suivante
+                      </button>
+                    </>
+                  );
+                })()
+              ) : (
+                <p className="text-sm text-white/40">Aucune question à afficher.</p>
+              )}
+            </div>
           </div>
         )}
 
