@@ -68,6 +68,38 @@ Règles :
 Pas de texte hors JSON, pas de backticks.`;
 }
 
+/** Best-effort repair for JSON truncated mid-string/object due to a token
+ * limit — closes unterminated strings and balances braces/brackets. */
+function repairTruncatedJson(text: string): string {
+  let result = text;
+  let inString = false;
+  let escaped = false;
+  const stack: string[] = [];
+  for (const ch of result) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (inString) result += '"';
+  while (stack.length > 0) {
+    const open = stack.pop();
+    result += open === "{" ? "}" : "]";
+  }
+  return result;
+}
+
 function extractJson(raw: string): string {
   let text = raw.trim();
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
@@ -102,7 +134,14 @@ export async function reviewQuestionWithAi(item: FlatQuestion, config: AiConfig)
   try {
     parsed = JSON.parse(jsonStr);
   } catch {
-    throw new Error("JSON invalide renvoyé par le modèle");
+    // Retry once with a repaired JSON string (handles truncated output by
+    // closing dangling braces/brackets/strings) before giving up.
+    try {
+      parsed = JSON.parse(repairTruncatedJson(jsonStr));
+    } catch {
+      const preview = jsonStr.slice(0, 160).replace(/\s+/g, " ");
+      throw new Error(`JSON invalide renvoyé par le modèle (aperçu: « ${preview}»…)`);
+    }
   }
   const decision: AiDecision =
     parsed.decision === "approve" || parsed.decision === "reject" || parsed.decision === "edit"

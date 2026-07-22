@@ -205,14 +205,14 @@ async function handleAiReviewProxy(request: Request): Promise<Response> {
             { role: "user", content: userPrompt },
           ],
           temperature: 0.2,
-          max_tokens: 2000,
+          max_tokens: 4000,
         }),
       });
       if (!res.ok) {
         const errText = await res.text().catch(() => res.statusText);
         return Response.json({ error: `Perplexity ${res.status}: ${errText.slice(0, 300)}` }, { status: 502 });
       }
-      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[]; finish_reason?: string };
       return Response.json({ content: data?.choices?.[0]?.message?.content ?? "" });
     }
 
