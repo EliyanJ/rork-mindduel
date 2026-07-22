@@ -108,6 +108,45 @@ export function markStatus(q: Question, status: ModerationStatus, by: ModeratedB
   return { ...q, moderationStatus: status, moderatedBy: by, moderatedAt: Date.now() };
 }
 
+/** Inserts a question into a specific discipline/chapter/level, creating the
+ * level bucket (or upgrading a legacy chapter) if needed. Used to re-file a
+ * question under the correct theme/difficulty during manual categorization. */
+export function insertQuestion(content: Content, ref: QuestionRef, question: Question): Content {
+  const clone: Content = JSON.parse(JSON.stringify(content));
+  const ch = findChapter(clone, ref);
+  if (!ch) return content;
+  if (ref.level === "legacy") {
+    if (!ch.questions) ch.questions = [];
+    ch.questions.push(question);
+    return clone;
+  }
+  if (!ch.levels) ch.levels = {};
+  const lvl = ch.levels[ref.level] ?? { questions: [] };
+  lvl.questions.push(question);
+  ch.levels[ref.level] = lvl;
+  return clone;
+}
+
+/** Moves a question from one discipline/chapter/level to another — removes it
+ * from its current location and re-files it at the destination, keeping its id
+ * and content untouched (aside from the optional `patch`). Returns the
+ * original content unchanged if the question can't be found at `from`. */
+export function moveQuestion(
+  content: Content,
+  from: QuestionRef,
+  to: QuestionRef,
+  questionId: string,
+  patch?: Partial<Question>,
+): Content {
+  const fromCh = findChapter(content, from);
+  const fromArr = fromCh ? getQuestionArray(fromCh, from.level) : undefined;
+  const existing = fromArr?.find((q) => q.id === questionId);
+  if (!existing) return content;
+  const afterDelete = deleteQuestion(content, from, questionId);
+  if (afterDelete === content) return content;
+  return insertQuestion(afterDelete, to, patch ? { ...existing, ...patch } : existing);
+}
+
 export const LEVEL_LABEL: Record<string, string> = {
   facile: "Facile",
   intermediaire: "Intermédiaire",

@@ -33,6 +33,7 @@ import {
   deleteQuestion,
   flattenQuestions,
   markStatus,
+  moveQuestion,
   questionStatus,
   updateQuestion,
 } from "@/lib/moderation";
@@ -44,7 +45,7 @@ const DRAFT_KEY = "minduel-review-draft-v1";
 const NOTES_KEY = "minduel-review-ai-notes-v1";
 const CHANGES_KEY = "minduel-review-pending-changes-v1";
 
-type Tab = "review" | "rejected" | "all";
+type Tab = "review" | "rejected" | "all" | "categorize";
 type LogLevel = "info" | "success" | "warn" | "error";
 type LogEntry = { time: string; level: LogLevel; message: string };
 
@@ -56,10 +57,16 @@ const refOf = (item: FlatQuestion): QuestionRef => ({
 
 /** A single moderation decision, tracked independently from the full working
  * copy of content.json. `question: null` means "delete this question".
- * Publishing replays exactly these decisions on top of the freshest server
- * content, so it can never clobber questions generated/published elsewhere
- * in the meantime. */
-type PendingChange = { ref: QuestionRef; question: Question | null };
+ * `moveTo` (categorization tab) means "re-file this question under a
+ * different theme/difficulty" — replayed as a delete-then-insert at publish
+ * time. Publishing replays exactly these decisions on top of the freshest
+ * server content, so it can never clobber questions generated/published
+ * elsewhere in the meantime. */
+type PendingChange = { ref: QuestionRef; question: Question | null; moveTo?: QuestionRef };
+
+/** Difficulty levels a question can be manually re-filed under (in order of
+ * increasing difficulty) — used by the categorization tab's dropdown. */
+const DIFFICULTY_LEVELS = ["facile", "intermediaire", "difficile", "maitre", "legende"];
 
 const AdminReview = () => {
   const [authed, setAuthed] = useState(false);
@@ -221,6 +228,10 @@ const AdminReview = () => {
     setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question } }));
   }, []);
 
+  const recordMove = useCallback((ref: QuestionRef, moveTo: QuestionRef, questionId: string, question: Question) => {
+    setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question, moveTo } }));
+  }, []);
+
   const flatQuestions = useMemo(() => flattenQuestions(content), [content]);
 
   const disciplineOptions = useMemo(() => {
@@ -248,6 +259,22 @@ const AdminReview = () => {
     },
     [disciplineFilter, levelFilter, sourceFilter, search],
   );
+
+  // Discipline -> chapters lookup for the categorization tab's dropdowns.
+  const chaptersByDiscipline = useMemo(() => {
+    const map = new Map<string, { id: string; title: string }[]>();
+    if (!content) return map;
+    for (const disc of content.disciplines) {
+      map.set(disc.id, disc.chapters.map((c) => ({ id: c.id, title: c.title })));
+    }
+    return map;
+  }, [content]);
+
+  // Local (not-yet-applied) selection per question row in the categorization
+  // tab — defaults to the question's current location until you pick something else.
+  const [categorizeSelection, setCategorizeSelection] = useState<Record<string, QuestionRef>>({});
+
+  const categorizeItems = useMemo(() => flatQuestions.filter(matchesFilters), [flatQuestions, matchesFilters]);
 
   const stats = useMemo(() => {
     let approved = 0;
@@ -355,6 +382,21 @@ const AdminReview = () => {
       addLog("warn", `🗑 Supprimée définitivement : ${item.question.prompt.slice(0, 60)}`);
     },
     [addLog, recordChange],
+  );
+
+  /** Manually re-files a question under a different discipline/chapter/difficulty
+   * — used by the "Catégorisation" tab to fix miscategorized questions before
+   * publishing. Moves are tracked like any other moderation decision, so
+   * publishing can replay them safely on top of the freshest server content. */
+  const handleMove = useCallback(
+    (item: FlatQuestion, to: QuestionRef) => {
+      const from = refOf(item);
+      if (from.disciplineId === to.disciplineId && from.chapterId === to.chapterId && from.level === to.level) return;
+      setContent((prev) => (prev ? moveQuestion(prev, from, to, item.question.id) : prev));
+      recordMove(from, to, item.question.id, item.question);
+      addLog("success", `⇆ Recatégorisée : "${item.question.prompt.slice(0, 50)}" → ${to.chapterId} / ${LEVEL_LABEL[to.level] ?? to.level}`);
+    },
+    [addLog, recordMove],
   );
 
   const openEdit = useCallback((item: FlatQuestion) => {
@@ -547,9 +589,13 @@ const AdminReview = () => {
       let skippedCount = 0;
       for (const [questionId, change] of Object.entries(pendingChanges)) {
         const before = merged;
-        merged = change.question === null
-          ? deleteQuestion(merged, change.ref, questionId)
-          : updateQuestion(merged, change.ref, questionId, () => change.question as Question);
+        if (change.question === null) {
+          merged = deleteQuestion(merged, change.ref, questionId);
+        } else if (change.moveTo) {
+          merged = moveQuestion(merged, change.ref, change.moveTo, questionId, change.question);
+        } else {
+          merged = updateQuestion(merged, change.ref, questionId, () => change.question as Question);
+        }
         if (merged === before) skippedCount += 1;
         else appliedCount += 1;
       }
@@ -786,6 +832,7 @@ const AdminReview = () => {
           <TabButton active={tab === "review"} onClick={() => setTab("review")} label={`File de révision (${pendingItems.length})`} />
           <TabButton active={tab === "rejected"} onClick={() => setTab("rejected")} label={`Rejetées (${rejectedItems.length})`} />
           <TabButton active={tab === "all"} onClick={() => setTab("all")} label={`Toutes (${allItems.length})`} />
+          <TabButton active={tab === "categorize"} onClick={() => setTab("categorize")} label={`Catégorisation (${categorizeItems.length})`} />
         </div>
 
         {tab === "review" && (
@@ -1063,6 +1110,116 @@ const AdminReview = () => {
                   </button>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {tab === "categorize" && (
+          <div className="space-y-3">
+            <p className="rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-4 py-3 text-xs text-sky-200">
+              Recatégorise manuellement une question par thème (discipline/chapitre) et par difficulté. Chaque changement est appliqué immédiatement à ton brouillon local et sera repris tel quel à la publication — même si le serveur a évolué entre-temps.
+            </p>
+            {categorizeItems.length === 0 ? (
+              <p className="py-12 text-center text-sm text-white/30">Aucune question pour ces filtres.</p>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-white/10">
+                <table className="w-full text-sm">
+                  <thead className="bg-white/[0.03] text-left text-xs uppercase tracking-wider text-white/40">
+                    <tr>
+                      <th className="px-4 py-2.5">Question</th>
+                      <th className="px-4 py-2.5">Actuel</th>
+                      <th className="px-4 py-2.5">Nouvelle discipline</th>
+                      <th className="px-4 py-2.5">Nouveau chapitre</th>
+                      <th className="px-4 py-2.5">Nouvelle difficulté</th>
+                      <th className="px-4 py-2.5"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {categorizeItems.slice(0, 300).map((item) => {
+                      const currentRef = refOf(item);
+                      const sel = categorizeSelection[item.question.id] ?? currentRef;
+                      const chapters = chaptersByDiscipline.get(sel.disciplineId) ?? [];
+                      const changed = sel.disciplineId !== currentRef.disciplineId || sel.chapterId !== currentRef.chapterId || sel.level !== currentRef.level;
+                      const setSel = (patch: Partial<QuestionRef>) => {
+                        setCategorizeSelection((prev) => {
+                          const base = prev[item.question.id] ?? currentRef;
+                          const next = { ...base, ...patch };
+                          // Switching discipline invalidates the chapter choice — fall back to its first chapter.
+                          if (patch.disciplineId && patch.disciplineId !== base.disciplineId) {
+                            next.chapterId = chaptersByDiscipline.get(patch.disciplineId)?.[0]?.id ?? "";
+                          }
+                          return { ...prev, [item.question.id]: next };
+                        });
+                      };
+                      return (
+                        <tr key={item.question.id} className="hover:bg-white/[0.02]">
+                          <td className="max-w-xs truncate px-4 py-2.5 text-white/80">{item.question.prompt}</td>
+                          <td className="px-4 py-2.5 text-xs text-white/40">
+                            {item.disciplineName}
+                            <br />
+                            {item.chapterTitle} · {LEVEL_LABEL[item.level] ?? item.level}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <select
+                              value={sel.disciplineId}
+                              onChange={(e) => setSel({ disciplineId: e.target.value })}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-sky-500/50 focus:outline-none"
+                            >
+                              {disciplineOptions.map(([id, name]) => (
+                                <option key={id} value={id} className="bg-[#0b0f1a]">{name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <select
+                              value={sel.chapterId}
+                              onChange={(e) => setSel({ chapterId: e.target.value })}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-sky-500/50 focus:outline-none"
+                            >
+                              {chapters.map((c) => (
+                                <option key={c.id} value={c.id} className="bg-[#0b0f1a]">{c.title}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <select
+                              value={sel.level === "legacy" ? "facile" : sel.level}
+                              onChange={(e) => setSel({ level: e.target.value })}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-sky-500/50 focus:outline-none"
+                            >
+                              {DIFFICULTY_LEVELS.map((l) => (
+                                <option key={l} value={l} className="bg-[#0b0f1a]">{LEVEL_LABEL[l] ?? l}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <button
+                              type="button"
+                              disabled={!changed}
+                              onClick={() => {
+                                handleMove(item, sel);
+                                setCategorizeSelection((prev) => {
+                                  const next = { ...prev };
+                                  delete next[item.question.id];
+                                  return next;
+                                });
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                            >
+                              Recatégoriser
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {categorizeItems.length > 300 && (
+                  <p className="border-t border-white/5 px-4 py-2 text-center text-xs text-white/30">
+                    {categorizeItems.length - 300} question(s) de plus — affine la recherche/les filtres pour les voir.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
