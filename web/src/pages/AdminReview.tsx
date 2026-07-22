@@ -87,6 +87,12 @@ const AdminReview = () => {
   const [aiConfidenceThreshold, setAiConfidenceThreshold] = useState(80);
   const [aiRunning, setAiRunning] = useState(false);
   const [aiProgress, setAiProgress] = useState({ done: 0, total: 0 });
+  const [lastBatchSummary, setLastBatchSummary] = useState<{
+    autoApproved: number;
+    autoRejected: number;
+    suggested: number;
+    errored: number;
+  } | null>(null);
   const aiRunningRef = useRef(false);
 
   // edit modal
@@ -410,9 +416,17 @@ const AdminReview = () => {
     aiRunningRef.current = true;
     setAiRunning(true);
     setAiProgress({ done: 0, total: targets.length });
+    setLastBatchSummary(null);
     addLog("info", `IA (${modelCfg.label}) : traitement de ${targets.length} question(s) en parallèle de ta revue manuelle…`);
+    if (!aiAutoApply) {
+      addLog("info", "Application automatique désactivée — chaque résultat restera « en attente » et te sera proposé en suggestion à valider toi-même.");
+    }
 
     const config: AiConfig = { provider: modelCfg.provider, model: modelCfg.model, apiKey: aiApiKey };
+    let autoApproved = 0;
+    let autoRejected = 0;
+    let suggested = 0;
+    let errored = 0;
 
     for (const item of targets) {
       if (!aiRunningRef.current) break;
@@ -422,22 +436,31 @@ const AdminReview = () => {
         const lowConfidence = result.confidence < aiConfidenceThreshold;
         if (aiAutoApply && !lowConfidence) {
           applyAiSuggestion(item, result);
-          addLog("success", `IA ✓ "${item.question.prompt.slice(0, 50)}" → ${result.decision} (confiance ${result.confidence}%)`);
+          if (result.decision === "reject") autoRejected += 1;
+          else autoApproved += 1;
+          addLog("success", `IA ✓ "${item.question.prompt.slice(0, 50)}" → ${result.decision} (confiance ${result.confidence}%) — appliquée automatiquement, ne compte plus dans les restantes`);
         } else {
+          suggested += 1;
           addLog(
             lowConfidence ? "warn" : "info",
-            `IA a une suggestion pour "${item.question.prompt.slice(0, 50)}" (confiance ${result.confidence}%) — à valider manuellement`,
+            `IA a une suggestion pour "${item.question.prompt.slice(0, 50)}" (confiance ${result.confidence}%) — reste « en attente » tant que tu ne la valides pas toi-même`,
           );
         }
       } catch (err) {
+        errored += 1;
         const msg = err instanceof Error ? err.message : String(err);
-        addLog("error", `IA erreur sur "${item.question.prompt.slice(0, 40)}" : ${msg}`);
+        addLog("error", `IA erreur sur "${item.question.prompt.slice(0, 40)}" : ${msg} — reste « en attente »`);
       }
       setAiProgress((p) => ({ ...p, done: p.done + 1 }));
       await new Promise((r) => setTimeout(r, 150));
     }
     aiRunningRef.current = false;
     setAiRunning(false);
+    setLastBatchSummary({ autoApproved, autoRejected, suggested, errored });
+    addLog(
+      "success",
+      `Résumé du lot — ${autoApproved} validée(s) auto, ${autoRejected} rejetée(s) auto, ${suggested} suggestion(s) en attente de ta revue, ${errored} erreur(s) (restées en attente).`,
+    );
     addLog("success", "Lot IA terminé");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, aiApiKey, aiModelId, aiBatchSize, aiAutoApply, aiConfidenceThreshold, flatQuestions, matchesFilters, addLog]);
@@ -853,7 +876,23 @@ const AdminReview = () => {
                     Arrêter le lot IA
                   </button>
                 </>
-              ) : (
+              ) : lastBatchSummary ? (
+                <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs">
+                  <p className="mb-2 font-bold text-white/70">Résumé du dernier lot</p>
+                  <div className="grid grid-cols-2 gap-y-1">
+                    <span className="text-emerald-400">Auto-validées <b>{lastBatchSummary.autoApproved}</b></span>
+                    <span className="text-red-400">Auto-rejetées <b>{lastBatchSummary.autoRejected}</b></span>
+                    <span className="text-amber-400">Suggestions en attente <b>{lastBatchSummary.suggested}</b></span>
+                    <span className="text-white/50">Erreurs <b>{lastBatchSummary.errored}</b></span>
+                  </div>
+                  {lastBatchSummary.suggested + lastBatchSummary.errored > 0 && (
+                    <p className="mt-2 text-white/40">
+                      Les {lastBatchSummary.suggested + lastBatchSummary.errored} question(s) non appliquées automatiquement comptent toujours dans « Restantes » — valide-les toi-même dans la file de révision.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+              {!aiRunning && (
                 <button
                   type="button"
                   onClick={runAiBatch}
