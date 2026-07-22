@@ -127,8 +127,8 @@ export type AiModelOption = {
 /** Curated model shortlist — the exact model string can still be overridden
  * in the UI if a provider renames/retires an alias. */
 export const AI_MODELS: AiModelOption[] = [
-  { id: "claude-sonnet", label: "Claude Sonnet", provider: "anthropic", model: "claude-3-5-sonnet-latest" },
-  { id: "claude-opus", label: "Claude Opus", provider: "anthropic", model: "claude-3-opus-latest" },
+  { id: "claude-sonnet", label: "Claude Sonnet 3.5", provider: "anthropic", model: "claude-3-5-sonnet-latest" },
+  { id: "claude-opus", label: "Claude Opus 3", provider: "anthropic", model: "claude-3-opus-latest" },
   { id: "gpt-4o", label: "GPT-4o", provider: "openai", model: "gpt-4o" },
   { id: "gpt-4o-mini", label: "GPT-4o mini", provider: "openai", model: "gpt-4o-mini" },
   { id: "gemini-pro", label: "Gemini 1.5 Pro", provider: "google", model: "gemini-1.5-pro-latest" },
