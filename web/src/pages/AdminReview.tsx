@@ -42,6 +42,7 @@ import { PhoneQuestionPreview } from "@/components/PhoneQuestionPreview";
 const ADMIN_PASSWORD = "minduel-admin";
 const DRAFT_KEY = "minduel-review-draft-v1";
 const NOTES_KEY = "minduel-review-ai-notes-v1";
+const CHANGES_KEY = "minduel-review-pending-changes-v1";
 
 type Tab = "review" | "rejected" | "all";
 type LogLevel = "info" | "success" | "warn" | "error";
@@ -52,6 +53,13 @@ const refOf = (item: FlatQuestion): QuestionRef => ({
   chapterId: item.chapterId,
   level: item.level,
 });
+
+/** A single moderation decision, tracked independently from the full working
+ * copy of content.json. `question: null` means "delete this question".
+ * Publishing replays exactly these decisions on top of the freshest server
+ * content, so it can never clobber questions generated/published elsewhere
+ * in the meantime. */
+type PendingChange = { ref: QuestionRef; question: Question | null };
 
 const AdminReview = () => {
   const [authed, setAuthed] = useState(false);
@@ -87,6 +95,11 @@ const AdminReview = () => {
   const [aiConfidenceThreshold, setAiConfidenceThreshold] = useState(80);
   const [aiRunning, setAiRunning] = useState(false);
   const [aiProgress, setAiProgress] = useState({ done: 0, total: 0 });
+
+  // Moderation decisions, keyed by question id — the source of truth used at
+  // publish time (see handlePublish). Kept separate from `content` so publishing
+  // never has to trust that the full local working copy is still up to date.
+  const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
   const [lastBatchSummary, setLastBatchSummary] = useState<{
     autoApproved: number;
     autoRejected: number;
@@ -148,6 +161,8 @@ const AdminReview = () => {
       }
       const notesRaw = localStorage.getItem(NOTES_KEY);
       if (notesRaw) setAiNotes(JSON.parse(notesRaw));
+      const changesRaw = localStorage.getItem(CHANGES_KEY);
+      if (changesRaw) setPendingChanges(JSON.parse(changesRaw));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       addLog("error", `Erreur chargement : ${msg}`);
@@ -188,6 +203,23 @@ const AdminReview = () => {
     }, 500);
     return () => clearTimeout(t);
   }, [aiNotes]);
+
+  // Persist moderation decisions independently — this is what publish replays
+  // onto the latest server content, so it survives page reloads too.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(CHANGES_KEY, JSON.stringify(pendingChanges));
+      } catch {
+        // ignore
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [pendingChanges]);
+
+  const recordChange = useCallback((ref: QuestionRef, questionId: string, question: Question | null) => {
+    setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question } }));
+  }, []);
 
   const flatQuestions = useMemo(() => flattenQuestions(content), [content]);
 
@@ -275,18 +307,24 @@ const AdminReview = () => {
 
   const handleApprove = useCallback(
     (item: FlatQuestion, by: "human" | "ai" = "human") => {
-      applyUpdate(refOf(item), item.question.id, (q) => markStatus(q, "approved", by));
+      const ref = refOf(item);
+      const next = markStatus(item.question, "approved", by);
+      applyUpdate(ref, item.question.id, () => next);
+      recordChange(ref, item.question.id, next);
       addLog("success", `✓ Validée : ${item.question.prompt.slice(0, 60)}`);
     },
-    [applyUpdate, addLog],
+    [applyUpdate, recordChange, addLog],
   );
 
   const handleReject = useCallback(
     (item: FlatQuestion, by: "human" | "ai" = "human") => {
-      applyUpdate(refOf(item), item.question.id, (q) => markStatus(q, "rejected", by));
+      const ref = refOf(item);
+      const next = markStatus(item.question, "rejected", by);
+      applyUpdate(ref, item.question.id, () => next);
+      recordChange(ref, item.question.id, next);
       addLog("warn", `✗ Rejetée : ${item.question.prompt.slice(0, 60)}`);
     },
-    [applyUpdate, addLog],
+    [applyUpdate, recordChange, addLog],
   );
 
   const handleSkip = useCallback(() => {
@@ -296,10 +334,12 @@ const AdminReview = () => {
   const handleDelete = useCallback(
     (item: FlatQuestion) => {
       if (!window.confirm("Supprimer définitivement cette question ? Cette action est irréversible.")) return;
-      setContent((prev) => (prev ? deleteQuestion(prev, refOf(item), item.question.id) : prev));
+      const ref = refOf(item);
+      setContent((prev) => (prev ? deleteQuestion(prev, ref, item.question.id) : prev));
+      recordChange(ref, item.question.id, null);
       addLog("warn", `🗑 Supprimée définitivement : ${item.question.prompt.slice(0, 60)}`);
     },
-    [addLog],
+    [addLog, recordChange],
   );
 
   const openEdit = useCallback((item: FlatQuestion) => {
@@ -319,19 +359,20 @@ const AdminReview = () => {
       type === "multipleChoice" || type === "fillBlank"
         ? editOptionsText.split("\n").map((s) => s.trim()).filter(Boolean)
         : undefined;
-    applyUpdate(refOf(editingItem), editingItem.question.id, (q) =>
-      markStatus(
-        {
-          ...q,
-          prompt: editPrompt.trim(),
-          options,
-          answer: editAnswer.trim(),
-          explanation: editExplanation.trim(),
-        },
-        "approved",
-        "human",
-      ),
+    const ref = refOf(editingItem);
+    const next = markStatus(
+      {
+        ...editingItem.question,
+        prompt: editPrompt.trim(),
+        options,
+        answer: editAnswer.trim(),
+        explanation: editExplanation.trim(),
+      },
+      "approved",
+      "human",
     );
+    applyUpdate(ref, editingItem.question.id, () => next);
+    recordChange(ref, editingItem.question.id, next);
     addLog("success", `✎ Corrigée et validée : ${editPrompt.slice(0, 60)}`);
     closeEdit();
   };
@@ -369,19 +410,19 @@ const AdminReview = () => {
     } else if (result.decision === "approve") {
       handleApprove(item, "ai");
     } else if (result.decision === "edit" && result.correctedQuestion) {
-      applyUpdate(ref, item.question.id, (q) =>
-        markStatus(
-          {
-            ...q,
-            prompt: result.correctedQuestion?.prompt ?? q.prompt,
-            options: result.correctedQuestion?.options ?? q.options,
-            answer: result.correctedQuestion?.answer ?? q.answer,
-            explanation: result.correctedQuestion?.explanation ?? q.explanation,
-          },
-          "approved",
-          "ai",
-        ),
+      const next = markStatus(
+        {
+          ...item.question,
+          prompt: result.correctedQuestion?.prompt ?? item.question.prompt,
+          options: result.correctedQuestion?.options ?? item.question.options,
+          answer: result.correctedQuestion?.answer ?? item.question.answer,
+          explanation: result.correctedQuestion?.explanation ?? item.question.explanation,
+        },
+        "approved",
+        "ai",
       );
+      applyUpdate(ref, item.question.id, () => next);
+      recordChange(ref, item.question.id, next);
     }
     setAiNotes((prev) => {
       const next = { ...prev };
@@ -478,10 +519,34 @@ const AdminReview = () => {
       ?? import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL
       ?? "https://mindduel-kqfozex-backend.rork.app";
     try {
+      // Never publish the local working copy as-is: someone else (or the
+      // Generator tool) may have published new questions to the server since
+      // this page loaded its snapshot. Instead, fetch the freshest server
+      // content and replay only the moderation decisions made in this page on
+      // top of it — this can never erase newly generated questions, and it
+      // can never silently un-publish a decision made from another tab.
+      addLog("info", "Publication : récupération de la version la plus récente du serveur avant fusion…");
+      const freshContent = await fetchContent();
+      let merged = freshContent;
+      let appliedCount = 0;
+      let skippedCount = 0;
+      for (const [questionId, change] of Object.entries(pendingChanges)) {
+        const before = merged;
+        merged = change.question === null
+          ? deleteQuestion(merged, change.ref, questionId)
+          : updateQuestion(merged, change.ref, questionId, () => change.question as Question);
+        if (merged === before) skippedCount += 1;
+        else appliedCount += 1;
+      }
+      if (skippedCount > 0) {
+        addLog("warn", `${skippedCount} décision(s) locale(s) n'ont pas pu être retrouvées dans la version serveur (question déjà supprimée/déplacée ailleurs) — ignorée(s) sans risque.`);
+      }
+      addLog("info", `${appliedCount} décision(s) de modération réappliquée(s) sur la version fraîche du serveur.`);
+
       const res = await fetch(`${fnUrl}/api/content/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, password: ADMIN_PASSWORD }),
+        body: JSON.stringify({ content: merged, password: ADMIN_PASSWORD }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -489,6 +554,12 @@ const AdminReview = () => {
       } else {
         const data = (await res.json()) as { version: number; questionCount: number };
         setPublishedInfo(data);
+        // Reflect the true published state locally (includes anything generated
+        // elsewhere), and clear the replayed decisions since they're now live.
+        setContent(merged);
+        setPendingChanges({});
+        localStorage.removeItem(CHANGES_KEY);
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ content: merged, savedAt: Date.now() }));
         addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne.`);
       }
     } catch (err) {
