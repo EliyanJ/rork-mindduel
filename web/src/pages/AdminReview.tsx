@@ -782,12 +782,26 @@ const AdminReview = () => {
               <label className="mb-1 block text-xs text-white/50">Clé API (jamais stockée, session uniquement)</label>
               <input
                 type="password"
+                name="minduel-ai-review-api-key"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                data-lpignore="true"
+                data-1p-ignore="true"
+                data-bwignore="true"
                 value={aiApiKey}
                 onChange={(e) => setAiApiKey(e.target.value)}
                 disabled={aiRunning}
                 placeholder="sk-… / clé du fournisseur"
-                className="mb-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-sky-500/50 focus:outline-none disabled:opacity-50"
+                className="mb-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-sky-500/50 focus:outline-none disabled:opacity-50"
               />
+              {aiApiKey.trim().length > 0 && (
+                <p className="mb-3 text-[11px] text-white/30">
+                  Clé détectée : {aiApiKey.trim().length} caractères, se termine par « …{aiApiKey.trim().slice(-4)} »
+                </p>
+              )}
+              {aiApiKey.trim().length === 0 && <div className="mb-3" />}
 
               <label className="mb-1 block text-xs text-white/50">Nombre de questions à lui confier</label>
               <input

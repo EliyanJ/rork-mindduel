@@ -120,7 +120,8 @@ async function handleAiReviewProxy(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: "JSON invalide" }, { status: 400 });
   }
-  const { provider, apiKey, model, systemPrompt, userPrompt } = body;
+  const { provider, model, systemPrompt, userPrompt } = body;
+  const apiKey = body.apiKey?.trim();
   if (!provider || !apiKey || !model || !userPrompt) {
     return Response.json({ error: "Paramètres manquants (provider, apiKey, model, userPrompt)" }, { status: 400 });
   }

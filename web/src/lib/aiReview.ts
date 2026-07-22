@@ -84,7 +84,7 @@ export async function reviewQuestionWithAi(item: FlatQuestion, config: AiConfig)
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       provider: config.provider,
-      apiKey: config.apiKey,
+      apiKey: config.apiKey.trim(),
       model: config.model,
       systemPrompt: buildSystemPrompt(),
       userPrompt: buildUserPrompt(item),
