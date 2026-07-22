@@ -26,6 +26,7 @@ import {
   type Content,
   type GenTarget,
   type LogEntry,
+  type Question,
   countQuestions,
   detectIncomplete,
   downloadJson,
@@ -86,6 +87,13 @@ const AdminGenerator = () => {
   const queueRef = useRef<QueueItem[]>([]);
   const idxRef = useRef<number>(0);
   const bulkGoalRef = useRef<BulkGoal | null>(null);
+  // Every successfully generated batch, kept independently from `content` so
+  // publishing never has to trust that this page's local snapshot is still
+  // up to date — it's replayed on top of the freshest server content instead,
+  // exactly like the review page does with its own moderation decisions. This
+  // is what stops publishing here from silently wiping out approve/reject
+  // decisions made in the review tool in the meantime.
+  const generatedBatchesRef = useRef<{ target: GenTarget; questions: Question[] }[]>([]);
 
   // Auto-scroll log to bottom
   useEffect(() => {
@@ -241,6 +249,7 @@ const AdminGenerator = () => {
         } else {
           currentContent = mergeQuestions(currentContent, item.target, result.questions);
           setContent(currentContent);
+          generatedBatchesRef.current.push({ target: item.target, questions: result.questions });
           setTotalGenerated((prev) => prev + result.questions.length);
           setTotalCost((prev) => prev + estimateCost(result.questions.length));
           if (bulkGoalRef.current) {
@@ -376,6 +385,10 @@ const AdminGenerator = () => {
 
   const handlePublish = async () => {
     if (!content) return;
+    if (generatedBatchesRef.current.length === 0) {
+      addLog("warn", "Rien de nouveau à publier depuis ce lot (aucune question générée ici) — pas d'appel serveur.");
+      return;
+    }
     setPublishing(true);
     const fnUrl = import.meta.env.VITE_RORK_FUNCTIONS_URL
       ?? import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL
@@ -387,10 +400,24 @@ const AdminGenerator = () => {
           addLog("warn", `Nouvelle tentative de publication (${attempt}/${maxAttempts})…`);
           await new Promise((r) => setTimeout(r, 1000 * attempt));
         }
+        // Never publish this page's local snapshot as-is: the review tool may
+        // have validated/rejected/corrected questions on the server since this
+        // page loaded. Refetch the freshest content and replay only the newly
+        // generated batches on top of it — existing questions (and their
+        // moderation status) are never touched.
+        addLog("info", "Publication : récupération de la version la plus récente du serveur avant fusion…");
+        const freshContent = await fetchContent();
+        let merged = freshContent;
+        for (const batch of generatedBatchesRef.current) {
+          merged = mergeQuestions(merged, batch.target, batch.questions);
+        }
+        const totalNew = generatedBatchesRef.current.reduce((n, b) => n + b.questions.length, 0);
+        addLog("info", `${totalNew} nouvelle(s) question(s) de ce lot fusionnée(s) sur la version fraîche du serveur (les statuts de modération existants sont préservés).`);
+
         const res = await fetch(`${fnUrl}/api/content/publish`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, password: "minduel-admin" }),
+          body: JSON.stringify({ content: merged, password: "minduel-admin" }),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -399,6 +426,8 @@ const AdminGenerator = () => {
         }
         const data = (await res.json()) as { version: number; questionCount: number };
         setPublishedInfo(data);
+        setContent(merged);
+        generatedBatchesRef.current = [];
         addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne. L'app iOS les récupérera au prochain démarrage.`);
         break;
       } catch (err) {
