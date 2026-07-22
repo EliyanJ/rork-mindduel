@@ -261,7 +261,22 @@ const AdminReview = () => {
     return { total, approved, rejected, pending: total - approved - rejected };
   }, [flatQuestions]);
 
-  const progressPct = stats.total > 0 ? Math.round(((stats.approved + stats.rejected) / stats.total) * 100) : 0;
+  // Questions still officially "pending" but that the IA has already reviewed
+  // and given a decision for (kept as a suggestion, not yet applied). You trust
+  // the AI's call, so these should count as "already assessed" for a realistic
+  // sense of what's truly left to look at from scratch — even though the
+  // official approved/rejected counters only move once a decision is applied.
+  const aiAssessedPendingCount = useMemo(
+    () => flatQuestions.reduce((n, f) => (questionStatus(f.question) === "pending" && aiNotes[f.question.id] ? n + 1 : n), 0),
+    [flatQuestions, aiNotes],
+  );
+
+  // Combined tally: officially applied (human or AI) + AI suggestions still
+  // awaiting your click. This is the "add manual + AI together" number asked
+  // for — a realistic view of what's genuinely untouched.
+  const assessedTotal = stats.approved + stats.rejected + aiAssessedPendingCount;
+  const trulyUntouched = stats.total - assessedTotal;
+  const progressPct = stats.total > 0 ? Math.round((assessedTotal / stats.total) * 100) : 0;
 
   const pendingItems = useMemo(
     () => flatQuestions.filter((f) => questionStatus(f.question) === "pending" && matchesFilters(f)),
@@ -684,21 +699,31 @@ const AdminReview = () => {
         <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className="font-bold text-white/80">
-              Progression — {stats.approved + stats.rejected} / {stats.total} traitées ({progressPct}%)
+              Progression (humain + IA) — {assessedTotal} / {stats.total} évaluées ({progressPct}%)
             </span>
             <div className="flex gap-4 text-xs">
               <span className="text-white/50">Total <b className="text-white/80">{stats.total}</b></span>
               <span className="text-emerald-400">Validées <b>{stats.approved}</b></span>
               <span className="text-red-400">Rejetées <b>{stats.rejected}</b></span>
-              <span className="text-amber-400">Restantes <b>{stats.pending}</b></span>
+              <span className="text-sky-400">Vues par l'IA (en attente de clic) <b>{aiAssessedPendingCount}</b></span>
+              <span className="text-amber-400">Vraiment intouchées <b>{trulyUntouched}</b></span>
             </div>
           </div>
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 transition-all duration-500"
-              style={{ width: `${progressPct}%` }}
-            />
+            <div className="flex h-full w-full overflow-hidden rounded-full">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
+                style={{ width: `${stats.total > 0 ? ((stats.approved + stats.rejected) / stats.total) * 100 : 0}%` }}
+              />
+              <div
+                className="h-full bg-gradient-to-r from-sky-400 to-indigo-500 transition-all duration-500"
+                style={{ width: `${stats.total > 0 ? (aiAssessedPendingCount / stats.total) * 100 : 0}%` }}
+              />
+            </div>
           </div>
+          <p className="mt-2 text-[11px] text-white/30">
+            Restantes (compteur officiel, ce qui détermine la file de révision) : <b className="text-white/50">{stats.pending}</b> — dont {aiAssessedPendingCount} déjà commentée(s) par l'IA, il ne reste plus qu'à cliquer « Appliquer la suggestion » pour les faire sortir de la file.
+          </p>
         </div>
 
         {/* Filters */}
