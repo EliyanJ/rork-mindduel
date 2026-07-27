@@ -42,24 +42,26 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    row(icon: "diamond.fill", title: "Acheter des rubis") {
-                        isShopPresented = true
-                    }
-                    if store.isPremium {
-                        row(icon: "crown.fill", title: "Gérer mon abonnement") {
-                            openSubscriptionManagement()
+                if Monetization.isEnabled {
+                    Section {
+                        row(icon: "diamond.fill", title: "Acheter des rubis") {
+                            isShopPresented = true
                         }
-                    } else {
-                        row(icon: "crown.fill", title: "Passer Premium") {
-                            isPaywallPresented = true
+                        if store.isPremium {
+                            row(icon: "crown.fill", title: "Gérer mon abonnement") {
+                                openSubscriptionManagement()
+                            }
+                        } else {
+                            row(icon: "crown.fill", title: "Passer Premium") {
+                                isPaywallPresented = true
+                            }
                         }
-                    }
-                    row(icon: "arrow.clockwise", title: "Restaurer les achats") {
-                        restorePurchases()
-                    } trailing: {
-                        if isRestoring {
-                            ProgressView().tint(Theme.primary)
+                        row(icon: "arrow.clockwise", title: "Restaurer les achats") {
+                            restorePurchases()
+                        } trailing: {
+                            if isRestoring {
+                                ProgressView().tint(Theme.primary)
+                            }
                         }
                     }
                 }

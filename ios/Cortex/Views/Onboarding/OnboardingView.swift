@@ -189,17 +189,33 @@ struct OnboardingView: View {
         step != .welcome && step != .quizResult && step != .miniQuiz && step != .diagnosticResult
     }
 
+    /// Steps that are skipped entirely in the current build. The paywall step
+    /// only exists when monetization is enabled.
+    private func isStepAvailable(_ candidate: OnboardingStep) -> Bool {
+        candidate != .paywall || Monetization.isEnabled
+    }
+
     private func goBack() {
-        guard let previous = OnboardingStep(rawValue: step.rawValue - 1) else { return }
-        withAnimation(.spring(duration: 0.32)) { step = previous }
+        var cursor = step.rawValue - 1
+        while let previous = OnboardingStep(rawValue: cursor) {
+            if isStepAvailable(previous) {
+                withAnimation(.spring(duration: 0.32)) { step = previous }
+                return
+            }
+            cursor -= 1
+        }
     }
 
     private func goNext() {
-        guard let next = OnboardingStep(rawValue: step.rawValue + 1) else {
-            finish()
-            return
+        var cursor = step.rawValue + 1
+        while let next = OnboardingStep(rawValue: cursor) {
+            if isStepAvailable(next) {
+                withAnimation(.spring(duration: 0.32)) { step = next }
+                return
+            }
+            cursor += 1
         }
-        withAnimation(.spring(duration: 0.32)) { step = next }
+        finish()
     }
 
     /// Sign in an existing user and skip onboarding entirely; their server-side

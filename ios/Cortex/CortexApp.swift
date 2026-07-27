@@ -19,14 +19,17 @@ struct CortexApp: App {
         _authManager = State(initialValue: auth)
         _onlineModel = State(initialValue: OnlineModel(auth: auth))
 
-        #if DEBUG
-        Purchases.logLevel = .debug
-        Purchases.configure(withAPIKey: Config.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY)
-        #else
-        Purchases.configure(withAPIKey: Config.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)
-        #endif
+        // The free version never contacts RevenueCat nor loads ads.
+        if Monetization.isEnabled {
+            #if DEBUG
+            Purchases.logLevel = .debug
+            Purchases.configure(withAPIKey: Config.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY)
+            #else
+            Purchases.configure(withAPIKey: Config.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)
+            #endif
 
-        AdsManager.shared.start()
+            AdsManager.shared.start()
+        }
     }
 
     var body: some Scene {

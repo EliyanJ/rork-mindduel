@@ -186,7 +186,7 @@ struct LessonFailureView: View {
                     .foregroundStyle(Theme.ink)
 
                 Text(isPremium
-                    ? "Premium : tu peux réessayer immédiatement."
+                    ? "Tu peux réessayer ce niveau immédiatement."
                     : "Regarde une courte pub pour réessayer ce niveau tout de suite.")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(Theme.inkMuted)

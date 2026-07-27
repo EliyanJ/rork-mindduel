@@ -46,13 +46,15 @@ struct ReviewView: View {
                     .foregroundStyle(Theme.inkMuted)
             }
             Spacer()
-            Button {
-                Haptics.tap()
-                isShopPresented = true
-            } label: {
-                StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+            if Monetization.isEnabled {
+                Button {
+                    Haptics.tap()
+                    isShopPresented = true
+                } label: {
+                    StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

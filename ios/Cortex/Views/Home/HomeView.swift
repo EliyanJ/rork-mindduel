@@ -102,13 +102,15 @@ struct HomeView: View {
             Spacer()
             HStack(spacing: 6) {
                 StatPill(icon: "bolt.fill", color: Theme.gold, value: "\(model.store.progress.xp)")
-                Button {
-                    Haptics.tap()
-                    isShopPresented = true
-                } label: {
-                    StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+                if Monetization.isEnabled {
+                    Button {
+                        Haptics.tap()
+                        isShopPresented = true
+                    } label: {
+                        StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)
