@@ -14,9 +14,6 @@ struct SettingsView: View {
     @State private var isDeletingAccount = false
     @State private var legalSheet: LegalLink?
     @State private var didClearCache = false
-    @State private var isRestoring = false
-    @State private var isPaywallPresented = false
-    @State private var isShopPresented = false
 
     private enum LegalLink: Identifiable {
         case privacy, terms, support
@@ -42,30 +39,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                if Monetization.isEnabled {
-                    Section {
-                        row(icon: "diamond.fill", title: "Acheter des rubis") {
-                            isShopPresented = true
-                        }
-                        if store.isPremium {
-                            row(icon: "crown.fill", title: "Gérer mon abonnement") {
-                                openSubscriptionManagement()
-                            }
-                        } else {
-                            row(icon: "crown.fill", title: "Passer Premium") {
-                                isPaywallPresented = true
-                            }
-                        }
-                        row(icon: "arrow.clockwise", title: "Restaurer les achats") {
-                            restorePurchases()
-                        } trailing: {
-                            if isRestoring {
-                                ProgressView().tint(Theme.primary)
-                            }
-                        }
-                    }
-                }
-
                 Section {
                     row(icon: "trash", tint: .clear, title: "Vider le cache") {
                         clearCache()
@@ -125,12 +98,6 @@ struct SettingsView: View {
             .sheet(item: $legalSheet) { link in
                 LegalWebView(title: link.title, url: link.url)
             }
-            .sheet(isPresented: $isShopPresented) {
-                LivresShopView(progressStore: model.store)
-            }
-            .fullScreenCover(isPresented: $isPaywallPresented) {
-                OnboardingPaywallStep(store: store) { isPaywallPresented = false }
-            }
             .confirmationDialog(
                 "Supprimer définitivement ton compte ?",
                 isPresented: $isDeleteConfirmPresented,
@@ -170,21 +137,6 @@ struct SettingsView: View {
                 trailing()
             }
         }
-    }
-
-    private func restorePurchases() {
-        Haptics.tap()
-        isRestoring = true
-        Task {
-            await store.restore()
-            isRestoring = false
-        }
-    }
-
-    private func openSubscriptionManagement() {
-        Haptics.tap()
-        guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else { return }
-        UIApplication.shared.open(url)
     }
 
     private func clearCache() {

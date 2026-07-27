@@ -6,7 +6,6 @@ struct HomeView: View {
     @State private var lessonLaunch: LessonLaunch?
     @State private var isMenuOpen: Bool = false
     @State private var lockedLessonPending: PathStage?
-    @State private var isShopPresented: Bool = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -59,9 +58,6 @@ struct HomeView: View {
                 startLesson(stage, bypassCheck: true)
             }
         }
-        .sheet(isPresented: $isShopPresented) {
-            LivresShopView(progressStore: model.store)
-        }
     }
 
     private var statsHeader: some View {
@@ -102,15 +98,6 @@ struct HomeView: View {
             Spacer()
             HStack(spacing: 6) {
                 StatPill(icon: "bolt.fill", color: Theme.gold, value: "\(model.store.progress.xp)")
-                if Monetization.isEnabled {
-                    Button {
-                        Haptics.tap()
-                        isShopPresented = true
-                    } label: {
-                        StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
-                    }
-                    .buttonStyle(.plain)
-                }
             }
         }
         .padding(.horizontal, 16)

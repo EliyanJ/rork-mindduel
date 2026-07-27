@@ -5,7 +5,6 @@ struct ReviewView: View {
     @Environment(StoreViewModel.self) private var store
     @State private var lessonLaunch: LessonLaunch?
     @State private var isLockedPresented: Bool = false
-    @State private var isShopPresented: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -28,9 +27,6 @@ struct ReviewView: View {
                 launchReview(bypassCheck: true)
             }
         }
-        .sheet(isPresented: $isShopPresented) {
-            LivresShopView(progressStore: model.store)
-        }
     }
 
     private var header: some View {
@@ -46,15 +42,6 @@ struct ReviewView: View {
                     .foregroundStyle(Theme.inkMuted)
             }
             Spacer()
-            if Monetization.isEnabled {
-                Button {
-                    Haptics.tap()
-                    isShopPresented = true
-                } label: {
-                    StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

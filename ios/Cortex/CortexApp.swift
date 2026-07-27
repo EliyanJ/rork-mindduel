@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import RevenueCat
 
 @main
 struct CortexApp: App {
@@ -19,15 +18,8 @@ struct CortexApp: App {
         _authManager = State(initialValue: auth)
         _onlineModel = State(initialValue: OnlineModel(auth: auth))
 
-        // The free version never contacts RevenueCat nor loads ads.
+        // Version 1.0 ships free: no purchase SDK is linked and no ads load.
         if Monetization.isEnabled {
-            #if DEBUG
-            Purchases.logLevel = .debug
-            Purchases.configure(withAPIKey: Config.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY)
-            #else
-            Purchases.configure(withAPIKey: Config.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)
-            #endif
-
             AdsManager.shared.start()
         }
     }

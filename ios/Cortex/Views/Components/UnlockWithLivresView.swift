@@ -23,10 +23,7 @@ struct UnlockWithLivresView: View {
     let onUnlocked: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(StoreViewModel.self) private var store
     @State private var isWatchingAd = false
-    @State private var isShopPresented = false
-    @State private var isPaywallPresented = false
 
     var body: some View {
         NavigationStack {
@@ -65,25 +62,6 @@ struct UnlockWithLivresView: View {
                     .opacity(progressStore.livresBalance < kind.cost ? 0.5 : 1)
 
                     rewardedAdButton
-
-                    Button {
-                        Haptics.tap()
-                        isShopPresented = true
-                    } label: {
-                        Text("Acheter des rubis")
-                    }
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
-
-                    Button {
-                        Haptics.tap()
-                        isPaywallPresented = true
-                    } label: {
-                        Text("Passer Premium pour ne plus être limité")
-                    }
-                    .font(.system(.footnote, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.primary)
-                    .padding(.top, 4)
                 }
                 .padding(.bottom, 8)
             }
@@ -94,12 +72,6 @@ struct UnlockWithLivresView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fermer") { dismiss() }
                 }
-            }
-            .sheet(isPresented: $isShopPresented) {
-                LivresShopView(progressStore: progressStore)
-            }
-            .fullScreenCover(isPresented: $isPaywallPresented) {
-                OnboardingPaywallStep(store: store) { isPaywallPresented = false }
             }
             .alert("Erreur", isPresented: .init(
                 get: { AdsManager.shared.lastError != nil },

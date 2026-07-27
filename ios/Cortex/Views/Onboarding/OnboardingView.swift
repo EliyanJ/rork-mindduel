@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Ordered steps of the first-run onboarding flow (v3).
 private enum OnboardingStep: Int, CaseIterable {
-    case welcome, nickname, goal, topics, dailyGoal, qualification, screenTime, miniQuiz, quizResult, diagnosticPropose, diagnosticQuiz, diagnosticResult, commitment, plan, paywall, account
+    case welcome, nickname, goal, topics, dailyGoal, qualification, screenTime, miniQuiz, quizResult, diagnosticPropose, diagnosticQuiz, diagnosticResult, commitment, plan, account
 }
 
 /// First-run onboarding: collects light preferences, a nickname, a qualification,
@@ -118,8 +118,6 @@ struct OnboardingView: View {
                         dailyGoal: dailyGoal,
                         onFinish: goNext
                     )
-                case .paywall:
-                    OnboardingPaywallStep(store: storeViewModel, onFinished: goNext)
                 case .account:
                     OnboardingAccountStep(onFinished: finish)
                 }
@@ -189,10 +187,10 @@ struct OnboardingView: View {
         step != .welcome && step != .quizResult && step != .miniQuiz && step != .diagnosticResult
     }
 
-    /// Steps that are skipped entirely in the current build. The paywall step
-    /// only exists when monetization is enabled.
+    /// Steps that are skipped entirely in the current build. Kept as a hook so
+    /// the paywall step can be reinstated in the paid 1.1 build.
     private func isStepAvailable(_ candidate: OnboardingStep) -> Bool {
-        candidate != .paywall || Monetization.isEnabled
+        true
     }
 
     private func goBack() {

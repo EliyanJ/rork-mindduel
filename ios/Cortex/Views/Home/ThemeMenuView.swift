@@ -14,7 +14,6 @@ struct ThemeMenuView: View {
     let onClose: () -> Void
 
     @State private var searchText: String = ""
-    @State private var isPaywallPresented = false
 
     private var filteredDisciplines: [Discipline] {
         let query = searchText.normalizedForSearch
@@ -90,9 +89,6 @@ struct ThemeMenuView: View {
                 .shadow(color: .black.opacity(0.2), radius: 18, x: 6, y: 0)
                 .ignoresSafeArea()
         )
-        .fullScreenCover(isPresented: $isPaywallPresented) {
-            OnboardingPaywallStep(store: store) { isPaywallPresented = false }
-        }
     }
 
     /// Free users can see and tap the search field, but typing anything
@@ -132,7 +128,6 @@ struct ThemeMenuView: View {
             guard !store.isPremium, !newValue.isEmpty else { return }
             Haptics.tap()
             searchText = ""
-            isPaywallPresented = true
         }
     }
 
@@ -145,7 +140,6 @@ struct ThemeMenuView: View {
         return Button {
             if isLocked {
                 Haptics.tap()
-                isPaywallPresented = true
                 return
             }
             Haptics.tap()
