@@ -25,7 +25,12 @@ enum ContentService {
         var result: ContentCatalog?
         let semaphore = DispatchSemaphore(value: 0)
 
-        URLSession.shared.dataTask(with: url) { data, response, _ in
+        // Always hit the network: a cached response would keep serving questions
+        // whose moderation decisions have since been published.
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        URLSession.shared.dataTask(with: request) { data, response, _ in
             defer { semaphore.signal() }
             guard let data,
                   let http = response as? HTTPURLResponse,

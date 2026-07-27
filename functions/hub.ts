@@ -641,7 +641,10 @@ export class Hub extends DurableObject {
         "X-Content-Version": String(row.version),
         "X-Content-Question-Count": String(row.question_count),
         "X-Content-Updated-At": String(row.updated_at),
-        "Cache-Control": "public, max-age=300",
+        // Deliberately short: a long max-age made freshly published moderation
+        // decisions look like they had been lost, because the app and the admin
+        // tools kept being handed a pre-publish copy from cache.
+        "Cache-Control": "public, max-age=30",
       },
     });
   }

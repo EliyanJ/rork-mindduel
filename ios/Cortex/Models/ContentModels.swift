@@ -50,9 +50,37 @@ nonisolated struct Question: Codable, Identifiable, Hashable {
     let explanation: String
     /// Optional for backward-compat with older content.json entries generated before this field existed.
     let familiarity: Familiarity?
+    /// Moderation verdict written by the admin review tool: "pending", "approved"
+    /// or "rejected". Absent on questions that predate moderation.
+    let moderationStatus: String?
+
+    /// Questions explicitly rejected during review must never reach a player.
+    var isRejected: Bool { moderationStatus == "rejected" }
 
     private enum CodingKeys: String, CodingKey {
-        case id, type, prompt, options, answer, explanation, familiarity
+        case id, type, prompt, options, answer, explanation, familiarity, moderationStatus
+    }
+
+    /// Explicit initializer so hardcoded in-app questions (mini quiz, failure
+    /// screen) don't need to state a moderation status they never have.
+    init(
+        id: String,
+        type: QuestionType,
+        prompt: String,
+        options: [String]?,
+        answer: String,
+        explanation: String,
+        familiarity: Familiarity? = nil,
+        moderationStatus: String? = nil
+    ) {
+        self.id = id
+        self.type = type
+        self.prompt = prompt
+        self.options = options
+        self.answer = answer
+        self.explanation = explanation
+        self.familiarity = familiarity
+        self.moderationStatus = moderationStatus
     }
 }
 
@@ -136,19 +164,22 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
 
     /// Questions for a specific difficulty level, or all questions if the
     /// chapter uses the legacy flat format.
+    /// Rejected questions are filtered out everywhere they could reach a player,
+    /// so moderation decisions published from the admin tool take effect as soon
+    /// as the app refreshes its catalog.
     func questionsAtLevel(_ level: DifficultyLevel) -> [Question] {
         if let levels {
-            return levels[level.rawValue]?.questions ?? []
+            return (levels[level.rawValue]?.questions ?? []).filter { !$0.isRejected }
         }
-        return questions ?? []
+        return (questions ?? []).filter { !$0.isRejected }
     }
 
     /// All questions across every level (or the flat array for legacy chapters).
     var allQuestions: [Question] {
         if let levels {
-            return DifficultyLevel.allCases.flatMap { levels[$0.rawValue]?.questions ?? [] }
+            return DifficultyLevel.allCases.flatMap { levels[$0.rawValue]?.questions ?? [] }.filter { !$0.isRejected }
         }
-        return questions ?? []
+        return (questions ?? []).filter { !$0.isRejected }
     }
 
     /// Total question count regardless of format.
@@ -158,7 +189,7 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
     /// or `[.facile]` for legacy chapters.
     var availableLevels: [DifficultyLevel] {
         if let levels {
-            return DifficultyLevel.allCases.filter { levels[$0.rawValue]?.questions.isEmpty == false }
+            return DifficultyLevel.allCases.filter { !questionsAtLevel($0).isEmpty }
         }
         return [.facile]
     }

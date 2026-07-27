@@ -97,11 +97,48 @@ const COST_PER_QUESTION_USD = 0.0008; // ~500 tokens output at $0.60/M + 300 inp
 /** Max questions requested per single AI call — smaller batches = far fewer JSON/format errors. */
 const DEFAULT_BATCH_SIZE = 8;
 
-/** Fetch the current content.json from the public folder. */
-export async function fetchContent(): Promise<Content> {
-  const res = await fetch("/content.json");
+const FN_URL: string =
+  (import.meta.env.VITE_RORK_FUNCTIONS_URL as string | undefined) ??
+  (import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL as string | undefined) ??
+  "https://mindduel-kqfozex-backend.rork.app";
+
+/** Fetch the seed content.json shipped with the web app — only used the very
+ * first time, before anything has ever been published to the backend. */
+async function fetchSeedContent(): Promise<Content> {
+  const res = await fetch("/content.json", { cache: "no-store" });
   if (!res.ok) throw new Error(`content.json fetch failed: ${res.status}`);
   return (await res.json()) as Content;
+}
+
+/**
+ * Fetch the content that is ACTUALLY live for players — i.e. the latest version
+ * published to the backend, which carries every moderation status decided so
+ * far. Falls back to the bundled seed file only when nothing has ever been
+ * published.
+ *
+ * This must never read the static `/content.json` when a published version
+ * exists: that file has no moderation metadata, so using it as the base for the
+ * review tool (or as the base merged at publish time) silently wipes every
+ * approve/reject decision already made.
+ *
+ * `cache: "no-store"` is mandatory — the API sends a `Cache-Control` max-age,
+ * so without it the browser can hand back a pre-publish copy and make freshly
+ * published decisions look like they vanished.
+ */
+export async function fetchContent(): Promise<Content> {
+  try {
+    const res = await fetch(`${FN_URL}/api/content`, { cache: "no-store" });
+    if (res.ok) {
+      const data = (await res.json()) as Partial<Content> & { published?: boolean };
+      if (data.published !== false && Array.isArray(data.disciplines)) {
+        return data as Content;
+      }
+    }
+  } catch {
+    // Network/backend unavailable — fall through to the seed copy below rather
+    // than leaving the admin tools with nothing to work on.
+  }
+  return fetchSeedContent();
 }
 
 /** Count questions in a chapter, handling both legacy and new formats. */
