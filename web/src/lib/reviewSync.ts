@@ -26,10 +26,15 @@ const FN_URL: string =
  * - `moveTo` re-files it under another theme/tier (replayed as delete+insert).
  * - otherwise the stored question replaces the existing one in place.
  */
+/** Which admin tool produced the decision — shown in the shared counter so
+ * publishing never surprises: "Publier (53 : 8 calibrage · 45 modération)". */
+export type ChangeOrigin = "moderation" | "calibration" | "migration";
+
 export type PendingChange = {
   ref: QuestionRef;
   question: Question | null;
   moveTo?: QuestionRef;
+  origin?: ChangeOrigin;
 };
 
 export type ReviewState = {
@@ -178,6 +183,11 @@ export async function publishPendingChanges(
 }> {
   const freshest = await fetchContent();
   const { merged, applied, skipped, appliedIds, skippedIds } = replayChanges(freshest, changes);
+  if (applied === 0) {
+    throw new Error(
+      "aucune décision n'a pu être appliquée sur la version serveur — publication annulée, rien n'a été effacé",
+    );
+  }
   const res = await fetch(`${FN_URL}/api/content/publish`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

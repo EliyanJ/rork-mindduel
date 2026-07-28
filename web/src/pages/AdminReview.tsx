@@ -35,7 +35,8 @@ import {
   resolveRef,
   updateQuestion,
 } from "@/lib/moderation";
-import { fetchReviewArchive, restoreReviewArchive } from "@/lib/reviewSync";
+import { type PendingChange, fetchReviewArchive, restoreReviewArchive } from "@/lib/reviewSync";
+import { usePendingChanges } from "@/hooks/usePendingChanges";
 import { type AiConfig, type AiReviewResult, reviewQuestionWithAi } from "@/lib/aiReview";
 import { PhoneQuestionPreview } from "@/components/PhoneQuestionPreview";
 
@@ -54,14 +55,8 @@ const refOf = (item: FlatQuestion): QuestionRef => ({
   level: item.level,
 });
 
-/** A single moderation decision, tracked independently from the full working
- * copy of content.json. `question: null` means "delete this question".
- * `moveTo` (categorization tab) means "re-file this question under a
- * different theme/difficulty" — replayed as a delete-then-insert at publish
- * time. Publishing replays exactly these decisions on top of the freshest
- * server content, so it can never clobber questions generated/published
- * elsewhere in the meantime. */
-type PendingChange = { ref: QuestionRef; question: Question | null; moveTo?: QuestionRef };
+// PendingChange lives in reviewSync and is shared with the calibration page
+// through PendingChangesProvider — one queue, one counter, one publish.
 
 /** Difficulty levels a question can be manually re-filed under (in order of
  * increasing difficulty) — used by the categorization tab's dropdown. */
@@ -130,11 +125,10 @@ const AdminReview = () => {
   const [restoring, setRestoring] = useState(false);
   const [publishedInfo, setPublishedInfo] = useState<{ version: number; questionCount: number } | null>(null);
 
-  // Real-time server sync of moderation decisions + AI notes.
-  const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  // Real-time server sync of AI notes (decisions sync via the shared provider).
+  const [notesSyncState, setNotesSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [notesSavedAt, setNotesSavedAt] = useState<number | null>(null);
   const [syncRetryTick, setSyncRetryTick] = useState(0);
-  const lastSyncedChanges = useRef<Record<string, PendingChange>>({});
   const lastSyncedNotes = useRef<Record<string, AiReviewResult>>({});
   const syncEnabledRef = useRef(false);
 
@@ -161,9 +155,23 @@ const AdminReview = () => {
   const [aiProgress, setAiProgress] = useState({ done: 0, total: 0 });
 
   // Moderation decisions, keyed by question id — the source of truth used at
-  // publish time (see handlePublish). Kept separate from `content` so publishing
-  // never has to trust that the full local working copy is still up to date.
-  const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
+  // publish time (see handlePublish). Shared with the calibration page: both
+  // tools see the exact same queue and the same counter.
+  const {
+    changes: pendingChanges,
+    setChanges: setPendingChanges,
+    hydrate,
+    syncState: changesSyncState,
+    lastSavedAt: changesSavedAt,
+    breakdownLabel,
+  } = usePendingChanges();
+  const syncState =
+    changesSyncState === "error" || notesSyncState === "error"
+      ? "error"
+      : changesSyncState === "saving" || notesSyncState === "saving"
+        ? "saving"
+        : "saved";
+  const lastSavedAt = Math.max(changesSavedAt ?? 0, notesSavedAt ?? 0) || null;
   const [lastBatchSummary, setLastBatchSummary] = useState<{
     autoApproved: number;
     autoRejected: number;
@@ -210,11 +218,10 @@ const AdminReview = () => {
       const changes: Record<string, PendingChange> = { ...localChanges, ...(serverState?.changes ?? {}) };
       const notes: Record<string, AiReviewResult> = { ...localNotes, ...(serverState?.notes ?? {}) };
       const { merged, applied } = replayChanges(serverContent, changes);
-      lastSyncedChanges.current = serverState?.changes ?? {};
       lastSyncedNotes.current = serverState?.notes ?? {};
       syncEnabledRef.current = true;
+      hydrate(serverState?.changes ?? {}, localChanges);
       setContent(merged);
-      setPendingChanges(changes);
       setAiNotes(notes);
       addLog(
         "info",
@@ -226,7 +233,7 @@ const AdminReview = () => {
     } finally {
       setLoading(false);
     }
-  }, [addLog]);
+  }, [addLog, hydrate]);
 
   // Access is granted by the admin layout, so the working copy loads on mount.
   const loadRequestedRef = useRef(false);
@@ -262,9 +269,8 @@ const AdminReview = () => {
     return () => clearTimeout(t);
   }, [pendingChanges]);
 
-  // Real-time server sync — every decision and AI note is diffed against the
-  // last state the server acknowledged, and pushed within ~1 s. Refreshing the
-  // page, closing the tab, or switching device never loses history anymore.
+  // Real-time server sync of AI notes — decisions travel through the shared
+  // provider, so only notes are diffed and pushed here.
   useEffect(() => {
     if (!syncEnabledRef.current) return;
     const t = setTimeout(async () => {
@@ -272,13 +278,6 @@ const AdminReview = () => {
       type Del = { kind: "change" | "note"; questionId: string };
       const upserts: Upsert[] = [];
       const deletes: Del[] = [];
-      for (const [id, ch] of Object.entries(pendingChanges)) {
-        const prev = lastSyncedChanges.current[id];
-        if (!prev || JSON.stringify(prev) !== JSON.stringify(ch)) upserts.push({ kind: "change", questionId: id, payload: ch });
-      }
-      for (const id of Object.keys(lastSyncedChanges.current)) {
-        if (!(id in pendingChanges)) deletes.push({ kind: "change", questionId: id });
-      }
       for (const [id, note] of Object.entries(aiNotes)) {
         const prev = lastSyncedNotes.current[id];
         if (!prev || JSON.stringify(prev) !== JSON.stringify(note)) upserts.push({ kind: "note", questionId: id, payload: note });
@@ -287,33 +286,32 @@ const AdminReview = () => {
         if (!(id in aiNotes)) deletes.push({ kind: "note", questionId: id });
       }
       if (upserts.length === 0 && deletes.length === 0) return;
-      setSyncState("saving");
+      setNotesSyncState("saving");
       try {
         const res = await fetch(`${FN_URL}/api/review/state`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes, reason: "admin-review-sync" }),
+          body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes, reason: "admin-review-notes" }),
         });
         if (!res.ok) throw new Error(`serveur ${res.status}`);
-        lastSyncedChanges.current = pendingChanges;
         lastSyncedNotes.current = aiNotes;
-        setSyncState("saved");
-        setLastSavedAt(Date.now());
+        setNotesSyncState("saved");
+        setNotesSavedAt(Date.now());
       } catch {
-        setSyncState("error");
+        setNotesSyncState("error");
         window.setTimeout(() => setSyncRetryTick((n) => n + 1), 10000);
       }
     }, 800);
     return () => clearTimeout(t);
-  }, [pendingChanges, aiNotes, syncRetryTick]);
+  }, [aiNotes, syncRetryTick]);
 
   const recordChange = useCallback((ref: QuestionRef, questionId: string, question: Question | null) => {
-    setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question } }));
-  }, []);
+    setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question, origin: "moderation" } }));
+  }, [setPendingChanges]);
 
   const recordMove = useCallback((ref: QuestionRef, moveTo: QuestionRef, questionId: string, question: Question) => {
-    setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question, moveTo } }));
-  }, []);
+    setPendingChanges((prev) => ({ ...prev, [questionId]: { ref, question, moveTo, origin: "moderation" } }));
+  }, [setPendingChanges]);
 
   const flatQuestions = useMemo(() => flattenQuestions(content), [content]);
 
@@ -663,7 +661,7 @@ const AdminReview = () => {
     });
     setPendingChanges((prev) => {
       const next = { ...prev };
-      for (const [id, u] of Object.entries(updates)) next[id] = { ...next[id], ref: u.ref, question: u.question };
+      for (const [id, u] of Object.entries(updates)) next[id] = { ...next[id], ref: u.ref, question: u.question, origin: next[id]?.origin ?? "moderation" };
       return next;
     });
     setAiNotes((prev) => {
@@ -900,11 +898,12 @@ const AdminReview = () => {
             <button
               type="button"
               onClick={handlePublish}
-              disabled={!content || publishing}
+              disabled={!content || publishing || Object.keys(pendingChanges).length === 0}
+              title="Publie TOUTES les décisions en attente, y compris celles faites sur la page Calibrage — la file est commune."
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-bold text-white transition hover:brightness-105 disabled:opacity-50"
             >
               {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              Publier
+              Publier ({Object.keys(pendingChanges).length})
             </button>
           </div>
         </div>
@@ -912,10 +911,11 @@ const AdminReview = () => {
 
       <main className="mx-auto max-w-[1600px] px-6 py-6">
         <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-xs leading-relaxed text-amber-200/90">
-          <strong className="font-bold text-amber-200">Décisions en attente : {Object.keys(pendingChanges).length}</strong>{" "}
-          — tant qu'elles ne sont pas publiées, elles ne sont pas dans l'app. Toute décision qui sort de
-          cette file est désormais archivée côté serveur : rien ne peut plus être perdu définitivement, et
-          « Récupérer les décisions archivées » les ramène.
+          <strong className="font-bold text-amber-200">Décisions en attente : {Object.keys(pendingChanges).length}</strong>
+          {breakdownLabel ? <span className="text-amber-200/80"> ({breakdownLabel})</span> : null}{" "}
+          — la file est commune aux pages Modération et Calibrage : « Publier » envoie tout, ici comme
+          là-bas. Tant qu'une décision n'est pas publiée, elle n'est pas dans l'app ; toute décision qui
+          sort de la file est archivée côté serveur et récupérable via « Récupérer les décisions archivées ».
         </div>
         {publishedInfo && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3 text-sm">

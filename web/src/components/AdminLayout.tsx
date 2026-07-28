@@ -5,6 +5,7 @@ import AdminLogin from "@/components/AdminLogin";
 import AdminTopNav from "@/components/AdminTopNav";
 import AdminWorkspace from "@/components/AdminWorkspace";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { PendingChangesProvider } from "@/hooks/usePendingChanges";
 
 /**
  * Guards every admin route behind a single sign-in, then renders the shared
@@ -25,12 +26,14 @@ const AdminLayout = () => {
   if (!session) return <AdminLogin />;
 
   return (
-    <div className="min-h-screen bg-[#070a12]">
-      <AdminTopNav />
-      <AdminWorkspace />
-      {/* Only the /admin → /admin-review redirect renders through here. */}
-      <Outlet />
-    </div>
+    <PendingChangesProvider>
+      <div className="min-h-screen bg-[#070a12]">
+        <AdminTopNav />
+        <AdminWorkspace />
+        {/* Only the /admin → /admin-review redirect renders through here. */}
+        <Outlet />
+      </div>
+    </PendingChangesProvider>
   );
 };
 

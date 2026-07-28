@@ -22,9 +22,8 @@ import {
   publishPendingChanges,
   pushReviewState,
   replayChanges,
-  type Deletion,
-  type Upsert,
 } from "@/lib/reviewSync";
+import { usePendingChanges } from "@/hooks/usePendingChanges";
 import {
   DIFFICULTY_LEVELS,
   DIFFICULTY_LEVEL_LABEL,
@@ -93,10 +92,15 @@ const AdminCalibration = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [publishing, setPublishing] = useState(false);
 
-  const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
-  const lastSyncedChanges = useRef<Record<string, PendingChange>>({});
-  const syncEnabledRef = useRef(false);
-  const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // One decision queue shared with the moderation page — same counter
+  // everywhere, one publish path, no more "8 shown, 53 published" surprises.
+  const {
+    changes: pendingChanges,
+    setChanges: setPendingChanges,
+    hydrate,
+    syncState,
+    breakdownLabel,
+  } = usePendingChanges();
 
   // filters
   const [disciplineFilter, setDisciplineFilter] = useState("all");
@@ -149,10 +153,8 @@ const AdminCalibration = () => {
       ]);
       const changes = serverState?.changes ?? {};
       const { merged, applied } = replayChanges(serverContent, changes);
-      lastSyncedChanges.current = changes;
-      syncEnabledRef.current = true;
+      hydrate(changes);
       setContent(merged);
-      setPendingChanges(changes);
       setStats(statMap);
       addLog(
         "info",
@@ -163,7 +165,7 @@ const AdminCalibration = () => {
     } finally {
       setLoading(false);
     }
-  }, [addLog]);
+  }, [addLog, hydrate]);
 
   // Access is granted by the admin layout, so everything loads on mount.
   const loadRequestedRef = useRef(false);
@@ -174,33 +176,7 @@ const AdminCalibration = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Live sync of decisions to the server, diffed so only real changes travel.
-  useEffect(() => {
-    if (!syncEnabledRef.current) return;
-    const t = setTimeout(async () => {
-      const upserts: Upsert[] = [];
-      const deletes: Deletion[] = [];
-      for (const [id, ch] of Object.entries(pendingChanges)) {
-        const prev = lastSyncedChanges.current[id];
-        if (!prev || JSON.stringify(prev) !== JSON.stringify(ch)) {
-          upserts.push({ kind: "change", questionId: id, payload: ch });
-        }
-      }
-      for (const id of Object.keys(lastSyncedChanges.current)) {
-        if (!(id in pendingChanges)) deletes.push({ kind: "change", questionId: id });
-      }
-      if (upserts.length === 0 && deletes.length === 0) return;
-      setSyncState("saving");
-      try {
-        await pushReviewState(upserts, deletes);
-        lastSyncedChanges.current = pendingChanges;
-        setSyncState("saved");
-      } catch {
-        setSyncState("error");
-      }
-    }, 800);
-    return () => clearTimeout(t);
-  }, [pendingChanges]);
+  // Live server sync of decisions is handled by the shared PendingChangesProvider.
 
   const flat = useMemo(() => flattenQuestions(content), [content]);
 
@@ -283,9 +259,10 @@ const AdminCalibration = () => {
             ref: from,
             question: updated,
             moveTo: { ...from, level: targetLevel },
+            origin: "calibration",
           };
         } else {
-          next[item.question.id] = { ref: from, question: updated };
+          next[item.question.id] = { ref: from, question: updated, origin: "calibration" };
         }
         return next;
       });
@@ -511,6 +488,7 @@ const AdminCalibration = () => {
       changes[item.question.id] = {
         ref: { disciplineId: item.disciplineId, chapterId: item.chapterId, level: item.level },
         question: item.question,
+        origin: "migration",
       };
     }
     setContent(migrated);
@@ -527,20 +505,31 @@ const AdminCalibration = () => {
       return;
     }
     setPublishing(true);
+    const snapshot = pendingChanges;
     try {
-      const res = await publishPendingChanges(pendingChanges);
+      const res = await publishPendingChanges(snapshot);
       addLog(
         "success",
-        `Publié : version ${res.version} · ${res.questionCount} questions · ${res.applied} décision(s) appliquée(s)${res.skipped > 0 ? ` · ${res.skipped} ignorée(s)` : ""}.`,
+        `Publié : version ${res.version} · ${res.questionCount} questions · ${res.applied} décision(s) intégrée(s)${res.skipped > 0 ? ` · ${res.skipped} conservée(s) en attente (introuvables sur la version serveur)` : ""}.`,
       );
-      // Decisions are now live: clear the queue so it can't be replayed twice.
-      setPendingChanges({});
+      // Only decisions that actually landed leave the queue; skipped ones stay
+      // pending, and anything added from another tab meanwhile is untouched.
+      const kept = new Set(res.skippedIds);
+      setPendingChanges((prev) => {
+        const next: Record<string, PendingChange> = {};
+        for (const [id, ch] of Object.entries(prev)) {
+          if (kept.has(id) || !(id in snapshot)) next[id] = ch;
+        }
+        return next;
+      });
+      // Remove the published decisions server-side BEFORE reloading, so the
+      // reload can't resurrect them into the queue.
       try {
         await pushReviewState(
           [],
-          Object.keys(pendingChanges).map((id) => ({ kind: "change" as const, questionId: id })),
+          res.appliedIds.map((id) => ({ kind: "change" as const, questionId: id })),
+          "calibration-publish",
         );
-        lastSyncedChanges.current = {};
       } catch {
         addLog("warn", "Publication OK, mais le nettoyage de la file a échoué.");
       }
@@ -602,9 +591,18 @@ const AdminCalibration = () => {
               {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
               Recharger
             </button>
+            {breakdownLabel && (
+              <span
+                className="hidden rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 font-medium text-indigo-200 sm:inline"
+                title="La file de décisions est commune aux pages Modération et Calibrage."
+              >
+                File commune : {breakdownLabel}
+              </span>
+            )}
             <button
               onClick={handlePublish}
               disabled={publishing || pendingCount === 0}
+              title="Publie TOUTES les décisions en attente, y compris celles faites sur la page Modération — la file est commune."
               className="flex items-center gap-1 rounded-lg bg-indigo-500 px-3 py-2 font-semibold text-white hover:bg-indigo-400 disabled:opacity-40"
             >
               {publishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
