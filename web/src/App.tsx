@@ -12,9 +12,6 @@ import Index from "./pages/Index";
 import Support from "./pages/Support";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
-import AdminGenerator from "./pages/AdminGenerator";
-import AdminReview from "./pages/AdminReview";
-import AdminCalibration from "./pages/AdminCalibration";
 import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
@@ -33,12 +30,15 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            {/* Every admin tool sits behind one sign-in and shares the same top nav. */}
+            {/* Every admin tool sits behind one sign-in and shares the same top
+                nav. The tools themselves are rendered (always mounted) by
+                AdminLayout — these routes only drive which one is visible, so
+                a running generation/verification loop survives navigation. */}
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<Navigate to="/admin-review" replace />} />
-              <Route path="/admin-generator" element={<AdminGenerator />} />
-              <Route path="/admin-review" element={<AdminReview />} />
-              <Route path="/admin-calibration" element={<AdminCalibration />} />
+              <Route path="/admin-generator" element={null} />
+              <Route path="/admin-review" element={null} />
+              <Route path="/admin-calibration" element={null} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

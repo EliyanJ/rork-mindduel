@@ -3,11 +3,13 @@ import { Outlet } from "react-router-dom";
 
 import AdminLogin from "@/components/AdminLogin";
 import AdminTopNav from "@/components/AdminTopNav";
+import AdminWorkspace from "@/components/AdminWorkspace";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 /**
  * Guards every admin route behind a single sign-in, then renders the shared
- * navigation above the active tool.
+ * navigation above the always-mounted workspace — switching tabs hides/shows
+ * tools instead of unmounting them, so background jobs keep running.
  */
 const AdminLayout = () => {
   const { session, isRestoring } = useAdminAuth();
@@ -25,6 +27,8 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen bg-[#070a12]">
       <AdminTopNav />
+      <AdminWorkspace />
+      {/* Only the /admin → /admin-review redirect renders through here. */}
       <Outlet />
     </div>
   );
