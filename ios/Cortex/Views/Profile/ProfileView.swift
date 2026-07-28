@@ -58,7 +58,7 @@ struct ProfileView: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Text(online.profile.map { "ELO mondial \($0.elo)" } ?? "ELO local \(model.store.progress.elo)")
+                Text(online.profile.map { "\($0.displayPoints) points classés" } ?? "Niveau local \(model.store.progress.elo)")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(Theme.inkMuted)
             }
@@ -145,7 +145,7 @@ struct ProfileView: View {
                 .foregroundStyle(Theme.danger)
             }
             HStack(spacing: 20) {
-                statColumn(value: "\(profile.elo)", label: "ELO MONDIAL", color: Theme.duelAccent.mix(with: .black, by: 0.2))
+                statColumn(value: "\(profile.displayPoints)", label: "POINTS CLASSÉS", color: Theme.duelAccent.mix(with: .black, by: 0.2))
                 statColumn(value: "\(profile.wins)", label: "VICTOIRES", color: Theme.success)
                 statColumn(value: "\(profile.losses)", label: "DÉFAITES", color: Theme.danger)
             }
@@ -303,7 +303,7 @@ struct ProfileView: View {
             statCard(icon: "diamond.fill", color: Theme.livres, value: "\(progress.livresBalance)", label: "Rubis")
             statCard(icon: "crown.fill", color: Theme.primary, value: "\(model.store.masteredChaptersCount)", label: "Étapes maîtrisées")
             statCard(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(progress.duelsWon)", label: "Duels gagnés")
-            statCard(icon: "chart.line.uptrend.xyaxis", color: Theme.success, value: online.profile.map { "\($0.elo)" } ?? "\(progress.elo)", label: online.profile != nil ? "ELO mondial" : "ELO local")
+            statCard(icon: "chart.line.uptrend.xyaxis", color: Theme.success, value: online.profile.map { "\($0.displayPoints)" } ?? "\(progress.elo)", label: online.profile != nil ? "Points classés" : "Niveau local")
         }
     }
 

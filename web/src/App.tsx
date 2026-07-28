@@ -11,6 +11,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import AdminGenerator from "./pages/AdminGenerator";
 import AdminReview from "./pages/AdminReview";
+import AdminCalibration from "./pages/AdminCalibration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           <Route path="/admin-generator" element={<AdminGenerator />} />
           <Route path="/admin-review" element={<AdminReview />} />
+          <Route path="/admin-calibration" element={<AdminCalibration />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

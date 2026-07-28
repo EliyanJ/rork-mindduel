@@ -1,15 +1,27 @@
 import Foundation
 
 /// Server-side player profile (ranked identity).
+///
+/// Two ratings, deliberately separate:
+/// - `elo` is the hidden skill rating. It drives matchmaking and weights the
+///   difficulty telemetry, and is never shown as the player's rank.
+/// - `points` is the visible ladder score. It rises on a win and falls on a
+///   loss, sized by how strong the opponent was on hidden rating.
 nonisolated struct PlayerProfile: Codable, Identifiable, Hashable {
     let id: String
     var name: String
     var emoji: String
     var elo: Int
+    /// Optional so profiles serialized before the rating split still decode.
+    var points: Int?
     var wins: Int
     var losses: Int
     var draws: Int
     var friendCode: String
+
+    /// The number to show the player. Falls back to the hidden rating for
+    /// profiles that predate the split.
+    var displayPoints: Int { points ?? elo }
 }
 
 nonisolated struct RankedEntry: Codable, Identifiable, Hashable {
@@ -18,10 +30,13 @@ nonisolated struct RankedEntry: Codable, Identifiable, Hashable {
     let name: String
     let emoji: String
     let elo: Int
+    let points: Int?
     let wins: Int
     let losses: Int
     let draws: Int
     let friendCode: String
+
+    var displayPoints: Int { points ?? elo }
 }
 
 nonisolated struct LeaderboardPayload: Codable {

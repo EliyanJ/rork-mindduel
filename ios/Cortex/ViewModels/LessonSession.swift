@@ -31,6 +31,9 @@ final class LessonSession {
 
     private(set) var index: Int = 0
     private(set) var phase: Phase = .answering
+    /// When the current question was put on screen — the basis of the response
+    /// time reported to the difficulty calibration telemetry.
+    private var questionShownAt: Date = .now
     var selection: String = ""
     private(set) var currentOptions: [String] = []
     private(set) var anagramLetters: [Character] = []
@@ -129,6 +132,15 @@ final class LessonSession {
             ))
         }
         store.recordAnswer(questionId: question.id, disciplineId: current.disciplineId, correct: correct)
+        AnswerTelemetry.shared.record(AnswerTelemetry.Event(
+            questionId: question.id,
+            correct: correct,
+            timeMs: Int(Date.now.timeIntervalSince(questionShownAt) * 1000),
+            selected: selection,
+            timedOut: false,
+            disciplineId: current.disciplineId,
+            level: level?.rawValue
+        ))
         phase = .feedback(correct: correct)
     }
 
@@ -145,6 +157,9 @@ final class LessonSession {
     }
 
     private func complete() {
+        // Push the tail of the batch now rather than stranding it until the next
+        // session — a 10-question lesson never reaches the flush threshold.
+        AnswerTelemetry.shared.flush()
         let wasActiveToday = Self.isActiveToday(store: store)
         if correctCount == items.count { xpEarned += 20 }
         store.addXP(xpEarned)
@@ -204,6 +219,7 @@ final class LessonSession {
 
     private func prepareQuestion() {
         guard !items.isEmpty else { return }
+        questionShownAt = .now
         let question = current.question
         switch question.type {
         case .trueFalse:

@@ -32,6 +32,23 @@ export type Question = {
   moderationStatus?: ModerationStatus;
   moderatedBy?: ModeratedBy;
   moderatedAt?: number;
+  /**
+   * Calibrated difficulty on a 0-100 scale, where the number reads as a
+   * population statement: a score of S means a baseline player has a
+   * (100 - S)% chance of answering correctly. The displayed tier is derived
+   * from this score, never the other way around.
+   *
+   * Absent on questions that have never been calibrated — those fall back to
+   * the midpoint of the folder they sit in. See `lib/difficulty.ts`.
+   */
+  difficultyScore?: number;
+  /** Who set the score. "human" is locked and never overwritten by automation. */
+  difficultySource?: "human" | "ai" | "empirical";
+  /** 0-1 trust in the score — drives how much real play data may move it. */
+  difficultyConfidence?: number;
+  /** One-line justification, shown in the admin calibration tool. */
+  difficultyReason?: string;
+  difficultyUpdatedAt?: number;
 };
 
 export type Level = {

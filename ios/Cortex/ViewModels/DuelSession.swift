@@ -173,12 +173,22 @@ final class DuelSession {
             disciplineId: questionDiscipline[question.id] ?? "",
             correct: playerCorrect
         )
+        AnswerTelemetry.shared.record(AnswerTelemetry.Event(
+            questionId: question.id,
+            correct: playerCorrect,
+            timeMs: Int(answerTime * 1000),
+            selected: playerAnswer,
+            timedOut: playerAnswer == nil,
+            disciplineId: questionDiscipline[question.id] ?? "",
+            level: nil
+        ))
 
         phase = .reveal
         try await Task.sleep(for: .seconds(2.4))
     }
 
     private func finish() {
+        AnswerTelemetry.shared.flush()
         let won = playerScore > botScore
         let draw = playerScore == botScore
         eloChange = draw ? 4 : (won ? 18 : -12)

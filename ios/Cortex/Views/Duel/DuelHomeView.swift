@@ -114,11 +114,11 @@ struct DuelHomeView: View {
         VStack(spacing: 18) {
             HStack(spacing: 24) {
                 VStack(spacing: 4) {
-                    Text(online.profile.map { "\($0.elo)" } ?? "—")
+                    Text(online.profile.map { "\($0.displayPoints)" } ?? "—")
                         .font(.system(size: 40, weight: .heavy, design: .rounded))
                         .foregroundStyle(Theme.duelAccent)
                         .contentTransition(.numericText())
-                    Text("ELO MONDIAL")
+                    Text("POINTS CLASSÉS")
                         .font(.system(.caption2, design: .rounded, weight: .heavy))
                         .foregroundStyle(.white.opacity(0.6))
                 }
@@ -249,7 +249,7 @@ struct DuelHomeView: View {
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
             Spacer()
-            Text("\(entry.elo)")
+            Text("\(entry.displayPoints)")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.duelAccent.mix(with: .black, by: 0.2))
         }

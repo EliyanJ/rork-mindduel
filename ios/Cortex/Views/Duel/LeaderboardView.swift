@@ -72,7 +72,7 @@ struct LeaderboardView: View {
                 Text("#\(rank)")
                     .font(.system(.title3, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.gold)
-                Text("ELO \(profile.elo)")
+                Text("\(profile.displayPoints) pts")
                     .font(.system(.caption, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.duelAccent)
             }
@@ -100,7 +100,7 @@ struct LeaderboardView: View {
                     .foregroundStyle(.white.opacity(0.45))
             }
             Spacer()
-            Text("\(entry.elo)")
+            Text("\(entry.displayPoints)")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.duelAccent)
         }

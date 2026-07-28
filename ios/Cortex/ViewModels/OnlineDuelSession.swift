@@ -296,6 +296,17 @@ final class OnlineDuelSession {
             disciplineId: questionDiscipline[question.id] ?? "",
             correct: myCorrect
         )
+        // The server is authoritative on correctness here, so the telemetry uses
+        // its verdict rather than re-deriving it on the client.
+        AnswerTelemetry.shared.record(AnswerTelemetry.Event(
+            questionId: question.id,
+            correct: myCorrect,
+            timeMs: Int((playerAnswerTime ?? roundDuration) * 1000),
+            selected: playerAnswer,
+            timedOut: playerAnswer == nil,
+            disciplineId: questionDiscipline[question.id] ?? "",
+            level: nil
+        ))
         if myCorrect { Haptics.success() } else { Haptics.error() }
         phase = .reveal
     }

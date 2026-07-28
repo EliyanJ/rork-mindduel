@@ -871,6 +871,12 @@ const AdminReview = () => {
             >
               Generator Admin →
             </Link>
+            <Link
+              to="/admin-calibration"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-300 transition hover:bg-indigo-500/20"
+            >
+              Calibrage difficulté →
+            </Link>
             {syncState === "saving" ? (
               <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-300">SAUVEGARDE…</span>
             ) : syncState === "error" ? (

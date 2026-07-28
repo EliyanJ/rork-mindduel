@@ -136,7 +136,7 @@ struct FriendsSection: View {
                 Text(request.name)
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                Text("ELO \(request.elo)")
+                Text("\(request.displayPoints) pts")
                     .font(.system(.caption2, design: .rounded, weight: .bold))
                     .foregroundStyle(Theme.inkMuted)
             }
@@ -178,7 +178,7 @@ struct FriendsSection: View {
                     .foregroundStyle(Theme.inkMuted)
             }
             Spacer()
-            Text("ELO \(friend.elo)")
+            Text("\(friend.displayPoints) pts")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.duelAccent.mix(with: .black, by: 0.2))
             Menu {

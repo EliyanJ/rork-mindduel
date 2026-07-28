@@ -18,6 +18,10 @@ struct CortexApp: App {
         _authManager = State(initialValue: auth)
         _onlineModel = State(initialValue: OnlineModel(auth: auth))
 
+        // Answer telemetry feeds the difficulty calibration pipeline. It needs a
+        // bearer token to attribute events, and `AuthManager` is owned here.
+        AnswerTelemetry.shared.configure { await auth.validAccessToken() }
+
         // Version 1.0 ships free: no purchase SDK is linked and no ads load.
         if Monetization.isEnabled {
             AdsManager.shared.start()

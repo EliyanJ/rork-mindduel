@@ -42,6 +42,13 @@ export default {
       return withCors(res);
     }
 
+    // Difficulty telemetry read-out for the admin calibration tool
+    // (password checked inside the Hub DO).
+    if (url.pathname === "/api/stats/questions" && request.method === "GET") {
+      const res = await dispatchToDo(env, "Hub", "global", request);
+      return withCors(res);
+    }
+
     // Admin question-review tool: stateless AI proxy. The caller's API key is
     // used only for this single outbound request and is never stored, logged,
     // or forwarded anywhere except straight to the chosen provider — this

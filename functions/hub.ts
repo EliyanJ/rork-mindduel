@@ -8,7 +8,17 @@ export type PlayerProfile = {
   id: string;
   name: string;
   emoji: string;
+  /**
+   * Hidden skill rating. Drives matchmaking and weights the difficulty
+   * telemetry — never shown to the player as their rank.
+   */
   elo: number;
+  /**
+   * Visible ladder points. Move up on a win and down on a loss (chess.com
+   * style), sized by how the opponent compared on hidden rating: beating
+   * someone stronger pays a lot, beating someone weaker pays little.
+   */
+  points: number;
   wins: number;
   losses: number;
   draws: number;
@@ -20,6 +30,7 @@ type PlayerRow = {
   name: string;
   emoji: string;
   elo: number;
+  points: number;
   wins: number;
   losses: number;
   draws: number;
@@ -88,6 +99,15 @@ export class Hub extends DurableObject {
     } catch {
       // column already exists
     }
+    // Migration: displayed ladder points were split out of the hidden rating.
+    // Existing players keep their current number as their starting points, so
+    // nobody sees their rank reset.
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE players ADD COLUMN points INTEGER NOT NULL DEFAULT 1000");
+      this.ctx.storage.sql.exec("UPDATE players SET points = elo");
+    } catch {
+      // column already exists
+    }
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS content (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -108,6 +128,45 @@ export class Hub extends DurableObject {
         payload TEXT NOT NULL,
         updated_at INTEGER NOT NULL,
         PRIMARY KEY (kind, question_id)
+      )
+    `);
+
+    // MARK: difficulty telemetry
+    // Aggregates only — we never keep one row per answer, so storage stays flat
+    // no matter how many duels are played. `question_stats` holds the global
+    // counters, `question_elo_stats` splits them per player-strength bucket (so
+    // a success rate can be normalised against who was answering), and
+    // `question_choice_stats` counts how often each option was picked (the
+    // wrong-answer distribution is the best broken-question detector we have).
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS question_stats (
+        question_id TEXT PRIMARY KEY,
+        discipline_id TEXT,
+        level TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        correct INTEGER NOT NULL DEFAULT 0,
+        sum_time_ms INTEGER NOT NULL DEFAULT 0,
+        sum_correct_time_ms INTEGER NOT NULL DEFAULT 0,
+        timeouts INTEGER NOT NULL DEFAULT 0,
+        first_seen_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `);
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS question_elo_stats (
+        question_id TEXT NOT NULL,
+        bucket INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        correct INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (question_id, bucket)
+      )
+    `);
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS question_choice_stats (
+        question_id TEXT NOT NULL,
+        choice TEXT NOT NULL,
+        picks INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (question_id, choice)
       )
     `);
   }
@@ -136,6 +195,10 @@ export class Hub extends DurableObject {
     }
     if (path === "/api/review/state" && request.method === "POST") {
       return this.saveReviewState(await request.json());
+    }
+    // Difficulty telemetry read-out for the admin calibration tool.
+    if (path === "/api/stats/questions" && request.method === "GET") {
+      return this.questionStats(url.searchParams.get("password"));
     }
 
     const userId = request.headers.get("X-Rork-User-Id");
@@ -226,6 +289,10 @@ export class Hub extends DurableObject {
         return this.deleteAccount(userId);
       }
 
+      if (path === "/api/hub/answers" && request.method === "POST") {
+        return this.ingestAnswers(userId, await request.json().catch(() => ({})));
+      }
+
       return Response.json({ error: "not found" }, { status: 404 });
     } catch (err) {
       console.error("hub error", path, err);
@@ -248,9 +315,9 @@ export class Hub extends DurableObject {
     const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠";
     const code = this.generateFriendCodeFor(name);
     this.ctx.storage.sql.exec(
-      `INSERT INTO players (user_id, name, emoji, elo, wins, losses, draws, friend_code, last_seen_at)
-       VALUES (?, ?, ?, ?, 0, 0, 0, ?, ?)`,
-      userId, name.slice(0, 24), emoji, elo, code, Date.now(),
+      `INSERT INTO players (user_id, name, emoji, elo, points, wins, losses, draws, friend_code, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?)`,
+      userId, name.slice(0, 24), emoji, elo, elo, code, Date.now(),
     );
     return rowToProfile(this.playerRow(userId)!);
   }
@@ -301,15 +368,16 @@ export class Hub extends DurableObject {
   }
 
   private leaderboard(userId: string): Response {
+    // The ladder is ranked on visible points, not on the hidden rating.
     const top = this.ctx.storage.sql
-      .exec<PlayerRow>("SELECT * FROM players ORDER BY elo DESC, wins DESC LIMIT 50")
+      .exec<PlayerRow>("SELECT * FROM players ORDER BY points DESC, wins DESC LIMIT 50")
       .toArray()
       .map((row, index) => ({ rank: index + 1, ...rowToProfile(row) }));
     const mine = this.playerRow(userId);
     let myRank: number | null = null;
     if (mine) {
       const better = this.ctx.storage.sql
-        .exec<{ n: number }>("SELECT COUNT(*) AS n FROM players WHERE elo > ?", mine.elo)
+        .exec<{ n: number }>("SELECT COUNT(*) AS n FROM players WHERE points > ?", mine.points)
         .toArray();
       myRank = (better[0]?.n ?? 0) + 1;
     }
@@ -598,6 +666,7 @@ export class Hub extends DurableObject {
     else if (p1.score < p2.score) outcome1 = 0;
     else outcome1 = 0.5;
 
+    // Hidden rating: plain Elo, the number that decides who you get matched with.
     const expected1 = 1 / (1 + Math.pow(10, (row2.elo - row1.elo) / 400));
     const k = 32;
     const change1 = Math.round(k * (outcome1 - expected1));
@@ -606,20 +675,31 @@ export class Hub extends DurableObject {
     const newElo1 = clampElo(row1.elo + change1);
     const newElo2 = clampElo(row2.elo + change2);
 
-    this.applyResult(p1.userId, newElo1, outcome1);
-    this.applyResult(p2.userId, newElo2, 1 - outcome1);
+    // Visible points move separately, sized by the hidden-rating gap.
+    const pointsChange1 = ladderPointsChange(outcome1, expected1);
+    const pointsChange2 = ladderPointsChange(1 - outcome1, 1 - expected1);
+    const newPoints1 = clampPoints(row1.points + pointsChange1);
+    const newPoints2 = clampPoints(row2.points + pointsChange2);
+
+    this.applyResult(p1.userId, newElo1, newPoints1, outcome1);
+    this.applyResult(p2.userId, newElo2, newPoints2, 1 - outcome1);
 
     return Response.json({
-      eloChanges: { [p1.userId]: change1, [p2.userId]: change2 },
-      newElos: { [p1.userId]: newElo1, [p2.userId]: newElo2 },
+      // `eloChanges` keeps its name for older clients, but now carries the
+      // visible points delta — that is what a player should see after a duel.
+      eloChanges: { [p1.userId]: pointsChange1, [p2.userId]: pointsChange2 },
+      newElos: { [p1.userId]: newPoints1, [p2.userId]: newPoints2 },
+      pointsChanges: { [p1.userId]: pointsChange1, [p2.userId]: pointsChange2 },
+      newPoints: { [p1.userId]: newPoints1, [p2.userId]: newPoints2 },
+      hiddenRatings: { [p1.userId]: newElo1, [p2.userId]: newElo2 },
     });
   }
 
-  private applyResult(userId: string, newElo: number, outcome: number): void {
+  private applyResult(userId: string, newElo: number, newPoints: number, outcome: number): void {
     const col = outcome === 1 ? "wins" : outcome === 0 ? "losses" : "draws";
     this.ctx.storage.sql.exec(
-      `UPDATE players SET elo = ?, ${col} = ${col} + 1, last_seen_at = ? WHERE user_id = ?`,
-      newElo, Date.now(), userId,
+      `UPDATE players SET elo = ?, points = ?, ${col} = ${col} + 1, last_seen_at = ? WHERE user_id = ?`,
+      newElo, newPoints, Date.now(), userId,
     );
   }
 
@@ -713,6 +793,169 @@ export class Hub extends DurableObject {
     return Response.json({ changes, notes, count: rows.length });
   }
 
+  // MARK: difficulty telemetry ingest
+
+  /**
+   * Records a batch of answered questions. Fire-and-forget from the client's
+   * point of view: a malformed event is skipped rather than failing the batch,
+   * because losing one telemetry row must never surface as an error to a player
+   * mid-duel.
+   */
+  private ingestAnswers(userId: string, body: unknown): Response {
+    const payload = body as {
+      events?: Array<{
+        questionId?: string;
+        correct?: boolean;
+        timeMs?: number;
+        selected?: string;
+        timedOut?: boolean;
+        disciplineId?: string;
+        level?: string;
+      }>;
+    };
+    const events = Array.isArray(payload.events) ? payload.events.slice(0, 60) : [];
+    if (events.length === 0) return Response.json({ ok: true, recorded: 0 });
+
+    // The player's strength at answering time is what makes a success rate
+    // interpretable, so it is resolved once per batch from the live profile.
+    const elo = this.playerRow(userId)?.elo ?? 1000;
+    const bucket = eloBucket(elo);
+    const now = Date.now();
+    let recorded = 0;
+
+    for (const ev of events) {
+      const questionId = typeof ev.questionId === "string" ? ev.questionId.slice(0, 80) : "";
+      if (!questionId || typeof ev.correct !== "boolean") continue;
+      const correct = ev.correct ? 1 : 0;
+      const timedOut = ev.timedOut === true ? 1 : 0;
+      // Clamp so a stalled client clock can't poison the average response time.
+      const timeMs = Number.isFinite(ev.timeMs)
+        ? Math.max(0, Math.min(120_000, Math.round(ev.timeMs as number)))
+        : 0;
+
+      this.ctx.storage.sql.exec(
+        `INSERT INTO question_stats
+           (question_id, discipline_id, level, attempts, correct, sum_time_ms, sum_correct_time_ms, timeouts, first_seen_at, updated_at)
+         VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(question_id) DO UPDATE SET
+           attempts = attempts + 1,
+           correct = correct + excluded.correct,
+           sum_time_ms = sum_time_ms + excluded.sum_time_ms,
+           sum_correct_time_ms = sum_correct_time_ms + excluded.sum_correct_time_ms,
+           timeouts = timeouts + excluded.timeouts,
+           discipline_id = COALESCE(excluded.discipline_id, discipline_id),
+           level = COALESCE(excluded.level, level),
+           updated_at = excluded.updated_at`,
+        questionId,
+        typeof ev.disciplineId === "string" ? ev.disciplineId.slice(0, 60) : null,
+        typeof ev.level === "string" ? ev.level.slice(0, 24) : null,
+        correct,
+        timeMs,
+        correct === 1 ? timeMs : 0,
+        timedOut,
+        now,
+        now,
+      );
+
+      this.ctx.storage.sql.exec(
+        `INSERT INTO question_elo_stats (question_id, bucket, attempts, correct)
+         VALUES (?, ?, 1, ?)
+         ON CONFLICT(question_id, bucket) DO UPDATE SET
+           attempts = attempts + 1,
+           correct = correct + excluded.correct`,
+        questionId, bucket, correct,
+      );
+
+      // Only wrong picks carry information about distractor quality; a timeout
+      // is tracked separately so it never looks like a chosen option.
+      if (typeof ev.selected === "string" && ev.selected.length > 0 && timedOut === 0) {
+        this.ctx.storage.sql.exec(
+          `INSERT INTO question_choice_stats (question_id, choice, picks)
+           VALUES (?, ?, 1)
+           ON CONFLICT(question_id, choice) DO UPDATE SET picks = picks + 1`,
+          questionId, ev.selected.slice(0, 160),
+        );
+      }
+      recorded += 1;
+    }
+
+    return Response.json({ ok: true, recorded });
+  }
+
+  /**
+   * Admin read-out of the telemetry, with the empirical difficulty already
+   * solved server-side so every consumer agrees on the same number.
+   */
+  private questionStats(password: string | null): Response {
+    if (password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const rows = this.ctx.storage.sql
+      .exec<{
+        question_id: string;
+        discipline_id: string | null;
+        level: string | null;
+        attempts: number;
+        correct: number;
+        sum_time_ms: number;
+        sum_correct_time_ms: number;
+        timeouts: number;
+        updated_at: number;
+      }>(
+        `SELECT question_id, discipline_id, level, attempts, correct,
+                sum_time_ms, sum_correct_time_ms, timeouts, updated_at
+           FROM question_stats ORDER BY attempts DESC`,
+      )
+      .toArray();
+
+    const eloRows = this.ctx.storage.sql
+      .exec<{ question_id: string; bucket: number; attempts: number; correct: number }>(
+        "SELECT question_id, bucket, attempts, correct FROM question_elo_stats",
+      )
+      .toArray();
+    const byQuestionElo = new Map<string, Array<{ bucket: number; attempts: number; correct: number }>>();
+    for (const r of eloRows) {
+      const list = byQuestionElo.get(r.question_id) ?? [];
+      list.push({ bucket: r.bucket, attempts: r.attempts, correct: r.correct });
+      byQuestionElo.set(r.question_id, list);
+    }
+
+    const choiceRows = this.ctx.storage.sql
+      .exec<{ question_id: string; choice: string; picks: number }>(
+        "SELECT question_id, choice, picks FROM question_choice_stats",
+      )
+      .toArray();
+    const byQuestionChoice = new Map<string, Record<string, number>>();
+    for (const r of choiceRows) {
+      const map = byQuestionChoice.get(r.question_id) ?? {};
+      map[r.choice] = r.picks;
+      byQuestionChoice.set(r.question_id, map);
+    }
+
+    const stats = rows.map((row) => {
+      const buckets = byQuestionElo.get(row.question_id) ?? [];
+      const empiricalScore = solveEmpiricalScore(buckets, row.correct);
+      const avgTimeMs = row.attempts > 0 ? Math.round(row.sum_time_ms / row.attempts) : 0;
+      const avgCorrectTimeMs = row.correct > 0 ? Math.round(row.sum_correct_time_ms / row.correct) : 0;
+      return {
+        questionId: row.question_id,
+        disciplineId: row.discipline_id,
+        level: row.level,
+        attempts: row.attempts,
+        correct: row.correct,
+        successRate: row.attempts > 0 ? row.correct / row.attempts : 0,
+        avgTimeMs,
+        avgCorrectTimeMs,
+        timeouts: row.timeouts,
+        empiricalScore,
+        choices: byQuestionChoice.get(row.question_id) ?? {},
+        updatedAt: row.updated_at,
+      };
+    });
+
+    return Response.json({ stats, count: stats.length });
+  }
+
   private saveReviewState(body: unknown): Response {
     const payload = body as {
       password?: string;
@@ -746,17 +989,90 @@ export class Hub extends DurableObject {
   }
 }
 
+/**
+ * Visible ladder points won or lost for one duel.
+ *
+ * `expected` is the win probability from the hidden ratings, so an upset pays
+ * near the maximum while beating a much weaker opponent pays near the minimum.
+ * Losses subtract (chess.com behaviour, not a one-way progress bar), and losing
+ * to a stronger player costs little.
+ */
+function ladderPointsChange(outcome: number, expected: number): number {
+  const MIN = 5;
+  const SPAN = 30;
+  if (outcome === 1) return Math.round(MIN + SPAN * (1 - expected));
+  if (outcome === 0) return -Math.round(MIN + SPAN * expected);
+  // Draw: a small correction toward what the ratings predicted.
+  return Math.round(16 * (0.5 - expected));
+}
+
+function clampPoints(points: number): number {
+  if (!Number.isFinite(points)) return 1000;
+  return Math.max(0, Math.min(100_000, Math.round(points)));
+}
+
 function rowToProfile(row: PlayerRow): PlayerProfile {
   return {
     id: row.user_id,
     name: row.name,
     emoji: row.emoji,
     elo: row.elo,
+    // Older rows created before the split have no points value yet.
+    points: row.points ?? row.elo,
     wins: row.wins,
     losses: row.losses,
     draws: row.draws,
     friendCode: row.friend_code,
   };
+}
+
+/** Player-strength buckets of 100 ELO, so success rates stay interpretable. */
+function eloBucket(elo: number): number {
+  return Math.max(4, Math.min(40, Math.round(elo / 100)));
+}
+
+/**
+ * Solves the question's difficulty on the 0-100 scale from observed answers.
+ *
+ * The scale is defined so the number reads directly as a population statement:
+ * a score of S means a baseline player (ELO 1000) has a (100 - S)% chance of
+ * answering correctly. So 25 -> 75% succeed (facile), 50 -> half succeed,
+ * 75 -> a quarter succeed, 90 -> only one in ten succeeds.
+ *
+ * Under the hood this is a one-parameter logistic (Rasch) fit: we look for the
+ * difficulty `b`, expressed on the ELO scale, that best explains how many
+ * correct answers were observed given who was answering. Bisection is enough —
+ * the expected-score curve is strictly decreasing in `b`.
+ */
+function solveEmpiricalScore(
+  buckets: Array<{ bucket: number; attempts: number; correct: number }>,
+  totalCorrect: number,
+): number | null {
+  const totalAttempts = buckets.reduce((sum, b) => sum + b.attempts, 0);
+  if (totalAttempts === 0) return null;
+
+  const expectedCorrect = (b: number): number =>
+    buckets.reduce(
+      (sum, row) => sum + row.attempts / (1 + Math.pow(10, (b - row.bucket * 100) / 400)),
+      0,
+    );
+
+  let lo = 200;
+  let hi = 3200;
+  // All-correct / all-wrong have no interior solution: peg them to the bounds
+  // instead of letting bisection wander.
+  if (totalCorrect >= totalAttempts) hi = lo;
+  else if (totalCorrect <= 0) lo = hi;
+  else {
+    for (let i = 0; i < 40; i += 1) {
+      const mid = (lo + hi) / 2;
+      if (expectedCorrect(mid) > totalCorrect) lo = mid;
+      else hi = mid;
+    }
+  }
+  const b = (lo + hi) / 2;
+  const baselineSuccess = 1 / (1 + Math.pow(10, (b - 1000) / 400));
+  return Math.max(0, Math.min(100, Math.round((1 - baselineSuccess) * 100)));
 }
 
 function clampElo(elo: number): number {
