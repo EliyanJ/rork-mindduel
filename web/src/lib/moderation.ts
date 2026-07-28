@@ -73,6 +73,47 @@ function getQuestionArray(ch: Chapter, level: string): Question[] | undefined {
   return ch.levels?.[level]?.questions;
 }
 
+/**
+ * Resolves where a question actually lives right now.
+ *
+ * Question ids are positional (`hi_an_f_1` = discipline/chapter/level/index),
+ * so a stored `ref` goes stale as soon as anything is regenerated, moved or
+ * renumbered. Matching on the ref alone made saved decisions silently
+ * unresolvable — and they were then discarded. So we fall back to searching by
+ * id across the whole tree, then by exact prompt text (the only truly stable
+ * identity a question has), and finally by prompt when it is provided.
+ */
+export function resolveRef(
+  content: Content,
+  ref: QuestionRef,
+  questionId: string,
+  prompt?: string,
+): { ref: QuestionRef; questionId: string } | null {
+  const ch = findChapter(content, ref);
+  const arr = ch ? getQuestionArray(ch, ref.level) : undefined;
+  if (arr?.some((q) => q.id === questionId)) return { ref, questionId };
+
+  const flat = flattenQuestions(content);
+  const byId = flat.find((f) => f.question.id === questionId);
+  if (byId) {
+    return {
+      ref: { disciplineId: byId.disciplineId, chapterId: byId.chapterId, level: byId.level },
+      questionId,
+    };
+  }
+  if (prompt) {
+    const needle = prompt.trim().toLowerCase();
+    const byPrompt = flat.find((f) => f.question.prompt.trim().toLowerCase() === needle);
+    if (byPrompt) {
+      return {
+        ref: { disciplineId: byPrompt.disciplineId, chapterId: byPrompt.chapterId, level: byPrompt.level },
+        questionId: byPrompt.question.id,
+      };
+    }
+  }
+  return null;
+}
+
 /** Immutably applies `updater` to a single question anywhere in the tree. */
 export function updateQuestion(
   content: Content,

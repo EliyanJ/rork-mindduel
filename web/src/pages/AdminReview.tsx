@@ -32,8 +32,10 @@ import {
   markStatus,
   moveQuestion,
   questionStatus,
+  resolveRef,
   updateQuestion,
 } from "@/lib/moderation";
+import { fetchReviewArchive, restoreReviewArchive } from "@/lib/reviewSync";
 import { type AiConfig, type AiReviewResult, reviewQuestionWithAi } from "@/lib/aiReview";
 import { PhoneQuestionPreview } from "@/components/PhoneQuestionPreview";
 
@@ -94,23 +96,29 @@ async function fetchReviewState(): Promise<{ changes: Record<string, PendingChan
 function replayChanges(
   base: Content,
   changes: Record<string, PendingChange>,
-): { merged: Content; applied: number; skipped: number } {
+): { merged: Content; applied: number; skipped: number; appliedIds: string[]; skippedIds: string[] } {
   let merged = base;
-  let applied = 0;
-  let skipped = 0;
+  const appliedIds: string[] = [];
+  const skippedIds: string[] = [];
   for (const [questionId, change] of Object.entries(changes)) {
     const before = merged;
+    // Question ids are positional, so a saved ref goes stale as soon as content
+    // is regenerated. Re-resolve the real location (by id anywhere, then by
+    // prompt) instead of dropping the decision.
+    const located = resolveRef(merged, change.ref, questionId, change.question?.prompt ?? undefined);
+    const ref = located?.ref ?? change.ref;
+    const id = located?.questionId ?? questionId;
     if (change.question === null) {
-      merged = deleteQuestion(merged, change.ref, questionId);
+      merged = deleteQuestion(merged, ref, id);
     } else if (change.moveTo) {
-      merged = moveQuestion(merged, change.ref, change.moveTo, questionId, change.question);
+      merged = moveQuestion(merged, ref, change.moveTo, id, change.question);
     } else {
-      merged = updateQuestion(merged, change.ref, questionId, () => change.question as Question);
+      merged = updateQuestion(merged, ref, id, () => change.question as Question);
     }
-    if (merged === before) skipped += 1;
-    else applied += 1;
+    if (merged === before) skippedIds.push(questionId);
+    else appliedIds.push(questionId);
   }
-  return { merged, applied, skipped };
+  return { merged, applied: appliedIds.length, skipped: skippedIds.length, appliedIds, skippedIds };
 }
 
 const AdminReview = () => {
@@ -119,6 +127,7 @@ const AdminReview = () => {
   const [tab, setTab] = useState<Tab>("review");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [publishing, setPublishing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [publishedInfo, setPublishedInfo] = useState<{ version: number; questionCount: number } | null>(null);
 
   // Real-time server sync of moderation decisions + AI notes.
@@ -283,7 +292,7 @@ const AdminReview = () => {
         const res = await fetch(`${FN_URL}/api/review/state`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes }),
+          body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes, reason: "admin-review-sync" }),
         });
         if (!res.ok) throw new Error(`serveur ${res.status}`);
         lastSyncedChanges.current = pendingChanges;
@@ -756,9 +765,20 @@ const AdminReview = () => {
       // can never silently un-publish a decision made from another tab.
       addLog("info", "Publication : récupération de la version la plus récente du serveur avant fusion…");
       const freshContent = await fetchContent();
-      const { merged, applied: appliedCount, skipped: skippedCount } = replayChanges(freshContent, pendingChanges);
+      const { merged, applied: appliedCount, skipped: skippedCount, skippedIds } = replayChanges(freshContent, pendingChanges);
       if (skippedCount > 0) {
-        addLog("warn", `${skippedCount} décision(s) locale(s) n'ont pas pu être retrouvées dans la version serveur (question déjà supprimée/déplacée ailleurs) — ignorée(s) sans risque.`);
+        addLog(
+          "warn",
+          `${skippedCount} décision(s) n'ont pas pu être retrouvées dans la version serveur — elles RESTENT en attente et ne seront pas effacées. Ne les perds pas : vérifie ces questions avant de republier.`,
+        );
+      }
+      if (appliedCount === 0) {
+        addLog(
+          "error",
+          `Publication annulée : aucune des ${Object.keys(pendingChanges).length} décision(s) n'a pu être appliquée sur la version serveur. Rien n'a été effacé — dis-le moi plutôt que de réessayer.`,
+        );
+        setPublishing(false);
+        return;
       }
       addLog("info", `${appliedCount} décision(s) de modération réappliquée(s) sur la version fraîche du serveur.`);
 
@@ -776,11 +796,21 @@ const AdminReview = () => {
         // Reflect the true published state locally (includes anything generated
         // elsewhere), and clear the replayed decisions since they're now live.
         setContent(merged);
-        // Clearing the decisions also auto-deletes them server-side via the
-        // live sync — their statuses are now baked into the published content.
-        setPendingChanges({});
-        localStorage.removeItem(CHANGES_KEY);
-        addLog("success", `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne. Les statuts de modération font partie du contenu publié.`);
+        // Only decisions that actually landed in the published content leave the
+        // queue. Anything skipped stays pending — clearing it unconditionally is
+        // exactly how hours of review work vanished before.
+        const keptIds = new Set(skippedIds);
+        setPendingChanges((prev) => {
+          const next: Record<string, PendingChange> = {};
+          for (const [id, ch] of Object.entries(prev)) {
+            if (keptIds.has(id)) next[id] = ch;
+          }
+          return next;
+        });
+        addLog(
+          "success",
+          `Publié sur le backend ✓ v${data.version} — ${data.questionCount} questions en ligne, ${appliedCount} décision(s) intégrée(s)${skippedCount > 0 ? `, ${skippedCount} conservée(s) en attente` : ""}. Toute décision qui quitte la file est archivée côté serveur et peut être restaurée.`,
+        );
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -794,6 +824,32 @@ const AdminReview = () => {
     if (!content) return;
     downloadJson(content);
     addLog("success", "content.json téléchargé");
+  };
+
+  /**
+   * Pulls back every decision that ever left the pending queue. Live decisions
+   * always win, so this is safe to run at any time.
+   */
+  const handleRestoreArchive = async () => {
+    setRestoring(true);
+    try {
+      const entries = await fetchReviewArchive();
+      if (entries.length === 0) {
+        addLog("info", "Aucune décision archivée — rien à restaurer.");
+        return;
+      }
+      const oldest = new Date(Math.min(...entries.map((e) => e.archivedAt))).toLocaleString("fr-FR");
+      const { restored } = await restoreReviewArchive();
+      addLog(
+        "success",
+        `${entries.length} décision(s) archivée(s) trouvée(s) depuis le ${oldest} — ${restored} remise(s) dans la file (les décisions déjà présentes ont été conservées).`,
+      );
+      await loadAll();
+    } catch (err) {
+      addLog("error", `Restauration impossible : ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setRestoring(false);
+    }
   };
 
   return (
@@ -824,6 +880,16 @@ const AdminReview = () => {
             </button>
             <button
               type="button"
+              onClick={handleRestoreArchive}
+              disabled={restoring}
+              title="Remet dans la file toutes les décisions qui en sont sorties (publication, annulation, effacement)."
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-50"
+            >
+              {restoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              Récupérer les décisions archivées
+            </button>
+            <button
+              type="button"
               onClick={handleDownload}
               disabled={!content}
               className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition hover:bg-white/5 disabled:opacity-50"
@@ -845,6 +911,12 @@ const AdminReview = () => {
       </header>
 
       <main className="mx-auto max-w-[1600px] px-6 py-6">
+        <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3 text-xs leading-relaxed text-amber-200/90">
+          <strong className="font-bold text-amber-200">Décisions en attente : {Object.keys(pendingChanges).length}</strong>{" "}
+          — tant qu'elles ne sont pas publiées, elles ne sont pas dans l'app. Toute décision qui sort de
+          cette file est désormais archivée côté serveur : rien ne peut plus être perdu définitivement, et
+          « Récupérer les décisions archivées » les ramène.
+        </div>
         {publishedInfo && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3 text-sm">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />

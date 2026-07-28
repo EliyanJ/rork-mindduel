@@ -42,6 +42,18 @@ export default {
       return withCors(res);
     }
 
+    // Recovery routes — archived moderation decisions and published content
+    // history, so no admin action can permanently destroy human review work.
+    if (
+      url.pathname === "/api/review/archive"
+      || url.pathname === "/api/review/archive/restore"
+      || url.pathname === "/api/content/history"
+      || url.pathname === "/api/content/rollback"
+    ) {
+      const res = await dispatchToDo(env, "Hub", "global", request);
+      return withCors(res);
+    }
+
     // Difficulty telemetry read-out for the admin calibration tool
     // (password checked inside the Hub DO).
     if (url.pathname === "/api/stats/questions" && request.method === "GET") {

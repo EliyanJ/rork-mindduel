@@ -138,6 +138,31 @@ export class Hub extends DurableObject {
     // a success rate can be normalised against who was answering), and
     // `question_choice_stats` counts how often each option was picked (the
     // wrong-answer distribution is the best broken-question detector we have).
+    // Nothing here is ever hard-deleted. A moderation decision that leaves the
+    // pending queue is copied here first, so a mistaken "clear" (or a publish
+    // that silently dropped stale decisions) can always be replayed instead of
+    // costing hours of human review.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS review_state_archive (
+        archive_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL,
+        question_id TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        reason TEXT,
+        archived_at INTEGER NOT NULL
+      )
+    `);
+    // Full snapshots of every published content version. Publishing overwrites
+    // a single row, so without history one bad publish is unrecoverable.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS content_history (
+        version INTEGER PRIMARY KEY,
+        json TEXT NOT NULL,
+        question_count INTEGER NOT NULL,
+        moderated_count INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )
+    `);
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS question_stats (
         question_id TEXT PRIMARY KEY,
@@ -195,6 +220,19 @@ export class Hub extends DurableObject {
     }
     if (path === "/api/review/state" && request.method === "POST") {
       return this.saveReviewState(await request.json());
+    }
+    // Recovery routes — archived decisions and previous content versions.
+    if (path === "/api/review/archive" && request.method === "GET") {
+      return this.getReviewArchive(url.searchParams.get("password"));
+    }
+    if (path === "/api/review/archive/restore" && request.method === "POST") {
+      return this.restoreReviewArchive(await request.json());
+    }
+    if (path === "/api/content/history" && request.method === "GET") {
+      return this.getContentHistory(url.searchParams.get("password"));
+    }
+    if (path === "/api/content/rollback" && request.method === "POST") {
+      return this.rollbackContent(await request.json());
     }
     // Difficulty telemetry read-out for the admin calibration tool.
     if (path === "/api/stats/questions" && request.method === "GET") {
@@ -750,11 +788,36 @@ export class Hub extends DurableObject {
         }
       }
     }
+    let moderatedCount = 0;
+    for (const disc of content.disciplines ?? []) {
+      for (const ch of disc.chapters ?? []) {
+        const buckets: unknown[][] = [ch.questions ?? []];
+        for (const lvl of Object.values(ch.levels ?? {})) buckets.push(lvl.questions ?? []);
+        for (const bucket of buckets) {
+          for (const q of bucket) {
+            if ((q as { moderationStatus?: string }).moderationStatus) moderatedCount += 1;
+          }
+        }
+      }
+    }
+
     const existing = this.ctx.storage.sql
       .exec<{ version: number }>("SELECT version FROM content WHERE id = 1")
       .toArray();
     const newVersion = (existing[0]?.version ?? 0) + 1;
     const now = Date.now();
+
+    // Snapshot BEFORE overwriting, so a publish that loses moderation work can
+    // always be rolled back. Only the 12 most recent versions are kept.
+    this.ctx.storage.sql.exec(
+      `INSERT INTO content_history (version, json, question_count, moderated_count, created_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(version) DO UPDATE SET json = excluded.json, question_count = excluded.question_count, moderated_count = excluded.moderated_count, created_at = excluded.created_at`,
+      newVersion, jsonStr, questionCount, moderatedCount, now,
+    );
+    this.ctx.storage.sql.exec(
+      "DELETE FROM content_history WHERE version <= ?",
+      newVersion - 12,
+    );
     this.ctx.storage.sql.exec(
       `INSERT INTO content (id, json, version, question_count, updated_at) VALUES (1, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET json = excluded.json, version = excluded.version, question_count = excluded.question_count, updated_at = excluded.updated_at`,
@@ -764,6 +827,7 @@ export class Hub extends DurableObject {
       ok: true,
       version: newVersion,
       questionCount,
+      moderatedCount,
       updatedAt: now,
     });
   }
@@ -791,6 +855,116 @@ export class Hub extends DurableObject {
       }
     }
     return Response.json({ changes, notes, count: rows.length });
+  }
+
+  /**
+   * Every decision that ever left the pending queue, newest first. This is the
+   * safety net: the queue itself is disposable, this is not.
+   */
+  private getReviewArchive(password: string | null): Response {
+    if (password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const rows = this.ctx.storage.sql
+      .exec<{ archive_id: number; kind: string; question_id: string; payload: string; reason: string | null; archived_at: number }>(
+        "SELECT archive_id, kind, question_id, payload, reason, archived_at FROM review_state_archive ORDER BY archived_at DESC, archive_id DESC LIMIT 5000",
+      )
+      .toArray();
+    const entries = rows.flatMap((row) => {
+      try {
+        return [{
+          archiveId: row.archive_id,
+          kind: row.kind,
+          questionId: row.question_id,
+          payload: JSON.parse(row.payload) as unknown,
+          reason: row.reason ?? "unknown",
+          archivedAt: row.archived_at,
+        }];
+      } catch {
+        return [];
+      }
+    });
+    return Response.json({ entries, count: entries.length });
+  }
+
+  /**
+   * Puts archived decisions back into the live queue. Existing live decisions
+   * always win, so restoring can never undo newer work.
+   */
+  private restoreReviewArchive(body: unknown): Response {
+    const payload = body as { password?: string; archiveIds?: number[]; since?: number };
+    if (payload.password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const ids = Array.isArray(payload.archiveIds) ? payload.archiveIds.filter((n) => Number.isFinite(n)) : [];
+    const rows = ids.length > 0
+      ? ids.flatMap((id) =>
+          this.ctx.storage.sql
+            .exec<{ kind: string; question_id: string; payload: string }>(
+              "SELECT kind, question_id, payload FROM review_state_archive WHERE archive_id = ?",
+              id,
+            )
+            .toArray(),
+        )
+      : this.ctx.storage.sql
+          .exec<{ kind: string; question_id: string; payload: string }>(
+            "SELECT kind, question_id, payload FROM review_state_archive WHERE archived_at >= ? ORDER BY archived_at ASC, archive_id ASC",
+            typeof payload.since === "number" ? payload.since : 0,
+          )
+          .toArray();
+    const now = Date.now();
+    let restored = 0;
+    for (const row of rows) {
+      const existing = this.ctx.storage.sql
+        .exec<{ n: number }>(
+          "SELECT COUNT(*) AS n FROM review_state WHERE kind = ? AND question_id = ?",
+          row.kind, row.question_id,
+        )
+        .toArray();
+      if ((existing[0]?.n ?? 0) > 0) continue;
+      this.ctx.storage.sql.exec(
+        "INSERT INTO review_state (kind, question_id, payload, updated_at) VALUES (?, ?, ?, ?)",
+        row.kind, row.question_id, row.payload, now,
+      );
+      restored += 1;
+    }
+    return Response.json({ ok: true, restored, candidates: rows.length });
+  }
+
+  private getContentHistory(password: string | null): Response {
+    if (password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const rows = this.ctx.storage.sql
+      .exec<{ version: number; question_count: number; moderated_count: number; created_at: number }>(
+        "SELECT version, question_count, moderated_count, created_at FROM content_history ORDER BY version DESC",
+      )
+      .toArray();
+    return Response.json({
+      versions: rows.map((r) => ({
+        version: r.version,
+        questionCount: r.question_count,
+        moderatedCount: r.moderated_count,
+        createdAt: r.created_at,
+      })),
+    });
+  }
+
+  /** Republishes an archived version as the newest one (never rewrites history). */
+  private rollbackContent(body: unknown): Response {
+    const payload = body as { password?: string; version?: number };
+    if (payload.password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    const target = this.ctx.storage.sql
+      .exec<{ json: string; question_count: number }>(
+        "SELECT json, question_count FROM content_history WHERE version = ?",
+        payload.version ?? -1,
+      )
+      .toArray();
+    const row = target[0];
+    if (!row) return Response.json({ error: "Version introuvable" }, { status: 404 });
+    return this.publishContent({ password: "minduel-admin", content: JSON.parse(row.json) as unknown });
   }
 
   // MARK: difficulty telemetry ingest
@@ -959,6 +1133,7 @@ export class Hub extends DurableObject {
   private saveReviewState(body: unknown): Response {
     const payload = body as {
       password?: string;
+      reason?: string;
       upserts?: Array<{ kind?: string; questionId?: string; payload?: unknown }>;
       deletes?: Array<{ kind?: string; questionId?: string }>;
     };
@@ -977,8 +1152,23 @@ export class Hub extends DurableObject {
       );
       upserted += 1;
     }
+    const reason = typeof payload.reason === "string" ? payload.reason.slice(0, 120) : "client";
     for (const d of payload.deletes ?? []) {
       if ((d.kind !== "change" && d.kind !== "note") || !d.questionId) continue;
+      // Archive first — a decision leaving the queue must never be the only copy
+      // that existed. This is what makes an accidental clear recoverable.
+      const current = this.ctx.storage.sql
+        .exec<{ payload: string }>(
+          "SELECT payload FROM review_state WHERE kind = ? AND question_id = ?",
+          d.kind, d.questionId,
+        )
+        .toArray();
+      if (current[0]) {
+        this.ctx.storage.sql.exec(
+          "INSERT INTO review_state_archive (kind, question_id, payload, reason, archived_at) VALUES (?, ?, ?, ?, ?)",
+          d.kind, d.questionId, current[0].payload, reason, now,
+        );
+      }
       this.ctx.storage.sql.exec(
         "DELETE FROM review_state WHERE kind = ? AND question_id = ?",
         d.kind, d.questionId,
