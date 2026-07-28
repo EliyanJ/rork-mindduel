@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Brain,
   CheckCircle2,
   Download,
   Flame,
   Loader2,
-  Lock,
   Pause,
   Play,
   RefreshCw,
@@ -20,7 +18,6 @@ import {
   ListChecks,
   X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import {
   type Content,
@@ -43,8 +40,6 @@ import {
   TARGET_PER_LEVEL,
 } from "@/lib/generator";
 
-const ADMIN_PASSWORD = "minduel-admin";
-
 type RunState = "idle" | "running" | "paused" | "error";
 type LeftTab = "bulk" | "auto" | "manual";
 
@@ -58,10 +53,6 @@ type QueueItem = {
 type BulkGoal = { goal: number; generated: number };
 
 const AdminGenerator = () => {
-  const [authed, setAuthed] = useState<boolean>(false);
-  const [passwordInput, setPasswordInput] = useState<string>("");
-  const [authError, setAuthError] = useState<string>("");
-
   const [content, setContent] = useState<Content | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [runState, setRunState] = useState<RunState>("idle");
@@ -132,22 +123,13 @@ const AdminGenerator = () => {
     }
   }, [addLog]);
 
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setAuthError("");
-      addLog("info", "Accès autorisé");
-    } else {
-      setAuthError("Mot de passe incorrect");
-    }
-  };
-
+  // Access is already granted by the admin layout, so content loads right away.
+  const contentRequestedRef = useRef<boolean>(false);
   useEffect(() => {
-    if (authed && !content) {
-      loadContent();
-    }
-  }, [authed, content, loadContent]);
+    if (contentRequestedRef.current) return;
+    contentRequestedRef.current = true;
+    void loadContent();
+  }, [loadContent]);
 
   const disciplines = content?.disciplines ?? [];
   const selectedDiscipline = disciplines.find((d) => d.id === selDiscipline);
@@ -455,68 +437,14 @@ const AdminGenerator = () => {
   const availableLevels = selectedChapter?.levels ? Object.keys(selectedChapter.levels) : ["facile"];
   const bulkProgressPct = bulkGoal ? Math.min(100, Math.round((bulkGoal.generated / bulkGoal.goal) * 100)) : 0;
 
-  // --- Login gate ---
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-[#0b0f1a] text-white flex items-center justify-center px-6">
-        <div className="w-full max-w-sm">
-          <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-            Retour au site
-          </Link>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500">
-                <Lock className="h-6 w-6 text-[#0b0f1a]" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold">Admin Generator</h1>
-                <p className="text-xs text-white/50">Accès réservé à l'équipe</p>
-              </div>
-            </div>
-            <form onSubmit={handleAuth} className="space-y-4">
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="Mot de passe"
-                autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
-              />
-              {authError && <p className="text-sm text-red-400">{authError}</p>}
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-3 text-sm font-bold text-[#0b0f1a] transition hover:brightness-105 active:scale-[0.98]"
-              >
-                Se connecter
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // --- Main dashboard ---
   return (
     <div className="min-h-screen bg-[#0b0f1a] text-white">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b0f1a]/90 backdrop-blur-lg">
+      <header className="sticky top-[52px] z-40 border-b border-white/10 bg-[#0b0f1a]/90 backdrop-blur-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              Accueil
-            </Link>
-            <span className="text-white/20">|</span>
-            <span className="text-sm font-bold">Generator Admin</span>
-            <span className="text-white/20">|</span>
-            <Link
-              to="/admin-review"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-xs font-bold text-sky-300 transition hover:bg-sky-500/20"
-            >
-              Modération des questions →
-            </Link>
+            <span className="text-sm font-bold">Générateur de questions</span>
           </div>
           <div className="flex items-center gap-3">
             <button

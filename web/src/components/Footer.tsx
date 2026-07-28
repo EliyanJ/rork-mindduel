@@ -77,7 +77,7 @@ const Footer = () => {
         <p>© {new Date().getFullYear()} Minduel. Tous droits réservés.</p>
         <div className="flex items-center gap-4">
           <p>Disponible sur l'App Store.</p>
-          <Link to="/admin-generator" className="text-white/20 transition hover:text-white/50">
+          <Link to="/admin" className="text-white/20 transition hover:text-white/50">
             Admin
           </Link>
         </div>

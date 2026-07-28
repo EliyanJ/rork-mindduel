@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   BarChart3,
   Bot,
   Check,
   Gauge,
   Loader2,
-  Lock,
   RefreshCw,
   Scale,
   ShieldAlert,
@@ -14,7 +12,6 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { type Content, type Question, fetchContent } from "@/lib/generator";
 import { flattenQuestions, type FlatQuestion, type QuestionRef } from "@/lib/moderation";
@@ -89,10 +86,6 @@ const LEVEL_TEXT: Record<DifficultyLevel, string> = {
 };
 
 const AdminCalibration = () => {
-  const [authed, setAuthed] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [authError, setAuthError] = useState("");
-
   const [content, setContent] = useState<Content | null>(null);
   const [stats, setStats] = useState<Map<string, QuestionStat>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -136,16 +129,6 @@ const AdminCalibration = () => {
     ]);
   }, []);
 
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setAuthError("");
-    } else {
-      setAuthError("Mot de passe incorrect");
-    }
-  };
-
   /**
    * Loads live content, the shared decision store and the play telemetry, then
    * replays pending decisions so the page always reopens where you left off.
@@ -182,10 +165,14 @@ const AdminCalibration = () => {
     }
   }, [addLog]);
 
+  // Access is granted by the admin layout, so everything loads on mount.
+  const loadRequestedRef = useRef(false);
   useEffect(() => {
-    if (authed && !content && !loading) loadAll();
+    if (loadRequestedRef.current) return;
+    loadRequestedRef.current = true;
+    void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authed]);
+  }, []);
 
   // Live sync of decisions to the server, diffed so only real changes travel.
   useEffect(() => {
@@ -575,56 +562,12 @@ const AdminCalibration = () => {
     }
   }, [addLog]);
 
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-        <form
-          onSubmit={handleAuth}
-          className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl"
-        >
-          <div className="mb-6 flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-indigo-500/20">
-              <Lock className="h-5 w-5 text-indigo-300" />
-            </span>
-            <div>
-              <h1 className="text-lg font-semibold text-white">Calibrage difficulté</h1>
-              <p className="text-xs text-slate-400">Accès réservé</p>
-            </div>
-          </div>
-          <input
-            type="password"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            placeholder="Mot de passe admin"
-            className="w-full rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400"
-          />
-          {authError && <p className="mt-2 text-xs text-rose-400">{authError}</p>}
-          <button
-            type="submit"
-            className="mt-4 w-full rounded-lg bg-indigo-500 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-400"
-          >
-            Entrer
-          </button>
-          <Link
-            to="/"
-            className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-white"
-          >
-            <ArrowLeft className="h-3 w-3" /> Retour au site
-          </Link>
-        </form>
-      </div>
-    );
-  }
-
   const pendingCount = Object.keys(pendingChanges).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/90 backdrop-blur">
+      <header className="sticky top-[52px] z-20 border-b border-white/10 bg-slate-950/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
-          <Link to="/admin-review" className="text-slate-400 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
           <div className="flex items-center gap-2">
             <Gauge className="h-5 w-5 text-indigo-400" />
             <h1 className="text-sm font-semibold">Calibrage de la difficulté</h1>

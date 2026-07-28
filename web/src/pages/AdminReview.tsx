@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Bot,
   CheckCircle2,
   Download,
   Loader2,
-  Lock,
   Pencil,
   RefreshCw,
   Search,
@@ -16,7 +14,6 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import {
   type Content,
@@ -117,10 +114,6 @@ function replayChanges(
 }
 
 const AdminReview = () => {
-  const [authed, setAuthed] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [authError, setAuthError] = useState("");
-
   const [content, setContent] = useState<Content | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("review");
@@ -181,16 +174,6 @@ const AdminReview = () => {
     setLogs((prev) => [...prev.slice(-200), { time: new Date().toLocaleTimeString("fr-FR"), level, message }]);
   }, []);
 
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setAuthError("");
-    } else {
-      setAuthError("Mot de passe incorrect");
-    }
-  };
-
   /** Loads the freshest server content + the server-saved review state
    * (decisions and AI notes), merges in any local backup entries the server
    * doesn't know about yet, then replays every pending decision on top of the
@@ -236,12 +219,14 @@ const AdminReview = () => {
     }
   }, [addLog]);
 
+  // Access is granted by the admin layout, so the working copy loads on mount.
+  const loadRequestedRef = useRef(false);
   useEffect(() => {
-    if (authed && !content && !loading) {
-      loadAll();
-    }
+    if (loadRequestedRef.current) return;
+    loadRequestedRef.current = true;
+    void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authed]);
+  }, []);
 
   // Persist AI notes too (small, and never includes the API key).
   useEffect(() => {
@@ -811,72 +796,12 @@ const AdminReview = () => {
     addLog("success", "content.json téléchargé");
   };
 
-  // --- Login gate ---
-  if (!authed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0f1a] px-6 text-white">
-        <div className="w-full max-w-sm">
-          <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-            Retour au site
-          </Link>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500">
-                <Lock className="h-6 w-6 text-[#0b0f1a]" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold">Modération des questions</h1>
-                <p className="text-xs text-white/50">Accès réservé à l'équipe</p>
-              </div>
-            </div>
-            <form onSubmit={handleAuth} className="space-y-4">
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="Mot de passe"
-                autoFocus
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-sky-500/50 focus:outline-none focus:ring-1 focus:ring-sky-500/30"
-              />
-              {authError && <p className="text-sm text-red-400">{authError}</p>}
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-gradient-to-r from-sky-400 to-indigo-500 px-4 py-3 text-sm font-bold text-[#0b0f1a] transition hover:brightness-105 active:scale-[0.98]"
-              >
-                Se connecter
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#0b0f1a] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b0f1a]/90 backdrop-blur-lg">
+      <header className="sticky top-[52px] z-40 border-b border-white/10 bg-[#0b0f1a]/90 backdrop-blur-lg">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              Accueil
-            </Link>
-            <span className="text-white/20">|</span>
             <span className="text-sm font-bold">Modération des questions</span>
-            <span className="text-white/20">|</span>
-            <Link
-              to="/admin-generator"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300 transition hover:bg-amber-500/20"
-            >
-              Generator Admin →
-            </Link>
-            <Link
-              to="/admin-calibration"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-300 transition hover:bg-indigo-500/20"
-            >
-              Calibrage difficulté →
-            </Link>
             {syncState === "saving" ? (
               <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-300">SAUVEGARDE…</span>
             ) : syncState === "error" ? (
