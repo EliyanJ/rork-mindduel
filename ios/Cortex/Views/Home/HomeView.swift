@@ -5,7 +5,8 @@ struct HomeView: View {
     @Environment(StoreViewModel.self) private var store
     @State private var lessonLaunch: LessonLaunch?
     @State private var isMenuOpen: Bool = false
-    @State private var lockedLessonPending: PathStage?
+    @State private var lockedRingPending: PathRing?
+    @State private var cooldownRing: PathRing?
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -14,14 +15,8 @@ struct HomeView: View {
                 ScrollView {
                     VStack(spacing: 28) {
                         dailyLessonCard
-                        if model.selectedDiscipline?.chapters.contains(where: { $0.hasLevels }) == true {
-                            ChapterBrowserView { items, disciplineId, chapterId, level in
-                                startLevelLesson(items: items, disciplineId: disciplineId, chapterId: chapterId, level: level)
-                            }
-                        } else {
-                            StagePathView { stage in
-                                startLesson(stage)
-                            }
+                        RingPathView { ring in
+                            startRing(ring)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -53,10 +48,17 @@ struct HomeView: View {
                 handleLessonRetry(retryLaunch)
             }
         }
-        .sheet(item: $lockedLessonPending) { stage in
+        .sheet(item: $lockedRingPending) { ring in
             UnlockWithLivresView(kind: .lesson, progressStore: model.store) {
-                startLesson(stage, bypassCheck: true)
+                startRing(ring, bypassCheck: true)
             }
+        }
+        .sheet(item: $cooldownRing) { ring in
+            RecapCooldownSheet(
+                ring: ring,
+                unlockDate: model.store.ringLockedUntil(ring.id) ?? .now
+            )
+            .presentationDetents([.height(340)])
         }
     }
 
@@ -107,23 +109,23 @@ struct HomeView: View {
 
     @ViewBuilder
     private var dailyLessonCard: some View {
-        let stage = model.nextStage
-        let color = model.selectedDiscipline?.color ?? Theme.stageColor(stage?.index ?? 0)
-        let isMixed = model.selectedDiscipline == nil
+        let ring = model.nextRing
+        let ringDiscipline = ring.flatMap { model.discipline(withId: $0.disciplineId) }
+        let color = ring?.kind == .recap ? Theme.gold : (ringDiscipline?.color ?? Theme.primary)
         VStack(alignment: .leading, spacing: 12) {
-            Label("LEÇON DU JOUR", systemImage: "sun.max.fill")
+            Label(ring?.kind == .recap ? "RÉCAP À DÉBLOQUER" : "LEÇON DU JOUR", systemImage: ring?.kind == .recap ? "crown.fill" : "sun.max.fill")
                 .font(.system(.caption, design: .rounded, weight: .heavy))
                 .opacity(0.9)
-            Text(stage?.title ?? "Bientôt disponible")
+            Text(ring?.chapterTitle ?? "Bientôt disponible")
                 .font(.system(.title2, design: .rounded, weight: .heavy))
-            Text("\(stage?.items.count ?? 0) questions · \(model.selectedDiscipline?.name ?? "thèmes variés") · environ 5 min")
+            Text(dailyCardSubtitle(for: ring))
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .opacity(0.85)
-            if isMixed {
+            if model.isMixedPath {
                 HStack(spacing: 6) {
                     Image(systemName: "shuffle")
                         .font(.system(size: 12, weight: .bold))
-                    Text("Plusieurs thèmes mélangés")
+                    Text("Parcours mélangé")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                 }
                 .foregroundStyle(.white)
@@ -131,16 +133,14 @@ struct HomeView: View {
                 .padding(.vertical, 6)
                 .background(Capsule().fill(.white.opacity(0.22)))
             }
-            if let stage {
-                themeRow(for: stage)
-            }
             Button("Commencer") {
-                if let stage {
-                    startLesson(stage)
+                if let ring {
+                    startRing(ring)
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: .white, textColor: color))
             .padding(.top, 4)
+            .disabled(ring == nil)
         }
         .foregroundStyle(.white)
         .padding(20)
@@ -157,22 +157,14 @@ struct HomeView: View {
         )
     }
 
-    private func themeRow(for stage: PathStage) -> some View {
-        HStack(spacing: 6) {
-            ForEach(stage.disciplineIds.prefix(5), id: \.self) { id in
-                if let discipline = model.discipline(withId: id) {
-                    Image(systemName: discipline.icon)
-                        .font(.system(size: 11, weight: .bold))
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(.white.opacity(0.22)))
-                }
-            }
-            if stage.disciplineIds.count > 5 {
-                Text("+\(stage.disciplineIds.count - 5)")
-                    .font(.system(.caption, design: .rounded, weight: .heavy))
-                    .opacity(0.85)
-            }
+    private func dailyCardSubtitle(for ring: PathRing?) -> String {
+        guard let ring else { return "Reviens bientôt pour de nouvelles questions" }
+        let count = model.playableItems(for: ring).count
+        let theme = model.discipline(withId: ring.disciplineId)?.name ?? ""
+        if ring.kind == .recap {
+            return "\(count) questions · tes erreurs + les plus dures"
         }
+        return "\(ring.shortTitle) · \(count) questions · \(theme)"
     }
 
     private func closeMenu() {
@@ -181,112 +173,88 @@ struct HomeView: View {
         }
     }
 
-    private func startLesson(_ stage: PathStage, bypassCheck: Bool = false) {
+    /// Launches a ring, after checking it isn't gated by the daily quota or by
+    /// a failed recap's cool-down.
+    private func startRing(_ ring: PathRing, bypassCheck: Bool = false) {
+        if case .cooldown = model.lock(for: ring) {
+            Haptics.error()
+            cooldownRing = ring
+            return
+        }
+        guard model.lock(for: ring) == nil else {
+            Haptics.error()
+            return
+        }
         if !bypassCheck, !model.store.canStartLesson(isPremium: store.isPremium) {
             Haptics.tap()
-            lockedLessonPending = stage
+            lockedRingPending = ring
             return
         }
+        let items = model.playableItems(for: ring)
+        guard !items.isEmpty else { return }
         Haptics.medium()
         lessonLaunch = LessonLaunch(
-            title: stage.title,
-            chapterId: stage.id,
-            items: stage.items
+            title: ring.lessonTitle,
+            chapterId: ring.id,
+            items: items,
+            disciplineId: ring.disciplineId,
+            chapterIdRaw: ring.chapterId,
+            ringKind: ring.kind
         )
     }
 
-    private func startLevelLesson(items: [LessonItem], disciplineId: String, chapterId: String, level: DifficultyLevel) {
-        if !model.store.canStartLesson(isPremium: store.isPremium) {
-            Haptics.tap()
-            lockedLessonPending = PathStage(
-                id: "\(disciplineId)_\(chapterId)_\(level.rawValue)",
-                index: 0,
-                title: level.displayName,
-                items: items,
-                disciplineIds: [disciplineId]
-            )
-            return
-        }
-        Haptics.medium()
-        let discipline = model.catalog.disciplines.first { $0.id == disciplineId }
-        let chapter = discipline?.chapters.first { $0.id == chapterId }
-        let title = "\(chapter?.title ?? "Chapitre") · \(level.displayName)"
-        let freshItems = makeFreshLevelItems(
-            disciplineId: disciplineId,
-            chapterId: chapterId,
-            level: level,
-            proposedItems: items
-        )
-        lessonLaunch = LessonLaunch(
-            title: title,
-            chapterId: "\(disciplineId)_\(chapterId)_\(level.rawValue)",
-            items: freshItems,
-            disciplineId: disciplineId,
-            level: level,
-            chapterIdRaw: chapterId,
-            unlockSnapshot: makeUnlockSnapshot(discipline: discipline, chapterId: chapterId, level: level)
-        )
-    }
-
-    /// Captures, right before launching a chapter-level lesson, whether the
-    /// next chapter and the next difficulty tier are currently locked —
-    /// so the completion flow can tell if this lesson just unlocked them.
-    private func makeUnlockSnapshot(discipline: Discipline?, chapterId: String, level: DifficultyLevel) -> UnlockSnapshot? {
-        guard let discipline else { return nil }
-        let chapters = discipline.chapters
-        let chapterIdx = chapters.firstIndex { $0.id == chapterId }
-        let nextChapter = chapterIdx.flatMap { idx in idx + 1 < chapters.count ? chapters[idx + 1] : nil }
-        let currentFacileBest = model.store.chapterProgress(
-            disciplineId: discipline.id, chapterId: chapterId, level: .facile
-        )?.bestScore ?? 0
-        let nextChapterWasLocked = nextChapter != nil && currentFacileBest < 0.6
-        let nextLevelWasLocked: Bool = {
-            guard let nextLevel = level.next else { return false }
-            return !model.store.isLevelUnlocked(nextLevel, for: discipline)
-        }()
-        guard nextChapterWasLocked || nextLevelWasLocked else { return nil }
-        return UnlockSnapshot(
-            disciplineId: discipline.id,
-            chapterId: chapterId,
-            level: level,
-            nextChapterTitle: nextChapter?.title,
-            nextChapterWasLocked: nextChapterWasLocked,
-            nextLevelWasLocked: nextLevelWasLocked
-        )
-    }
-
+    /// Replays the same ring immediately. Only reachable for normal rings —
+    /// a failed recap goes through the cool-down flow instead.
     private func handleLessonRetry(_ retryLaunch: LessonLaunch) {
-        guard let disciplineId = retryLaunch.disciplineId,
-              let level = retryLaunch.level,
-              let chapterIdRaw = retryLaunch.chapterIdRaw else { return }
-        model.store.resetChapterLevelProgress(disciplineId: disciplineId, chapterId: chapterIdRaw, level: level)
-        let freshItems = makeFreshLevelItems(
-            disciplineId: disciplineId,
-            chapterId: chapterIdRaw,
-            level: level,
-            proposedItems: retryLaunch.items
-        )
         Haptics.success()
         lessonLaunch = LessonLaunch(
             title: retryLaunch.title,
             chapterId: retryLaunch.chapterId,
-            items: freshItems,
-            disciplineId: disciplineId,
-            level: level,
-            chapterIdRaw: chapterIdRaw
+            items: retryLaunch.items,
+            disciplineId: retryLaunch.disciplineId,
+            chapterIdRaw: retryLaunch.chapterIdRaw,
+            ringKind: retryLaunch.ringKind
         )
     }
+}
 
-    private func makeFreshLevelItems(disciplineId: String, chapterId: String, level: DifficultyLevel, proposedItems: [LessonItem]) -> [LessonItem] {
-        let allIds = proposedItems.map { $0.question.id }
-        let poolIds = model.store.questionPoolForChapterLevel(
-            disciplineId: disciplineId,
-            chapterId: chapterId,
-            level: level,
-            allQuestionIds: allIds
-        )
-        let idSet = Set(poolIds)
-        let fresh = proposedItems.filter { idSet.contains($0.question.id) }
-        return fresh.isEmpty ? proposedItems : fresh
+/// Explains why a failed recap is locked and points the player at revision.
+private struct RecapCooldownSheet: View {
+    let ring: PathRing
+    let unlockDate: Date
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(Theme.danger.opacity(0.12))
+                    .frame(width: 92, height: 92)
+                Image(systemName: "hourglass")
+                    .font(.system(size: 38, weight: .bold))
+                    .foregroundStyle(Theme.danger)
+            }
+            .padding(.top, 12)
+
+            VStack(spacing: 8) {
+                Text("Récap verrouillé")
+                    .font(.system(.title2, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+                Text("Le récap de « \(ring.chapterTitle) » se débloque \(unlockDate, style: .relative). Profites-en pour revoir tes erreurs dans l'onglet Révisions.")
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(Theme.inkMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button("J'ai compris") {
+                Haptics.tap()
+                dismiss()
+            }
+            .buttonStyle(ChunkyButtonStyle(color: Theme.primary))
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity)
     }
 }

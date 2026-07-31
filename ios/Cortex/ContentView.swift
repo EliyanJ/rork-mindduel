@@ -19,6 +19,14 @@ struct ContentView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.35), value: onboardingStore.isCompleted)
+        // Favourite themes drive how often each discipline comes round on the
+        // mixed path, so keep the model in sync with the onboarding answers.
+        .onAppear {
+            model.preferredDisciplineIds = onboardingStore.preferences.topicIds
+        }
+        .onChange(of: onboardingStore.preferences.topicIds) { _, newTopics in
+            model.preferredDisciplineIds = newTopics
+        }
 
             if showSplash {
                 SplashView {

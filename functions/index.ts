@@ -61,6 +61,13 @@ export default {
       return withCors(res);
     }
 
+    // Learning-path ordering — public GET for the app, password-protected
+    // POST from the admin "Parcours" tool (checked inside the Hub DO).
+    if (url.pathname === "/api/path-layout" && (request.method === "GET" || request.method === "POST")) {
+      const res = await dispatchToDo(env, "Hub", "global", request);
+      return withCors(res);
+    }
+
     // Admin question-review tool: stateless AI proxy. The caller's API key is
     // used only for this single outbound request and is never stored, logged,
     // or forwarded anywhere except straight to the chosen provider — this

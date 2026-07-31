@@ -163,6 +163,26 @@ export class Hub extends DurableObject {
         created_at INTEGER NOT NULL
       )
     `);
+    // Learning-path ordering published from the admin "Parcours" tool:
+    // discipline order, per-discipline chapter order and per-chapter ring
+    // timelines. Kept apart from `content` so reordering the path never
+    // rewrites (or risks losing) the question catalog itself.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS path_layout (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        json TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1,
+        updated_at INTEGER NOT NULL
+      )
+    `);
+    // Snapshots of every published layout, same safety net as content_history.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS path_layout_history (
+        version INTEGER PRIMARY KEY,
+        json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    `);
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS question_stats (
         question_id TEXT PRIMARY KEY,
@@ -237,6 +257,14 @@ export class Hub extends DurableObject {
     // Difficulty telemetry read-out for the admin calibration tool.
     if (path === "/api/stats/questions" && request.method === "GET") {
       return this.questionStats(url.searchParams.get("password"));
+    }
+    // Learning-path ordering — public GET (the app reads it like the catalog),
+    // password-protected POST from the admin "Parcours" tool.
+    if (path === "/api/path-layout" && request.method === "GET") {
+      return this.getPathLayout();
+    }
+    if (path === "/api/path-layout" && request.method === "POST") {
+      return this.publishPathLayout(await request.json());
     }
 
     const userId = request.headers.get("X-Rork-User-Id");
@@ -765,6 +793,61 @@ export class Hub extends DurableObject {
         "Cache-Control": "public, max-age=30",
       },
     });
+  }
+
+  // MARK: learning-path layout
+
+  private getPathLayout(): Response {
+    const rows = this.ctx.storage.sql
+      .exec<{ json: string; version: number; updated_at: number }>(
+        "SELECT json, version, updated_at FROM path_layout WHERE id = 1",
+      )
+      .toArray();
+    if (rows.length === 0) {
+      return Response.json({ published: false });
+    }
+    const row = rows[0]!;
+    return new Response(row.json, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Layout-Version": String(row.version),
+        "X-Layout-Updated-At": String(row.updated_at),
+        "Cache-Control": "public, max-age=30",
+      },
+    });
+  }
+
+  private publishPathLayout(body: unknown): Response {
+    const payload = body as { layout?: unknown; password?: string };
+    if (payload.password !== "minduel-admin") {
+      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    }
+    if (!payload.layout || typeof payload.layout !== "object") {
+      return Response.json({ error: "Organisation invalide" }, { status: 400 });
+    }
+    const jsonStr = JSON.stringify(payload.layout);
+    const existing = this.ctx.storage.sql
+      .exec<{ version: number }>("SELECT version FROM path_layout WHERE id = 1")
+      .toArray();
+    const newVersion = (existing[0]?.version ?? 0) + 1;
+    const now = Date.now();
+
+    // Snapshot before overwriting so a bad reorder can always be rolled back.
+    this.ctx.storage.sql.exec(
+      `INSERT INTO path_layout_history (version, json, created_at) VALUES (?, ?, ?)
+       ON CONFLICT(version) DO UPDATE SET json = excluded.json, created_at = excluded.created_at`,
+      newVersion, jsonStr, now,
+    );
+    this.ctx.storage.sql.exec(
+      "DELETE FROM path_layout_history WHERE version <= ?",
+      newVersion - 12,
+    );
+    this.ctx.storage.sql.exec(
+      `INSERT INTO path_layout (id, json, version, updated_at) VALUES (1, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET json = excluded.json, version = excluded.version, updated_at = excluded.updated_at`,
+      jsonStr, newVersion, now,
+    );
+    return Response.json({ ok: true, version: newVersion, updatedAt: now });
   }
 
   private publishContent(body: unknown): Response {

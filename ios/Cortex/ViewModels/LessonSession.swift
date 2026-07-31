@@ -22,6 +22,9 @@ final class LessonSession {
     let disciplineId: String?
     let level: DifficultyLevel?
     let chapterIdRaw: String?
+    /// Set when this lesson is a ring of the learning path. Drives ring
+    /// progress recording and, for a recap, the fail-and-cool-down rule.
+    let ringKind: RingKind?
     /// 1-based index of the current manche within a multi-session chapter level.
     let sessionNumber: Int
     /// Total manches needed to validate a chapter level (2 = 20 questions / 10 per session).
@@ -64,13 +67,15 @@ final class LessonSession {
     }
 
     init(items: [LessonItem], chapterId: String?, store: ProgressStore,
-         disciplineId: String? = nil, level: DifficultyLevel? = nil, chapterIdRaw: String? = nil) {
+         disciplineId: String? = nil, level: DifficultyLevel? = nil, chapterIdRaw: String? = nil,
+         ringKind: RingKind? = nil) {
         self.items = items
         self.chapterId = chapterId
         self.store = store
         self.disciplineId = disciplineId
         self.level = level
         self.chapterIdRaw = chapterIdRaw
+        self.ringKind = ringKind
         // A chapter level is played over 2 manches of 10 questions (20 total).
         // Other lessons (mixed/themed path stages, reviews) are single-session.
         if disciplineId != nil, level != nil, chapterIdRaw != nil {
@@ -167,7 +172,12 @@ final class LessonSession {
         isFirstLessonToday = !wasActiveToday
         weekActivity = Self.computeWeekActivity(store: store)
         if let chapterId {
-            store.recordChapterResult(chapterId: chapterId, score: accuracy)
+            if let ringKind {
+                // Ring path: also arms the 24h cool-down when a recap is failed.
+                store.recordRingResult(ringId: chapterId, kind: ringKind, score: accuracy)
+            } else {
+                store.recordChapterResult(chapterId: chapterId, score: accuracy)
+            }
         }
         // Record multi-level progress for v2 chapters
         if let disciplineId, let level, let chapterIdRaw {
@@ -190,6 +200,17 @@ final class LessonSession {
         streakAfterCompletion = store.currentStreak
         phase = .completed
         Haptics.medium()
+    }
+
+    /// True when a recap ring was just failed and is now cooling down.
+    var isRecapFailed: Bool {
+        phase == .completed && ringKind == .recap && accuracy < ProgressStore.ringMasteryScore
+    }
+
+    /// When the failed recap becomes playable again.
+    var recapUnlockDate: Date? {
+        guard isRecapFailed, let chapterId else { return nil }
+        return store.ringLockedUntil(chapterId)
     }
 
     /// Convenience: a level is "failed" when it was just completed and scored <80%.

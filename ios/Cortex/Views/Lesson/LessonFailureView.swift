@@ -11,6 +11,9 @@ struct LessonFailureView: View {
     let isPremium: Bool
     let onRetry: () -> Void
     let onLater: () -> Void
+    /// Set when a recap ring ("boss") was failed: retrying is not for sale,
+    /// the player has to revise and come back after this date.
+    var lockedUntil: Date? = nil
 
     @State private var hasAppeared: Bool = false
     @State private var expandedWrongAnswer: UUID?
@@ -60,7 +63,7 @@ struct LessonFailureView: View {
             .scaleEffect(hasAppeared ? 1 : 0.3)
 
             VStack(spacing: 6) {
-                Text("Pas encore réussi")
+                Text(lockedUntil == nil ? "Pas encore réussi" : "Récap manqué")
                     .font(.system(.largeTitle, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.ink)
 
@@ -178,7 +181,69 @@ struct LessonFailureView: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 1.5))
     }
 
+    @ViewBuilder
     private var bottomSheet: some View {
+        if let lockedUntil {
+            cooldownSheet(until: lockedUntil)
+        } else {
+            retrySheet
+        }
+    }
+
+    /// Recap failure: no paid shortcut. The player revises, then comes back.
+    private func cooldownSheet(until date: Date) -> some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "hourglass")
+                        .font(.system(size: 15, weight: .bold))
+                    Text(date, style: .relative)
+                        .monospacedDigit()
+                }
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.danger)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Theme.danger.opacity(0.12)))
+
+                Text("Retente le récap demain")
+                    .font(.system(.title3, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+
+                Text("Revois tes erreurs ci-dessus, puis entraîne-toi dans l'onglet Révisions. Les ronds de ce chapitre restent jouables en attendant.")
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(Theme.inkMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button {
+                Haptics.medium()
+                onLater()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "brain.head.profile")
+                    Text("Aller réviser")
+                }
+            }
+            .buttonStyle(ChunkyButtonStyle(color: Theme.primary))
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                .fill(Theme.card)
+                .ignoresSafeArea(edges: .bottom)
+        )
+        .overlay(
+            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                .stroke(Theme.line, lineWidth: 1.5)
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
+
+    private var retrySheet: some View {
         VStack(spacing: 12) {
             VStack(spacing: 4) {
                 Text(isPremium ? "Rejouer maintenant" : "Rejouer maintenant")

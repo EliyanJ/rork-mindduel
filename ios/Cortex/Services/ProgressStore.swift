@@ -255,6 +255,64 @@ final class ProgressStore {
         save()
     }
 
+    // MARK: - Ring path ("ronds")
+
+    /// Score a ring must reach to unlock the next one.
+    static let ringPassScore: Double = 0.6
+    /// Score that marks a ring — and a recap — as fully mastered.
+    static let ringMasteryScore: Double = 0.8
+
+    func ringRecord(_ ringId: String) -> ChapterRecord? {
+        progress.chapterRecords[ringId]
+    }
+
+    /// Whether a ring was cleared well enough to open the next one.
+    func isRingPassed(_ ringId: String) -> Bool {
+        (progress.chapterRecords[ringId]?.bestScore ?? 0) >= Self.ringPassScore
+    }
+
+    func isRingMastered(_ ringId: String) -> Bool {
+        (progress.chapterRecords[ringId]?.bestScore ?? 0) >= Self.ringMasteryScore
+    }
+
+    /// When a failed recap ring becomes playable again, if it is still locked.
+    func ringLockedUntil(_ ringId: String, reference: Date = .now) -> Date? {
+        guard let until = progress.chapterRecords[ringId]?.lockedUntil, until > reference else { return nil }
+        return until
+    }
+
+    /// Records the outcome of a ring. A failed recap locks itself until the
+    /// next calendar day so the player revises before retrying, exactly like
+    /// the chapter-level cooldown but expressed in days rather than hours.
+    func recordRingResult(ringId: String, kind: RingKind, score: Double, reference: Date = .now) {
+        var record = progress.chapterRecords[ringId] ?? ChapterRecord(bestScore: 0, attempts: 0)
+        record.attempts += 1
+        record.bestScore = max(record.bestScore, score)
+        if kind == .recap {
+            record.lockedUntil = score >= Self.ringMasteryScore ? nil : Self.startOfNextDay(after: reference)
+        }
+        progress.chapterRecords[ringId] = record
+        save()
+    }
+
+    private static func startOfNextDay(after date: Date) -> Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date.addingTimeInterval(86_400)
+        return calendar.startOfDay(for: tomorrow)
+    }
+
+    /// Question ids the player has recently got wrong, hardest lapses first.
+    /// Drives the personalised content of a recap ring.
+    func laspedQuestionIds(among candidates: [String]) -> [String] {
+        let candidateSet = Set(candidates)
+        return progress.reviewItems.values
+            .filter { candidateSet.contains($0.questionId) && $0.lapses > 0 }
+            .sorted {
+                $0.lapses == $1.lapses ? $0.strength < $1.strength : $0.lapses > $1.lapses
+            }
+            .map(\.questionId)
+    }
+
     /// Spaced repetition with ease factor (SM-2 inspired).
     /// Correct answers space out: 1 → 6 → interval × easeFactor, capped at 180 days.
     /// Wrong answers reset to due immediately with a lowered ease factor.

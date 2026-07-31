@@ -8,23 +8,45 @@ enum ChapterState: Equatable {
     case mastered
 }
 
+/// Why a ring can't be played right now.
+enum RingLock: Equatable {
+    /// The previous ring hasn't been cleared yet.
+    case sequence
+    /// A failed recap is cooling down until the given date.
+    case cooldown(until: Date)
+}
+
 @Observable
 final class AppModel {
     let catalog: ContentCatalog
     let store: ProgressStore
-    /// Default unified path: every stage mixes questions from all themes.
-    private let mixedStages: [PathStage]
-    /// One dedicated path per discipline, gathering all of its questions.
-    private let themedStages: [String: [PathStage]]
+    /// Published ordering of disciplines / chapters / rings.
+    let layout: PathLayout
+    /// Disciplines in path order.
+    let orderedDisciplines: [Discipline]
+    /// disciplineId → its rings, in path order.
+    private let ringsByDiscipline: [String: [PathRing]]
     /// Currently selected theme; nil means the default mixed path.
     var selectedDisciplineId: String?
+    /// Discipline ids the player picked at onboarding. Drives the rotation of
+    /// the mixed path — favourites come round more often.
+    var preferredDisciplineIds: [String] = [] {
+        didSet {
+            guard oldValue != preferredDisciplineIds else { return }
+            rebuildMixedRings()
+        }
+    }
 
+    private var mixedRings: [PathRing] = []
     private let questionIndex: [String: (question: Question, disciplineId: String)]
 
     init() {
         let catalog = ContentService.loadCatalog()
+        let layout = PathLayoutService.loadLayout()
         self.catalog = catalog
+        self.layout = layout
         self.store = ProgressStore()
+
         var index: [String: (question: Question, disciplineId: String)] = [:]
         for discipline in catalog.disciplines {
             for chapter in discipline.chapters {
@@ -35,32 +57,44 @@ final class AppModel {
         }
         self.questionIndex = index
 
-        let allQueues: [[LessonItem]] = catalog.disciplines.map { discipline in
-            discipline.chapters.flatMap { chapter in
-                chapter.allQuestions.map { LessonItem(question: $0, disciplineId: discipline.id) }
-            }
-        }
-        self.mixedStages = Self.buildStages(items: Self.interleave(allQueues), idPrefix: "stage")
+        let disciplines = PathLayout.apply(
+            order: layout.disciplineOrder,
+            to: catalog.disciplines,
+            id: { $0.id }
+        )
+        self.orderedDisciplines = disciplines
 
-        var themed: [String: [PathStage]] = [:]
-        for discipline in catalog.disciplines {
-            let chapterQueues: [[LessonItem]] = discipline.chapters.map { chapter in
-                chapter.allQuestions.map { LessonItem(question: $0, disciplineId: discipline.id) }
-            }
-            themed[discipline.id] = Self.buildStages(
-                items: Self.interleave(chapterQueues),
-                idPrefix: "stage-\(discipline.id)"
+        var rings: [String: [PathRing]] = [:]
+        for discipline in disciplines {
+            let chapters = PathLayout.apply(
+                order: layout.chapterOrder[discipline.id] ?? [],
+                to: discipline.chapters,
+                id: { $0.id }
             )
+            rings[discipline.id] = chapters.flatMap { chapter in
+                RingBuilder.rings(
+                    for: chapter,
+                    disciplineId: discipline.id,
+                    slots: layout.ringLayout[chapter.id]
+                )
+            }
         }
-        self.themedStages = themed
+        self.ringsByDiscipline = rings
+        rebuildMixedRings()
     }
 
-    /// The stages of the active path (mixed by default, themed when a discipline is selected).
-    var stages: [PathStage] {
-        if let id = selectedDisciplineId, let themed = themedStages[id] {
+    // MARK: - Paths
+
+    /// Rings of the active path (mixed by default, themed when a discipline is selected).
+    var rings: [PathRing] {
+        if let id = selectedDisciplineId, let themed = ringsByDiscipline[id] {
             return themed
         }
-        return mixedStages
+        return mixedRings
+    }
+
+    func rings(for disciplineId: String) -> [PathRing] {
+        ringsByDiscipline[disciplineId] ?? []
     }
 
     var selectedDiscipline: Discipline? {
@@ -68,25 +102,111 @@ final class AppModel {
         return discipline(withId: id)
     }
 
-    func state(of stage: PathStage) -> ChapterState {
-        if let record = store.progress.chapterRecords[stage.id] {
-            return record.bestScore >= 0.8 ? .mastered : .completed
+    var isMixedPath: Bool { selectedDisciplineId == nil }
+
+    /// Round-robin across disciplines so the mixed path alternates themes while
+    /// keeping each discipline's own rings in order. Preferred themes are
+    /// visited more than once per lap, so they come round more often without
+    /// ever excluding the others.
+    private func rebuildMixedRings() {
+        var queues: [String: [PathRing]] = [:]
+        for discipline in orderedDisciplines {
+            queues[discipline.id] = ringsByDiscipline[discipline.id] ?? []
         }
-        if stage.index == 0 { return .available }
-        let previous = stages[stage.index - 1]
-        if let previousRecord = store.progress.chapterRecords[previous.id], previousRecord.bestScore >= 0.6 {
-            return .available
+        let preferred = preferredDisciplineIds.filter { queues[$0]?.isEmpty == false }
+        // One lap = every discipline once, plus an extra visit for favourites.
+        var lap = orderedDisciplines.map(\.id)
+        lap.append(contentsOf: preferred)
+
+        var merged: [PathRing] = []
+        while queues.values.contains(where: { !$0.isEmpty }) {
+            for disciplineId in lap {
+                guard var queue = queues[disciplineId], !queue.isEmpty else { continue }
+                merged.append(queue.removeFirst())
+                queues[disciplineId] = queue
+            }
         }
-        return .locked
+        mixedRings = merged
     }
 
-    /// The stage suggested as "lesson of the day".
-    var nextStage: PathStage? {
-        stages.first { stage in
-            let stageState = state(of: stage)
-            return stageState == .available || stageState == .completed
-        } ?? stages.last
+    // MARK: - Ring state
+
+    /// Position of a ring within the active path.
+    private func pathIndex(of ring: PathRing) -> Int? {
+        rings.firstIndex { $0.id == ring.id }
     }
+
+    /// Rings of the same sub-chapter that must be cleared before its recap.
+    private func normalRings(inChapter chapterId: String, disciplineId: String) -> [PathRing] {
+        (ringsByDiscipline[disciplineId] ?? [])
+            .filter { $0.chapterId == chapterId && $0.kind == .normal }
+    }
+
+    func state(of ring: PathRing) -> ChapterState {
+        if store.isRingMastered(ring.id) { return .mastered }
+        if lock(for: ring) != nil { return .locked }
+        if store.isRingPassed(ring.id) { return .completed }
+        return .available
+    }
+
+    /// Why a ring is locked, or nil when it's playable.
+    func lock(for ring: PathRing) -> RingLock? {
+        // A failed recap always cools down, even if everything else is cleared.
+        if let until = store.ringLockedUntil(ring.id) {
+            return .cooldown(until: until)
+        }
+        if ring.kind == .recap {
+            let siblings = normalRings(inChapter: ring.chapterId, disciplineId: ring.disciplineId)
+            let allCleared = siblings.allSatisfy { store.isRingPassed($0.id) }
+            return allCleared ? nil : .sequence
+        }
+        guard let index = pathIndex(of: ring), index > 0 else { return nil }
+        let previous = rings[index - 1]
+        // Already-cleared rings stay replayable.
+        if store.isRingPassed(ring.id) { return nil }
+        return store.isRingPassed(previous.id) ? nil : .sequence
+    }
+
+    /// The ring proposed as "lesson of the day" on the active path.
+    var nextRing: PathRing? {
+        rings.first { state(of: $0) == .available } ?? rings.first { state(of: $0) == .completed } ?? rings.first
+    }
+
+    /// Questions actually played for a ring.
+    ///
+    /// Normal rings play their fixed 15. A recap is personalised: the player's
+    /// own mistakes in that sub-chapter come first, topped up with its hardest
+    /// questions so the boss is always a full ring.
+    func playableItems(for ring: PathRing) -> [LessonItem] {
+        guard ring.kind == .recap else { return ring.items }
+        let pool = ring.items
+        let poolIds = pool.map(\.id)
+        let lapsed = store.laspedQuestionIds(among: poolIds)
+        let byId = Dictionary(pool.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+
+        var picked: [LessonItem] = []
+        var used = Set<String>()
+        for id in lapsed where picked.count < RingBuilder.ringSize {
+            guard let item = byId[id] else { continue }
+            picked.append(item)
+            used.insert(id)
+        }
+        // `pool` is already ordered hardest-first.
+        for item in pool where picked.count < RingBuilder.ringSize {
+            guard !used.contains(item.id) else { continue }
+            picked.append(item)
+            used.insert(item.id)
+        }
+        return picked
+    }
+
+    /// Sub-chapter progress used by the path header, as cleared/total rings.
+    func chapterProgressCounts(chapterId: String, disciplineId: String) -> (done: Int, total: Int) {
+        let all = (ringsByDiscipline[disciplineId] ?? []).filter { $0.chapterId == chapterId }
+        return (all.filter { store.isRingPassed($0.id) }.count, all.count)
+    }
+
+    // MARK: - Lookups
 
     func dueLessonItems(limit: Int = 10) -> [LessonItem] {
         Array(store.dueQuestionIds().prefix(limit)).compactMap { id in
@@ -107,63 +227,5 @@ final class AppModel {
             .filter { $0.disciplineId == discipline.id }
             .reduce(0.0) { $0 + $1.strength }
         return min(1, total / Double(questionCount))
-    }
-
-    // MARK: - Path building
-
-    /// Round-robin merge of several question queues so consecutive
-    /// questions vary (across themes for the mixed path, across chapters
-    /// for a themed path).
-    private static func interleave(_ queues: [[LessonItem]]) -> [LessonItem] {
-        var queues = queues
-        var mixed: [LessonItem] = []
-        while queues.contains(where: { !$0.isEmpty }) {
-            for i in queues.indices where !queues[i].isEmpty {
-                mixed.append(queues[i].removeFirst())
-            }
-        }
-        return mixed
-    }
-
-    /// Chunks an ordered list of questions into stages of ~15 questions.
-    private static func buildStages(items: [LessonItem], idPrefix: String) -> [PathStage] {
-        let stageSize = 10
-        var chunks: [[LessonItem]] = []
-        var start = 0
-        while start < items.count {
-            let end = min(start + stageSize, items.count)
-            chunks.append(Array(items[start..<end]))
-            start = end
-        }
-        // Merge a too-small trailing chunk into the previous stage.
-        if let last = chunks.last, last.count < 4, chunks.count >= 2 {
-            chunks[chunks.count - 2].append(contentsOf: last)
-            chunks.removeLast()
-        }
-
-        return chunks.enumerated().map { index, items in
-            var featured: [String] = []
-            for item in items where !featured.contains(item.disciplineId) {
-                featured.append(item.disciplineId)
-            }
-            return PathStage(
-                id: "\(idPrefix)-\(index + 1)",
-                index: index,
-                title: stageName(at: index),
-                items: items,
-                disciplineIds: featured
-            )
-        }
-    }
-
-    private static let stageNames: [String] = [
-        "Premiers pas", "Esprit curieux", "Tête chercheuse", "Explorateur",
-        "Érudit en herbe", "Esprit vif", "Globe-trotteur", "Fine plume",
-        "Cerveau musclé", "Œil de lynx", "Maître du temps", "Stratège",
-        "Encyclopédie vivante", "Sage éclairé", "Légende du savoir"
-    ]
-
-    private static func stageName(at index: Int) -> String {
-        index < stageNames.count ? stageNames[index] : "Étape \(index + 1)"
     }
 }

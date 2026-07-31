@@ -2,6 +2,7 @@ import { useLocation } from "react-router-dom";
 
 import AdminCalibration from "@/pages/AdminCalibration";
 import AdminGenerator from "@/pages/AdminGenerator";
+import AdminPath from "@/pages/AdminPath";
 import AdminReview from "@/pages/AdminReview";
 
 /**
@@ -24,6 +25,9 @@ const AdminWorkspace = () => {
       </div>
       <div className={pathname === "/admin-calibration" ? "" : "hidden"}>
         <AdminCalibration />
+      </div>
+      <div className={pathname === "/admin-path" ? "" : "hidden"}>
+        <AdminPath />
       </div>
     </>
   );

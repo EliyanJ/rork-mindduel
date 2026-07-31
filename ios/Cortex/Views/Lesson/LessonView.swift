@@ -11,6 +11,8 @@ struct LessonLaunch: Identifiable {
     /// Pre-lesson snapshot used to detect newly-unlocked content once the
     /// lesson completes successfully. Nil for mixed/themed path stages.
     var unlockSnapshot: UnlockSnapshot? = nil
+    /// Set when this lesson is a ring of the learning path.
+    var ringKind: RingKind? = nil
 }
 
 /// Captures what was locked right before starting a chapter-level lesson,
@@ -65,7 +67,8 @@ struct LessonView: View {
             store: store,
             disciplineId: launch.disciplineId,
             level: launch.level,
-            chapterIdRaw: launch.chapterIdRaw
+            chapterIdRaw: launch.chapterIdRaw,
+            ringKind: launch.ringKind
         ))
     }
 
@@ -73,7 +76,19 @@ struct LessonView: View {
         ZStack {
             Group {
                 if session.phase == .completed {
-                    if session.isLevelFailed {
+                    if session.isRecapFailed {
+                        // A failed recap can't be bought back — it cools down.
+                        LessonFailureView(
+                            score: session.correctCount,
+                            maxScore: session.items.count,
+                            requiredAccuracy: ProgressStore.ringMasteryScore,
+                            wrongAnswers: session.wrongAnswers,
+                            isPremium: store.isPremium,
+                            onRetry: {},
+                            onLater: { dismiss() },
+                            lockedUntil: session.recapUnlockDate
+                        )
+                    } else if session.isLevelFailed {
                         LessonFailureView(
                             score: session.correctCount,
                             maxScore: session.items.count,
@@ -123,7 +138,7 @@ struct LessonView: View {
             Text(AdsManager.shared.lastError ?? "")
         }
         .onChange(of: session.phase) { _, newPhase in
-            guard newPhase == .completed, !session.isLevelFailed else { return }
+            guard newPhase == .completed, !session.isLevelFailed, !session.isRecapFailed else { return }
             buildPostLessonQueueIfNeeded()
         }
     }

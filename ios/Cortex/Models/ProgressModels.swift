@@ -3,6 +3,34 @@ import Foundation
 nonisolated struct ChapterRecord: Codable {
     var bestScore: Double
     var attempts: Int
+    /// Set when a recap ring ("boss") is failed: the ring stays locked until
+    /// this date so the player has to revise before retrying. Nil everywhere else.
+    var lockedUntil: Date?
+
+    private enum CodingKeys: String, CodingKey {
+        case bestScore, attempts, lockedUntil
+    }
+
+    init(bestScore: Double, attempts: Int, lockedUntil: Date? = nil) {
+        self.bestScore = bestScore
+        self.attempts = attempts
+        self.lockedUntil = lockedUntil
+    }
+
+    /// `lockedUntil` was added with the ring path — older saves decode without it.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        bestScore = try c.decode(Double.self, forKey: .bestScore)
+        attempts = try c.decode(Int.self, forKey: .attempts)
+        lockedUntil = try c.decodeIfPresent(Date.self, forKey: .lockedUntil)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(bestScore, forKey: .bestScore)
+        try c.encode(attempts, forKey: .attempts)
+        try c.encodeIfPresent(lockedUntil, forKey: .lockedUntil)
+    }
 }
 
 /// Per-level progress for a chapter, tracking partial session completion

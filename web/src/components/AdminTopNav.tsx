@@ -1,4 +1,4 @@
-import { BadgeCheck, Gauge, Home, LogOut, ShieldCheck, Sparkles, SlidersHorizontal } from "lucide-react";
+import { BadgeCheck, Gauge, Home, LogOut, Route, ShieldCheck, Sparkles, SlidersHorizontal } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -7,6 +7,7 @@ const TABS = [
   { to: "/admin-generator", label: "Générateur", icon: Sparkles },
   { to: "/admin-review", label: "Modération", icon: BadgeCheck },
   { to: "/admin-calibration", label: "Calibrage", icon: Gauge },
+  { to: "/admin-path", label: "Parcours", icon: Route },
 ] as const;
 
 /**
