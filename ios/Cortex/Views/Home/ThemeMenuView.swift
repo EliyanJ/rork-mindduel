@@ -15,10 +15,24 @@ struct ThemeMenuView: View {
 
     @State private var searchText: String = ""
 
-    private var filteredDisciplines: [Discipline] {
+    private func matchesSearch(_ discipline: Discipline) -> Bool {
         let query = searchText.normalizedForSearch
-        guard !query.isEmpty else { return model.catalog.disciplines }
-        return model.catalog.disciplines.filter { $0.name.normalizedForSearch.contains(query) }
+        guard !query.isEmpty else { return true }
+        return discipline.name.normalizedForSearch.contains(query)
+    }
+
+    /// General-culture themes — these are the ones the mixed path cycles through.
+    private var generalDisciplines: [Discipline] {
+        model.generalDisciplines.filter(matchesSearch)
+    }
+
+    /// Specialised themes, kept out of the mixed path on purpose.
+    private var specificDisciplines: [Discipline] {
+        model.specificDisciplines.filter(matchesSearch)
+    }
+
+    private var hasResults: Bool {
+        !generalDisciplines.isEmpty || !specificDisciplines.isEmpty
     }
 
     var body: some View {
@@ -48,17 +62,7 @@ struct ThemeMenuView: View {
 
                     searchField
 
-                    HStack(spacing: 10) {
-                        Rectangle().fill(Theme.line).frame(height: 1.5)
-                        Text("THÈMES")
-                            .font(.system(.caption2, design: .rounded, weight: .heavy))
-                            .foregroundStyle(Theme.inkMuted)
-                        Rectangle().fill(Theme.line).frame(height: 1.5)
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 6)
-
-                    if filteredDisciplines.isEmpty {
+                    if !hasResults {
                         Text("Aucun thème ne correspond à ta recherche.")
                             .font(.system(.footnote, design: .rounded, weight: .semibold))
                             .foregroundStyle(Theme.inkMuted)
@@ -66,15 +70,39 @@ struct ThemeMenuView: View {
                             .frame(maxWidth: .infinity)
                     }
 
-                    ForEach(filteredDisciplines) { discipline in
-                        menuRow(
-                            id: discipline.id,
-                            name: discipline.name,
-                            icon: discipline.icon,
-                            color: discipline.color,
-                            subtitle: "\(questionCount(of: discipline)) questions",
-                            isLocked: !store.isPremium
-                        )
+                    if !generalDisciplines.isEmpty {
+                        sectionHeader("CULTURE GÉNÉRALE")
+                        ForEach(generalDisciplines) { discipline in
+                            menuRow(
+                                id: discipline.id,
+                                name: discipline.name,
+                                icon: discipline.icon,
+                                color: discipline.color,
+                                subtitle: "\(questionCount(of: discipline)) questions",
+                                isLocked: !store.isPremium
+                            )
+                        }
+                    }
+
+                    if !specificDisciplines.isEmpty {
+                        sectionHeader("THÈMES SPÉCIFIQUES")
+                        Text("Non inclus dans le parcours mixte — à choisir à part.")
+                            .font(.system(.caption2, design: .rounded, weight: .semibold))
+                            .foregroundStyle(Theme.inkMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 4)
+                        ForEach(specificDisciplines) { discipline in
+                            menuRow(
+                                id: discipline.id,
+                                name: discipline.name,
+                                icon: discipline.icon,
+                                color: discipline.color,
+                                subtitle: "\(questionCount(of: discipline)) questions",
+                                isLocked: !store.isPremium,
+                                badge: "Spécifique"
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal, 12)
@@ -135,7 +163,28 @@ struct ThemeMenuView: View {
         discipline.chapters.reduce(0) { $0 + $1.questionCount }
     }
 
-    private func menuRow(id: String?, name: String, icon: String, color: Color, subtitle: String, isLocked: Bool) -> some View {
+    private func sectionHeader(_ title: String) -> some View {
+        HStack(spacing: 10) {
+            Rectangle().fill(Theme.line).frame(height: 1.5)
+            Text(title)
+                .font(.system(.caption2, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.inkMuted)
+                .fixedSize()
+            Rectangle().fill(Theme.line).frame(height: 1.5)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 6)
+    }
+
+    private func menuRow(
+        id: String?,
+        name: String,
+        icon: String,
+        color: Color,
+        subtitle: String,
+        isLocked: Bool,
+        badge: String? = nil
+    ) -> some View {
         let isSelected = model.selectedDisciplineId == id
         return Button {
             if isLocked {
@@ -154,9 +203,19 @@ struct ThemeMenuView: View {
                     .background(Circle().fill(color))
                     .opacity(isLocked ? 0.6 : 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
+                    HStack(spacing: 6) {
+                        Text(name)
+                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.ink)
+                        if let badge {
+                            Text(badge)
+                                .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                .foregroundStyle(color)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(color.opacity(0.16)))
+                        }
+                    }
                     Text(subtitle)
                         .font(.system(.caption, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.inkMuted)

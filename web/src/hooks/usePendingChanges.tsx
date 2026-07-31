@@ -26,6 +26,7 @@ export const ORIGIN_LABEL: Record<ChangeOrigin | "autre", string> = {
   moderation: "modération",
   calibration: "calibrage",
   migration: "migration",
+  path: "parcours",
   autre: "autre",
 };
 

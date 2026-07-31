@@ -1,16 +1,41 @@
 import Foundation
 
 /// One slot in a sub-chapter's ring timeline, as configured from the admin
-/// "Parcours" tool. `source` points at the index of a default-built normal
-/// ring; recap slots ignore it.
+/// "Parcours" tool.
+///
+/// A timeline is in one of two modes:
+/// - **auto**: slots only carry `source`, the index of a ring built by sorting
+///   the chapter easiest-first and cutting every 15.
+/// - **explicit**: slots carry `questionIds`, pinning exactly which question
+///   sits in which ring. Set once an admin arranges a chapter by hand, so
+///   unrelated edits can never reshuffle their work.
 nonisolated struct RingSlot: Codable, Hashable {
     let kind: RingKind
-    /// Index of the default normal ring this slot plays. Nil for recap slots.
+    /// Index of the default normal ring this slot plays. Nil for recap slots
+    /// and for explicit slots.
     let source: Int?
+    /// Explicit membership: exactly which questions this ring holds, in order.
+    let questionIds: [String]?
+    /// Difficulty the ring is meant to hold. Only meaningful while it's empty.
+    let targetLevel: String?
 
-    init(kind: RingKind, source: Int? = nil) {
+    init(kind: RingKind, source: Int? = nil, questionIds: [String]? = nil, targetLevel: String? = nil) {
         self.kind = kind
         self.source = source
+        self.questionIds = questionIds
+        self.targetLevel = targetLevel
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, source, questionIds, targetLevel
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try c.decode(RingKind.self, forKey: .kind)
+        source = try c.decodeIfPresent(Int.self, forKey: .source)
+        questionIds = try c.decodeIfPresent([String].self, forKey: .questionIds)
+        targetLevel = try c.decodeIfPresent(String.self, forKey: .targetLevel)
     }
 }
 
@@ -26,17 +51,29 @@ nonisolated struct PathLayout: Codable, Hashable {
     var chapterOrder: [String: [String]]
     /// chapterId → explicit ring timeline. Absent means "default layout".
     var ringLayout: [String: [RingSlot]]
+    /// disciplineId → general culture vs specific domain. Overrides the
+    /// catalog's own `kind`, so the classification can be changed from the
+    /// back-office without republishing the question catalog.
+    var disciplineKind: [String: DisciplineKind]
 
-    static let empty = PathLayout(disciplineOrder: [], chapterOrder: [:], ringLayout: [:])
+    static let empty = PathLayout(
+        disciplineOrder: [], chapterOrder: [:], ringLayout: [:], disciplineKind: [:]
+    )
 
     private enum CodingKeys: String, CodingKey {
-        case disciplineOrder, chapterOrder, ringLayout
+        case disciplineOrder, chapterOrder, ringLayout, disciplineKind
     }
 
-    init(disciplineOrder: [String], chapterOrder: [String: [String]], ringLayout: [String: [RingSlot]]) {
+    init(
+        disciplineOrder: [String],
+        chapterOrder: [String: [String]],
+        ringLayout: [String: [RingSlot]],
+        disciplineKind: [String: DisciplineKind] = [:]
+    ) {
         self.disciplineOrder = disciplineOrder
         self.chapterOrder = chapterOrder
         self.ringLayout = ringLayout
+        self.disciplineKind = disciplineKind
     }
 
     init(from decoder: Decoder) throws {
@@ -44,6 +81,12 @@ nonisolated struct PathLayout: Codable, Hashable {
         disciplineOrder = try c.decodeIfPresent([String].self, forKey: .disciplineOrder) ?? []
         chapterOrder = try c.decodeIfPresent([String: [String]].self, forKey: .chapterOrder) ?? [:]
         ringLayout = try c.decodeIfPresent([String: [RingSlot]].self, forKey: .ringLayout) ?? [:]
+        disciplineKind = try c.decodeIfPresent([String: DisciplineKind].self, forKey: .disciplineKind) ?? [:]
+    }
+
+    /// General culture vs specific domain for a theme, published layout first.
+    func kind(of discipline: Discipline) -> DisciplineKind {
+        disciplineKind[discipline.id] ?? discipline.resolvedKind
     }
 
     /// Reorders `values` to match `order`, keeping unknown ids at the end in
@@ -114,6 +157,11 @@ nonisolated enum PathDefaults {
 
     /// The built-in layout, used when nothing has been published yet.
     static var layout: PathLayout {
-        PathLayout(disciplineOrder: disciplineOrder, chapterOrder: chapterOrder, ringLayout: [:])
+        PathLayout(
+            disciplineOrder: disciplineOrder,
+            chapterOrder: chapterOrder,
+            ringLayout: [:],
+            disciplineKind: [:]
+        )
     }
 }

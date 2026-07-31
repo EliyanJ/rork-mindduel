@@ -3,8 +3,18 @@
 // This file is the TypeScript twin of the Swift `RingBuilder` / `PathLayout`.
 // Both must build the exact same rings from the same catalog, otherwise the
 // admin preview would lie about what players actually see. Keep them in sync.
+//
+// A sub-chapter's ring timeline exists in one of two modes:
+//
+//  - **auto** — slots only carry `source`, an index into the chunks produced by
+//    sorting the chapter's questions easiest-first and cutting every 15. Adding
+//    or re-levelling questions reshuffles the whole chapter.
+//  - **explicit** — slots carry `questionIds`, pinning exactly which question
+//    sits in which ring. Entered the first time an admin edits a ring by hand
+//    (see `pathEditor.materializeSlots`) so their arrangement is never silently
+//    recomputed. "Ronds par défaut" drops back to auto.
 
-import type { Chapter, Content, Discipline, Question } from "./generator";
+import type { Chapter, Content, Discipline, DisciplineKind, Question } from "./generator";
 
 export const ADMIN_PASSWORD = "minduel-admin";
 
@@ -17,16 +27,44 @@ const FN_URL: string =
 export const RING_SIZE = 15;
 /** A trailing group smaller than this is merged into the previous ring. */
 export const MIN_TRAILING_RING = 6;
+/**
+ * Hard ceiling for an explicit ring. A ring may exceed `RING_SIZE` when the
+ * leftovers are too few to form a real ring of their own — overflowing to 20
+ * beats stranding 3 questions in a ring nobody wants to play.
+ */
+export const RING_MAX_OVERFLOW = 20;
 
 /** Difficulty buckets, easiest first — mirrors Swift's `DifficultyLevel`. */
 export const LEVEL_ORDER = ["facile", "intermediaire", "difficile", "maitre", "legende"] as const;
+export type PathLevel = (typeof LEVEL_ORDER)[number];
+
+export const PATH_LEVEL_LABEL: Record<PathLevel, string> = {
+  facile: "Facile",
+  intermediaire: "Intermédiaire",
+  difficile: "Difficile",
+  maitre: "Maître",
+  legende: "Légende",
+};
+
+/** Rank of a difficulty bucket on the easy → hard axis. */
+export function levelRank(level: string): number {
+  const index = (LEVEL_ORDER as readonly string[]).indexOf(level);
+  return index === -1 ? 0 : index;
+}
 
 export type RingKind = "normal" | "recap";
 
 export type RingSlot = {
   kind: RingKind;
-  /** Index of the default normal ring this slot plays. Absent for recaps. */
+  /** Auto mode: index of the default normal ring this slot plays. */
   source?: number;
+  /** Explicit mode: exactly which questions this ring holds, in play order. */
+  questionIds?: string[];
+  /**
+   * Difficulty this ring is meant to hold. Set when an admin creates an empty
+   * ring so we know where new questions belong before it holds anything.
+   */
+  targetLevel?: PathLevel;
 };
 
 export type PathLayout = {
@@ -35,12 +73,19 @@ export type PathLayout = {
   chapterOrder: Record<string, string[]>;
   /** chapterId → explicit ring timeline. */
   ringLayout: Record<string, RingSlot[]>;
+  /**
+   * disciplineId → whether the theme belongs to general culture or is a
+   * specific domain. Specific themes are excluded from the mixed path and only
+   * reachable by picking them deliberately. Overrides the catalog's own `kind`.
+   */
+  disciplineKind: Record<string, DisciplineKind>;
 };
 
 export const EMPTY_LAYOUT: PathLayout = {
   disciplineOrder: [],
   chapterOrder: {},
   ringLayout: {},
+  disciplineKind: {},
 };
 
 /** Built-in ordering: History is chronological, the rest goes from the most
@@ -100,6 +145,7 @@ export function defaultLayout(): PathLayout {
       Object.entries(DEFAULT_CHAPTER_ORDER).map(([k, v]) => [k, [...v]]),
     ),
     ringLayout: {},
+    disciplineKind: {},
   };
 }
 
@@ -116,6 +162,20 @@ export function applyOrder<T>(order: string[], values: T[], id: (v: T) => string
       return l === r ? a.offset - b.offset : l - r;
     })
     .map((entry) => entry.value);
+}
+
+// MARK: - Discipline kind
+
+/**
+ * Whether a theme counts as general culture or a specific domain. The published
+ * layout wins over the catalog so the classification can be changed from the
+ * back-office without touching (or risking) the question catalog itself.
+ */
+export function effectiveDisciplineKind(
+  discipline: Discipline,
+  layout: PathLayout,
+): DisciplineKind {
+  return layout.disciplineKind?.[discipline.id] ?? discipline.kind ?? "generale";
 }
 
 // MARK: - Ring building
@@ -149,6 +209,31 @@ function notRejected(q: Question): boolean {
   return q.moderationStatus !== "rejected";
 }
 
+/** Every playable question of a chapter, keyed by id, with the level it sits in. */
+export function chapterQuestionIndex(chapter: Chapter): Map<string, { question: Question; level: PathLevel }> {
+  const index = new Map<string, { question: Question; level: PathLevel }>();
+  for (const level of LEVEL_ORDER) {
+    for (const q of chapter.levels?.[level]?.questions ?? []) {
+      if (notRejected(q)) index.set(q.id, { question: q, level });
+    }
+  }
+  if (index.size === 0) {
+    for (const q of chapter.questions ?? []) {
+      if (notRejected(q)) index.set(q.id, { question: q, level: "facile" });
+    }
+  }
+  return index;
+}
+
+/** How many playable questions a chapter holds per difficulty bucket. */
+export function chapterLevelCounts(chapter: Chapter): Record<PathLevel, number> {
+  const counts: Record<PathLevel, number> = {
+    facile: 0, intermediaire: 0, difficile: 0, maitre: 0, legende: 0,
+  };
+  for (const entry of chapterQuestionIndex(chapter).values()) counts[entry.level] += 1;
+  return counts;
+}
+
 /** All questions of a chapter, easiest first. Difficulty bucket wins, then how
  * well-known the fact is; equal difficulty keeps the authored order. */
 export function orderedQuestions(chapter: Chapter): Question[] {
@@ -172,7 +257,7 @@ export function orderedQuestions(chapter: Chapter): Question[] {
     .map((r) => r.question);
 }
 
-function chunk(questions: Question[]): Question[][] {
+export function chunk(questions: Question[]): Question[][] {
   if (questions.length === 0) return [];
   const chunks: Question[][] = [];
   for (let start = 0; start < questions.length; start += RING_SIZE) {
@@ -196,10 +281,52 @@ export function defaultSlots(normalRingCount: number): RingSlot[] {
   return slots;
 }
 
-/** Keeps a saved timeline safe: drops slots pointing at rings that no longer
- * exist, appends rings the layout predates, guarantees a closing recap. */
-export function normalizeSlots(slots: RingSlot[] | undefined, normalRingCount: number): RingSlot[] {
+/** True when the chapter's timeline pins questions explicitly. */
+export function isExplicit(slots: RingSlot[] | undefined): boolean {
+  return !!slots?.some((s) => s.kind === "normal" && Array.isArray(s.questionIds));
+}
+
+/**
+ * Keeps a saved timeline safe to use.
+ *
+ * Auto mode: drops slots pointing at rings that no longer exist and appends
+ * rings the layout predates. Explicit mode: drops ids that no longer exist and
+ * files any question missing from every ring into a new trailing ring, so
+ * publishing new questions can never make them unreachable. Both guarantee a
+ * closing recap.
+ */
+export function normalizeSlots(
+  slots: RingSlot[] | undefined,
+  normalRingCount: number,
+  knownQuestionIds?: Set<string>,
+): RingSlot[] {
   if (!slots || slots.length === 0) return defaultSlots(normalRingCount);
+
+  if (isExplicit(slots) && knownQuestionIds) {
+    const seen = new Set<string>();
+    const cleaned: RingSlot[] = [];
+    for (const slot of slots) {
+      if (slot.kind === "recap") {
+        cleaned.push(slot);
+        continue;
+      }
+      const ids = (slot.questionIds ?? []).filter((id) => {
+        if (!knownQuestionIds.has(id) || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      cleaned.push({ ...slot, source: undefined, questionIds: ids });
+    }
+    const orphans = [...knownQuestionIds].filter((id) => !seen.has(id));
+    if (orphans.length > 0) {
+      const lastRecap = cleaned.map((s) => s.kind).lastIndexOf("recap");
+      const insertAt = lastRecap === -1 ? cleaned.length : lastRecap;
+      cleaned.splice(insertAt, 0, { kind: "normal", questionIds: orphans });
+    }
+    if (!cleaned.some((s) => s.kind === "recap")) cleaned.push({ kind: "recap" });
+    return cleaned;
+  }
+
   const seen = new Set<number>();
   const cleaned: RingSlot[] = [];
   for (const slot of slots) {
@@ -225,6 +352,14 @@ export function normalizeSlots(slots: RingSlot[] | undefined, normalRingCount: n
   return cleaned;
 }
 
+/** The normalized timeline of a chapter under a given layout. */
+export function slotsFor(chapter: Chapter, layout: PathLayout): RingSlot[] {
+  const saved = layout.ringLayout[chapter.id];
+  const index = chapterQuestionIndex(chapter);
+  const autoCount = chunk(orderedQuestions(chapter)).length;
+  return normalizeSlots(saved, autoCount, new Set(index.keys()));
+}
+
 export type PreviewRing = {
   id: string;
   disciplineId: string;
@@ -233,42 +368,84 @@ export type PreviewRing = {
   kind: RingKind;
   /** 1-based label position among the chapter's normal rings. */
   position: number;
+  /** Index of this ring's slot in the chapter timeline — the edit handle. */
+  slotIndex: number;
   tier: RingTier;
+  /** Dominant difficulty bucket of the ring's questions. */
+  level: PathLevel;
   questions: Question[];
   /** Recap rings show a pool, not a fixed set — the player gets 15 of these. */
   isPool: boolean;
+  /** Explicit ring an admin created but hasn't filled yet — never served. */
+  isEmpty: boolean;
 };
+
+/** The difficulty bucket a ring mostly holds; ties resolve to the harder one. */
+export function dominantLevel(
+  questions: Question[],
+  index: Map<string, { question: Question; level: PathLevel }>,
+  fallback: PathLevel = "facile",
+): PathLevel {
+  if (questions.length === 0) return fallback;
+  const counts = new Map<PathLevel, number>();
+  for (const q of questions) {
+    const level = index.get(q.id)?.level ?? "facile";
+    counts.set(level, (counts.get(level) ?? 0) + 1);
+  }
+  let best: PathLevel = "facile";
+  let bestCount = -1;
+  for (const level of LEVEL_ORDER) {
+    const count = counts.get(level) ?? 0;
+    if (count >= bestCount && count > 0) {
+      best = level;
+      bestCount = count;
+    }
+  }
+  return best;
+}
 
 /** Builds the rings of one sub-chapter exactly like the app does. */
 export function buildRings(
   chapter: Chapter,
   disciplineId: string,
-  slots: RingSlot[] | undefined,
+  layoutOrSlots: PathLayout | RingSlot[] | undefined,
 ): PreviewRing[] {
+  const index = chapterQuestionIndex(chapter);
   const ordered = orderedQuestions(chapter);
-  if (ordered.length === 0) return [];
   const groups = chunk(ordered);
   const recapPool = [...ordered].reverse();
-  const timeline = normalizeSlots(slots, groups.length);
+
+  const timeline = Array.isArray(layoutOrSlots)
+    ? normalizeSlots(layoutOrSlots, groups.length, new Set(index.keys()))
+    : slotsFor(chapter, layoutOrSlots ?? EMPTY_LAYOUT);
 
   const rings: PreviewRing[] = [];
   let normalCounter = 0;
   let recapCounter = 0;
-  for (const slot of timeline) {
+
+  timeline.forEach((slot, slotIndex) => {
     if (slot.kind === "normal") {
-      const source = slot.source;
-      if (source === undefined || !groups[source]) continue;
-      const questions = groups[source]!;
+      const questions = slot.questionIds
+        ? slot.questionIds.map((id) => index.get(id)?.question).filter((q): q is Question => !!q)
+        : (slot.source !== undefined ? groups[slot.source] ?? [] : []);
+      // Explicit rings keep a stable id derived from their position so player
+      // progress survives edits elsewhere in the chapter.
+      const id = slot.questionIds
+        ? `ring-${chapter.id}-x${slotIndex}`
+        : `ring-${chapter.id}-${slot.source ?? slotIndex}`;
       rings.push({
-        id: `ring-${chapter.id}-${source}`,
+        id,
         disciplineId,
         chapterId: chapter.id,
         chapterTitle: chapter.title,
         kind: "normal",
         position: normalCounter + 1,
+        slotIndex,
         tier: tierFrom(questions),
+        level: dominantLevel(questions, index, slot.targetLevel ?? "facile"),
         questions,
         isPool: false,
+        isEmpty: questions.length === 0,
       });
       normalCounter += 1;
     } else {
@@ -280,13 +457,16 @@ export function buildRings(
         chapterTitle: chapter.title,
         kind: "recap",
         position: normalCounter,
+        slotIndex,
         tier: "pointu",
+        level: "maitre",
         questions: recapPool,
         isPool: true,
+        isEmpty: recapPool.length === 0,
       });
       recapCounter += 1;
     }
-  }
+  });
   return rings;
 }
 
@@ -302,23 +482,27 @@ export function orderedDisciplines(content: Content, layout: PathLayout): Discip
   return applyOrder(order, content.disciplines, (d) => d.id);
 }
 
-/** Every ring of a discipline, in path order. */
+/** Every ring of a discipline, in path order. Empty rings are dropped — they
+ * exist only as a back-office staging area and are never served to players. */
 export function disciplineRings(discipline: Discipline, layout: PathLayout): PreviewRing[] {
   return orderedChapters(discipline, layout).flatMap((chapter) =>
-    buildRings(chapter, discipline.id, layout.ringLayout[chapter.id]),
+    buildRings(chapter, discipline.id, layout).filter((r) => !r.isEmpty),
   );
 }
 
 /**
- * The mixed path: one ring per discipline in rotation, favourites visited
- * twice per lap. Mirrors `AppModel.rebuildMixedRings`.
+ * The mixed path: one ring per general-culture discipline in rotation,
+ * favourites visited twice per lap. Specific themes are deliberately excluded —
+ * they are only reachable by picking them. Mirrors `AppModel.rebuildMixedRings`.
  */
 export function mixedRings(
   content: Content,
   layout: PathLayout,
   preferredDisciplineIds: string[] = [],
 ): PreviewRing[] {
-  const disciplines = orderedDisciplines(content, layout);
+  const disciplines = orderedDisciplines(content, layout).filter(
+    (d) => effectiveDisciplineKind(d, layout) === "generale",
+  );
   const queues = new Map<string, PreviewRing[]>();
   for (const d of disciplines) queues.set(d.id, disciplineRings(d, layout));
 
@@ -351,6 +535,7 @@ export async function fetchPathLayout(): Promise<PathLayout> {
     disciplineOrder: data.disciplineOrder ?? [],
     chapterOrder: data.chapterOrder ?? {},
     ringLayout: data.ringLayout ?? {},
+    disciplineKind: data.disciplineKind ?? {},
   };
 }
 

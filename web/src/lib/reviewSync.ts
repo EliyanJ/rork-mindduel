@@ -11,7 +11,14 @@ import {
   type Question,
   fetchContent,
 } from "./generator";
-import { deleteQuestion, moveQuestion, resolveRef, updateQuestion, type QuestionRef } from "./moderation";
+import {
+  deleteQuestion,
+  insertQuestion,
+  moveQuestion,
+  resolveRef,
+  updateQuestion,
+  type QuestionRef,
+} from "./moderation";
 
 export const ADMIN_PASSWORD = "minduel-admin";
 
@@ -28,13 +35,16 @@ const FN_URL: string =
  */
 /** Which admin tool produced the decision — shown in the shared counter so
  * publishing never surprises: "Publier (53 : 8 calibrage · 45 modération)". */
-export type ChangeOrigin = "moderation" | "calibration" | "migration";
+export type ChangeOrigin = "moderation" | "calibration" | "migration" | "path";
 
 export type PendingChange = {
   ref: QuestionRef;
   question: Question | null;
   moveTo?: QuestionRef;
   origin?: ChangeOrigin;
+  /** Question created in the back-office — inserted at `ref` rather than
+   * looked up, since it doesn't exist in the published catalog yet. */
+  isNew?: boolean;
 };
 
 export type ReviewState = {
@@ -149,6 +159,17 @@ export function replayChanges(
   const skippedIds: string[] = [];
   for (const [questionId, change] of Object.entries(changes)) {
     const before = merged;
+    // A brand-new question has nothing to resolve — insert it, unless a previous
+    // publish already landed it (re-publishing must stay idempotent).
+    if (change.isNew && change.question) {
+      const already = resolveRef(merged, change.ref, questionId, change.question.prompt);
+      merged = already
+        ? updateQuestion(merged, already.ref, already.questionId, () => change.question as Question)
+        : insertQuestion(merged, change.ref, change.question);
+      if (merged === before) skippedIds.push(questionId);
+      else appliedIds.push(questionId);
+      continue;
+    }
     // The stored ref may be stale (ids are positional), so re-resolve where the
     // question lives now instead of dropping the decision.
     const located = resolveRef(merged, change.ref, questionId, change.question?.prompt);

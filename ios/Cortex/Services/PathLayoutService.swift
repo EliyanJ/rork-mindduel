@@ -23,7 +23,8 @@ enum PathLayoutService {
         return PathLayout(
             disciplineOrder: remote.disciplineOrder.isEmpty ? PathDefaults.disciplineOrder : remote.disciplineOrder,
             chapterOrder: chapterOrder,
-            ringLayout: remote.ringLayout
+            ringLayout: remote.ringLayout,
+            disciplineKind: remote.disciplineKind
         )
     }
 

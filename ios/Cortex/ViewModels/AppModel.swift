@@ -104,18 +104,39 @@ final class AppModel {
 
     var isMixedPath: Bool { selectedDisciplineId == nil }
 
+    /// General culture vs specific domain, published layout winning over the
+    /// catalog so the classification is editable from the back-office.
+    func kind(of discipline: Discipline) -> DisciplineKind {
+        layout.kind(of: discipline)
+    }
+
+    /// Themes that feed the mixed path.
+    var generalDisciplines: [Discipline] {
+        orderedDisciplines.filter { kind(of: $0) == .generale }
+    }
+
+    /// Themes reachable only by picking them deliberately.
+    var specificDisciplines: [Discipline] {
+        orderedDisciplines.filter { kind(of: $0) == .specifique }
+    }
+
     /// Round-robin across disciplines so the mixed path alternates themes while
     /// keeping each discipline's own rings in order. Preferred themes are
     /// visited more than once per lap, so they come round more often without
     /// ever excluding the others.
+    ///
+    /// Specific themes (football, ...) are deliberately left out: the mixed
+    /// path is the general-culture journey, and a specialised theme is only
+    /// played by choosing it from the theme menu.
     private func rebuildMixedRings() {
+        let pool = generalDisciplines
         var queues: [String: [PathRing]] = [:]
-        for discipline in orderedDisciplines {
+        for discipline in pool {
             queues[discipline.id] = ringsByDiscipline[discipline.id] ?? []
         }
         let preferred = preferredDisciplineIds.filter { queues[$0]?.isEmpty == false }
-        // One lap = every discipline once, plus an extra visit for favourites.
-        var lap = orderedDisciplines.map(\.id)
+        // One lap = every general theme once, plus an extra visit for favourites.
+        var lap = pool.map(\.id)
         lap.append(contentsOf: preferred)
 
         var merged: [PathRing] = []
