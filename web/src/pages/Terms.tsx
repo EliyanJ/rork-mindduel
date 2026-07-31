@@ -47,6 +47,25 @@ const Terms = () => {
           </p>
         </Section>
 
+        <Section title="Statuts de compte">
+          <p>
+            Certains comptes peuvent recevoir un statut particulier : bêta-testeur, pour accéder aux
+            versions en cours de test, ou accès offert, qui débloque gratuitement les fonctions
+            payantes. Un accès offert est accordé à titre gracieux, ne constitue pas un achat et peut
+            être retiré à tout moment sans contrepartie ni remboursement.
+          </p>
+        </Section>
+
+        <Section title="Achats et remboursements">
+          <p>
+            Les achats éventuels effectués dans l'application sont vendus par Apple, qui en est le
+            vendeur officiel : Apple encaisse le paiement, émet le reçu et applique ses propres
+            conditions. Les demandes de remboursement se font exclusivement auprès d'Apple, via
+            reportaproblem.apple.com ; nous ne pouvons ni accorder ni refuser un remboursement.
+            Lorsqu'Apple en accorde un, l'accès aux fonctions concernées prend fin.
+          </p>
+        </Section>
+
         <Section title="Règles d'utilisation">
           <ul className="list-disc space-y-2 pl-5">
             <li>Ne pas tricher, automatiser ou exploiter de bug pour fausser le classement ELO.</li>
@@ -74,7 +93,8 @@ const Terms = () => {
         <Section title="Résiliation">
           <p>
             Nous pouvons suspendre ou supprimer un compte en cas de non-respect de ces conditions.
-            Tu peux également demander la suppression de ton compte à tout moment.
+            Un compte suspendu conserve ses données mais perd l'accès aux fonctions en ligne. Tu peux
+            de ton côté supprimer ton compte à tout moment depuis les réglages de l'application.
           </p>
         </Section>
 

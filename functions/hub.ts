@@ -50,6 +50,138 @@ type QueueRow = {
 const QUEUE_STALE_MS = 12_000;
 const EMOJIS = ["🧠", "🦊", "🦉", "🐼", "🐸", "🐨", "🐯", "🦁", "🐙", "🦄"];
 
+/** Shared secret guarding every admin route. */
+const ADMIN_PASSWORD = "minduel-admin";
+
+/**
+ * Back-office roles. `premium` here means *offered* premium only; a paid
+ * subscription lives in `entitlements` and is never expressed as a role, so
+ * a gift can never be confused with a purchase.
+ */
+export const ADMIN_ROLES = ["standard", "beta", "premium", "admin", "banned"] as const;
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+
+function normalizeRole(raw: string | null | undefined): AdminRole {
+  return ADMIN_ROLES.includes(raw as AdminRole) ? (raw as AdminRole) : "standard";
+}
+
+/** Who performed an admin action, for the audit trail. */
+function actorFrom(raw: string | null | undefined): string {
+  const clean = (raw ?? "").trim();
+  return clean.length > 0 ? clean.slice(0, 80) : "admin";
+}
+
+type AdminPlayerRow = PlayerRow & {
+  role: string | null;
+  email: string | null;
+  created_at: number;
+  granted_premium_until: number | null;
+};
+
+type EntitlementRow = {
+  user_id: string;
+  product_id: string | null;
+  store: string | null;
+  status: string;
+  started_at: number | null;
+  expires_at: number | null;
+  updated_at: number;
+};
+
+type RefundRow = {
+  event_id: string;
+  user_id: string;
+  product_id: string | null;
+  store: string | null;
+  amount_cents: number | null;
+  currency: string | null;
+  refunded_at: number;
+  reason: string | null;
+};
+
+type AuditRow = {
+  id: number;
+  at: number;
+  actor: string;
+  action: string;
+  target_user: string | null;
+  detail: string | null;
+};
+
+export type AccessState = {
+  grantedPremium: boolean;
+  /** 0 means "no expiry", null means no active gift. */
+  grantedPremiumUntil: number | null;
+  purchasedPremium: boolean;
+  purchase: {
+    productId: string | null;
+    store: string | null;
+    status: string;
+    startedAt: number | null;
+    expiresAt: number | null;
+  } | null;
+  isPremium: boolean;
+};
+
+export type AdminUserSummary = {
+  id: string;
+  name: string;
+  emoji: string;
+  email: string | null;
+  role: AdminRole;
+  friendCode: string;
+  createdAt: number;
+  lastSeenAt: number;
+  duels: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  elo: number;
+  isPremium: boolean;
+  grantedPremium: boolean;
+  purchasedPremium: boolean;
+};
+
+/** Subset of the RevenueCat webhook payload we act on. */
+type RevenueCatEvent = {
+  id?: string;
+  type?: string;
+  app_user_id?: string;
+  product_id?: string;
+  store?: string;
+  price?: number;
+  currency?: string;
+  cancel_reason?: string;
+  event_timestamp_ms?: number;
+  purchased_at_ms?: number;
+  expiration_at_ms?: number;
+};
+
+function rowToRefund(row: RefundRow) {
+  return {
+    eventId: row.event_id,
+    userId: row.user_id,
+    productId: row.product_id,
+    store: row.store,
+    amountCents: row.amount_cents,
+    currency: row.currency,
+    refundedAt: row.refunded_at,
+    reason: row.reason,
+  };
+}
+
+function rowToAudit(row: AuditRow) {
+  return {
+    id: row.id,
+    at: row.at,
+    actor: row.actor,
+    action: row.action,
+    targetUser: row.target_user,
+    detail: row.detail,
+  };
+}
+
 export class Hub extends DurableObject {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env);
@@ -214,6 +346,75 @@ export class Hub extends DurableObject {
         PRIMARY KEY (question_id, choice)
       )
     `);
+
+    // MARK: back-office account management
+    // Roles and manually offered premium live on the player row. They are an
+    // admin-only concept: the app never sets them, only the password-protected
+    // /api/admin/* routes do.
+    for (const migration of [
+      "ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'standard'",
+      "ALTER TABLE players ADD COLUMN email TEXT",
+      "ALTER TABLE players ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0",
+      // Manually offered premium. NULL = never granted, 0 = no expiry,
+      // timestamp = expiry date. Deliberately separate from purchased
+      // entitlements so a gift can never be mistaken for a paid subscription.
+      "ALTER TABLE players ADD COLUMN granted_premium_until INTEGER",
+    ]) {
+      try {
+        this.ctx.storage.sql.exec(migration);
+      } catch {
+        // column already exists
+      }
+    }
+    // Rows created before created_at existed fall back to the only date known.
+    try {
+      this.ctx.storage.sql.exec("UPDATE players SET created_at = last_seen_at WHERE created_at = 0");
+    } catch {
+      // table not migrated yet
+    }
+
+    // Purchased entitlements mirrored from the store webhook. Apple (through
+    // RevenueCat) is the source of truth — we only cache the current state.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS entitlements (
+        user_id TEXT PRIMARY KEY,
+        product_id TEXT,
+        store TEXT,
+        status TEXT NOT NULL,
+        started_at INTEGER,
+        expires_at INTEGER,
+        updated_at INTEGER NOT NULL
+      )
+    `);
+
+    // Refunds granted by Apple. We can never issue one ourselves: this is a
+    // read-only ledger that also drives automatic access revocation.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS refunds (
+        event_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        product_id TEXT,
+        store TEXT,
+        amount_cents INTEGER,
+        currency TEXT,
+        refunded_at INTEGER NOT NULL,
+        reason TEXT
+      )
+    `);
+
+    // Every back-office action on a personal account is traced: a GDPR
+    // accountability requirement, and the only way to understand later why an
+    // account was changed.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS admin_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        at INTEGER NOT NULL,
+        actor TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target_user TEXT,
+        detail TEXT
+      )
+    `);
   }
 
   override async fetch(request: Request): Promise<Response> {
@@ -267,11 +468,51 @@ export class Hub extends DurableObject {
       return this.publishPathLayout(await request.json());
     }
 
+    // MARK: back-office user administration (password-protected)
+    if (path === "/api/admin/users" && request.method === "GET") {
+      return this.adminListUsers(url);
+    }
+    if (path === "/api/admin/users/detail" && request.method === "GET") {
+      return this.adminUserDetail(url);
+    }
+    if (path === "/api/admin/users/export" && request.method === "GET") {
+      return this.adminExportUser(url);
+    }
+    if (path === "/api/admin/users/role" && request.method === "POST") {
+      return this.adminSetRole(await request.json().catch(() => ({})));
+    }
+    if (path === "/api/admin/users/premium" && request.method === "POST") {
+      return this.adminSetGrantedPremium(await request.json().catch(() => ({})));
+    }
+    if (path === "/api/admin/users/delete" && request.method === "POST") {
+      return this.adminDeleteUser(await request.json().catch(() => ({})));
+    }
+    if (path === "/api/admin/refunds" && request.method === "GET") {
+      return this.adminRefunds(url.searchParams.get("password"));
+    }
+    if (path === "/api/admin/audit" && request.method === "GET") {
+      return this.adminAudit(url);
+    }
+    // Store webhook (RevenueCat). Authenticated by a shared bearer secret, not
+    // the admin password, because it is called machine-to-machine.
+    if (path === "/api/webhooks/revenuecat" && request.method === "POST") {
+      return this.storeWebhook(request);
+    }
+
     const userId = request.headers.get("X-Rork-User-Id");
     if (!userId) {
       return Response.json({ error: "authentification requise" }, { status: 401 });
     }
     const userName = decodeHeader(request.headers.get("X-Rork-User-Name")) ?? "Joueur";
+    // Captured opportunistically: the platform only stamps it for providers
+    // that share the address. Never required, never used as an identifier.
+    const userEmail = decodeHeader(request.headers.get("X-Rork-User-Email"));
+    if (userEmail) this.rememberEmail(userId, userEmail);
+
+    // A banned account keeps its data but loses every online capability.
+    if (this.roleOf(userId) === "banned") {
+      return Response.json({ error: "compte suspendu" }, { status: 403 });
+    }
 
     try {
       if (path === "/api/hub/profile/sync" && request.method === "POST") {
@@ -380,10 +621,11 @@ export class Hub extends DurableObject {
     const elo = clampElo(initialElo ?? 1000);
     const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠";
     const code = this.generateFriendCodeFor(name);
+    const now = Date.now();
     this.ctx.storage.sql.exec(
-      `INSERT INTO players (user_id, name, emoji, elo, points, wins, losses, draws, friend_code, last_seen_at)
-       VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?)`,
-      userId, name.slice(0, 24), emoji, elo, elo, code, Date.now(),
+      `INSERT INTO players (user_id, name, emoji, elo, points, wins, losses, draws, friend_code, last_seen_at, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?)`,
+      userId, name.slice(0, 24), emoji, elo, elo, code, now, now,
     );
     return rowToProfile(this.playerRow(userId)!);
   }
@@ -469,8 +711,377 @@ export class Hub extends DurableObject {
       userId, userId,
     );
     this.ctx.storage.sql.exec("DELETE FROM queue WHERE user_id = ?", userId);
+    this.ctx.storage.sql.exec("DELETE FROM entitlements WHERE user_id = ?", userId);
     this.ctx.storage.sql.exec("DELETE FROM players WHERE user_id = ?", userId);
     return Response.json({ ok: true });
+  }
+
+  // MARK: back-office administration
+
+  /** Stores the address the identity provider shared, if any. */
+  private rememberEmail(userId: string, email: string): void {
+    const clean = email.trim().toLowerCase().slice(0, 160);
+    if (!clean.includes("@")) return;
+    this.ctx.storage.sql.exec(
+      "UPDATE players SET email = ? WHERE user_id = ? AND (email IS NULL OR email <> ?)",
+      clean, userId, clean,
+    );
+  }
+
+  private roleOf(userId: string): AdminRole {
+    const rows = this.ctx.storage.sql
+      .exec<{ role: string | null }>("SELECT role FROM players WHERE user_id = ?", userId)
+      .toArray();
+    return normalizeRole(rows[0]?.role);
+  }
+
+  private logAudit(actor: string, action: string, targetUser: string | null, detail: string): void {
+    this.ctx.storage.sql.exec(
+      "INSERT INTO admin_audit (at, actor, action, target_user, detail) VALUES (?, ?, ?, ?, ?)",
+      Date.now(), actor.slice(0, 80), action.slice(0, 60), targetUser, detail.slice(0, 500),
+    );
+  }
+
+  /** Current access state, keeping the gift and the purchase strictly apart. */
+  private accessOf(userId: string, row?: AdminPlayerRow | null): AccessState {
+    const player = row ?? this.adminPlayerRow(userId);
+    const ent = this.ctx.storage.sql
+      .exec<EntitlementRow>("SELECT * FROM entitlements WHERE user_id = ?", userId)
+      .toArray()[0] ?? null;
+    const now = Date.now();
+    const grantedUntil = player?.granted_premium_until ?? null;
+    const grantActive = grantedUntil !== null && (grantedUntil === 0 || grantedUntil > now);
+    const purchaseActive =
+      ent !== null
+      && ent.status === "active"
+      && (ent.expires_at === null || ent.expires_at > now);
+    return {
+      grantedPremium: grantActive,
+      grantedPremiumUntil: grantActive ? grantedUntil : null,
+      purchasedPremium: purchaseActive,
+      purchase: ent
+        ? {
+            productId: ent.product_id,
+            store: ent.store,
+            status: ent.status,
+            startedAt: ent.started_at,
+            expiresAt: ent.expires_at,
+          }
+        : null,
+      isPremium: grantActive || purchaseActive,
+    };
+  }
+
+  private adminPlayerRow(userId: string): AdminPlayerRow | null {
+    return this.ctx.storage.sql
+      .exec<AdminPlayerRow>("SELECT * FROM players WHERE user_id = ?", userId)
+      .toArray()[0] ?? null;
+  }
+
+  private adminListUsers(url: URL): Response {
+    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const search = (url.searchParams.get("search") ?? "").trim().toLowerCase();
+    const roleFilter = url.searchParams.get("role");
+    const inactiveDays = Number(url.searchParams.get("inactiveDays") ?? "0");
+    const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "200"), 1), 500);
+    const offset = Math.max(Number(url.searchParams.get("offset") ?? "0"), 0);
+
+    const all = this.ctx.storage.sql
+      .exec<AdminPlayerRow>("SELECT * FROM players ORDER BY last_seen_at DESC")
+      .toArray();
+    const now = Date.now();
+    const filtered = all.filter((row) => {
+      if (search) {
+        const haystack = `${row.name} ${row.email ?? ""} ${row.friend_code} ${row.user_id}`.toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+      if (roleFilter && roleFilter !== "all" && normalizeRole(row.role) !== roleFilter) return false;
+      if (Number.isFinite(inactiveDays) && inactiveDays > 0) {
+        if (now - row.last_seen_at < inactiveDays * 86_400_000) return false;
+      }
+      return true;
+    });
+
+    const users = filtered.slice(offset, offset + limit).map((row) => this.adminUserSummary(row));
+    const roleCounts: Record<string, number> = {};
+    for (const row of all) {
+      const role = normalizeRole(row.role);
+      roleCounts[role] = (roleCounts[role] ?? 0) + 1;
+    }
+    const activeSevenDays = all.filter((r) => now - r.last_seen_at < 7 * 86_400_000).length;
+
+    return Response.json({
+      users,
+      total: filtered.length,
+      totalPlayers: all.length,
+      roleCounts,
+      activeSevenDays,
+      premiumCount: all.filter((r) => this.accessOf(r.user_id, r).isPremium).length,
+    });
+  }
+
+  private adminUserSummary(row: AdminPlayerRow): AdminUserSummary {
+    const access = this.accessOf(row.user_id, row);
+    return {
+      id: row.user_id,
+      name: row.name,
+      emoji: row.emoji,
+      email: row.email,
+      role: normalizeRole(row.role),
+      friendCode: row.friend_code,
+      createdAt: row.created_at || row.last_seen_at,
+      lastSeenAt: row.last_seen_at,
+      duels: row.wins + row.losses + row.draws,
+      wins: row.wins,
+      losses: row.losses,
+      draws: row.draws,
+      points: row.points,
+      elo: row.elo,
+      isPremium: access.isPremium,
+      grantedPremium: access.grantedPremium,
+      purchasedPremium: access.purchasedPremium,
+    };
+  }
+
+  private adminUserDetail(url: URL): Response {
+    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const userId = url.searchParams.get("userId") ?? "";
+    const row = this.adminPlayerRow(userId);
+    if (!row) return Response.json({ error: "joueur introuvable" }, { status: 404 });
+
+    const friends = this.ctx.storage.sql
+      .exec<{ n: number }>("SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?", userId, userId)
+      .toArray()[0]?.n ?? 0;
+    const refunds = this.ctx.storage.sql
+      .exec<RefundRow>("SELECT * FROM refunds WHERE user_id = ? ORDER BY refunded_at DESC", userId)
+      .toArray()
+      .map(rowToRefund);
+    const audit = this.ctx.storage.sql
+      .exec<AuditRow>(
+        "SELECT * FROM admin_audit WHERE target_user = ? ORDER BY id DESC LIMIT 50",
+        userId,
+      )
+      .toArray()
+      .map(rowToAudit);
+
+    return Response.json({
+      user: this.adminUserSummary(row),
+      access: this.accessOf(userId, row),
+      friends,
+      refunds,
+      audit,
+      queued: this.ctx.storage.sql
+        .exec<{ n: number }>("SELECT COUNT(*) AS n FROM queue WHERE user_id = ?", userId)
+        .toArray()[0]?.n ?? 0,
+    });
+  }
+
+  /** GDPR portability: everything the server holds about one person. */
+  private adminExportUser(url: URL): Response {
+    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const userId = url.searchParams.get("userId") ?? "";
+    const row = this.adminPlayerRow(userId);
+    if (!row) return Response.json({ error: "joueur introuvable" }, { status: 404 });
+
+    const friendships = this.ctx.storage.sql
+      .exec("SELECT * FROM friendships WHERE a = ? OR b = ?", userId, userId)
+      .toArray();
+    const requests = this.ctx.storage.sql
+      .exec("SELECT * FROM friend_requests WHERE from_id = ? OR to_id = ?", userId, userId)
+      .toArray();
+    const entitlement = this.ctx.storage.sql
+      .exec("SELECT * FROM entitlements WHERE user_id = ?", userId)
+      .toArray();
+    const refunds = this.ctx.storage.sql
+      .exec("SELECT * FROM refunds WHERE user_id = ?", userId)
+      .toArray();
+
+    this.logAudit(actorFrom(url.searchParams.get("actor")), "export", userId, "Export RGPD");
+
+    return Response.json({
+      exportedAt: new Date().toISOString(),
+      note:
+        "Donn\u00e9es d\u00e9tenues par le serveur Minduel. La progression d'apprentissage "
+        + "reste sur l'appareil du joueur et n'est pas incluse.",
+      player: row,
+      friendships,
+      friendRequests: requests,
+      entitlement,
+      refunds,
+    });
+  }
+
+  private adminSetRole(body: unknown): Response {
+    const p = body as { password?: string; userId?: string; role?: string; actor?: string };
+    if (p.password !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const userId = p.userId ?? "";
+    const row = this.adminPlayerRow(userId);
+    if (!row) return Response.json({ error: "joueur introuvable" }, { status: 404 });
+    if (!ADMIN_ROLES.includes(p.role as AdminRole)) {
+      return Response.json({ error: "r\u00f4le inconnu" }, { status: 400 });
+    }
+    const role = p.role as AdminRole;
+    const previous = normalizeRole(row.role);
+    this.ctx.storage.sql.exec("UPDATE players SET role = ? WHERE user_id = ?", role, userId);
+    // A ban also clears the matchmaking queue so the account cannot stay paired.
+    if (role === "banned") {
+      this.ctx.storage.sql.exec("DELETE FROM queue WHERE user_id = ?", userId);
+    }
+    this.logAudit(actorFrom(p.actor), "role", userId, `${previous} \u2192 ${role}`);
+    return Response.json({ user: this.adminUserSummary(this.adminPlayerRow(userId)!) });
+  }
+
+  private adminSetGrantedPremium(body: unknown): Response {
+    const p = body as {
+      password?: string;
+      userId?: string;
+      grant?: boolean;
+      expiresAt?: number | null;
+      actor?: string;
+    };
+    if (p.password !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const userId = p.userId ?? "";
+    if (!this.adminPlayerRow(userId)) {
+      return Response.json({ error: "joueur introuvable" }, { status: 404 });
+    }
+    if (p.grant === true) {
+      const until = typeof p.expiresAt === "number" && p.expiresAt > Date.now() ? p.expiresAt : 0;
+      this.ctx.storage.sql.exec(
+        "UPDATE players SET granted_premium_until = ? WHERE user_id = ?",
+        until, userId,
+      );
+      this.logAudit(
+        actorFrom(p.actor),
+        "premium.grant",
+        userId,
+        until === 0 ? "Premium offert sans limite" : `Premium offert jusqu'au ${new Date(until).toISOString()}`,
+      );
+    } else {
+      this.ctx.storage.sql.exec(
+        "UPDATE players SET granted_premium_until = NULL WHERE user_id = ?",
+        userId,
+      );
+      this.logAudit(actorFrom(p.actor), "premium.revoke", userId, "Premium offert retir\u00e9");
+    }
+    const row = this.adminPlayerRow(userId)!;
+    return Response.json({ user: this.adminUserSummary(row), access: this.accessOf(userId, row) });
+  }
+
+  private adminDeleteUser(body: unknown): Response {
+    const p = body as { password?: string; userId?: string; actor?: string };
+    if (p.password !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const userId = p.userId ?? "";
+    const row = this.adminPlayerRow(userId);
+    if (!row) return Response.json({ error: "joueur introuvable" }, { status: 404 });
+    // The audit line is written before deletion and deliberately keeps only the
+    // account name, never the address: proof the erasure happened, without
+    // re-creating the personal data that was just erased.
+    this.logAudit(actorFrom(p.actor), "delete", userId, `Suppression RGPD du compte "${row.name}"`);
+    return this.deleteAccount(userId);
+  }
+
+  private adminRefunds(password: string | null): Response {
+    if (password !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const refunds = this.ctx.storage.sql
+      .exec<RefundRow & { name: string | null }>(
+        `SELECT r.*, p.name AS name FROM refunds r
+         LEFT JOIN players p ON p.user_id = r.user_id
+         ORDER BY r.refunded_at DESC LIMIT 200`,
+      )
+      .toArray()
+      .map((row) => ({ ...rowToRefund(row), playerName: row.name }));
+    return Response.json({ refunds });
+  }
+
+  private adminAudit(url: URL): Response {
+    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+    const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "100"), 1), 500);
+    const entries = this.ctx.storage.sql
+      .exec<AuditRow>("SELECT * FROM admin_audit ORDER BY id DESC LIMIT ?", limit)
+      .toArray()
+      .map(rowToAudit);
+    return Response.json({ entries });
+  }
+
+  /**
+   * RevenueCat webhook. Mirrors subscription state and records refunds, which
+   * only Apple can grant \u2014 a CANCELLATION carrying a refund reason revokes
+   * access immediately.
+   */
+  private async storeWebhook(request: Request): Promise<Response> {
+    const secret = (this.env as { REVENUECAT_WEBHOOK_SECRET?: string } | undefined)
+      ?.REVENUECAT_WEBHOOK_SECRET;
+    // Fail closed: without a configured secret the endpoint stays inert rather
+    // than accepting unauthenticated entitlement changes.
+    if (!secret) {
+      return Response.json({ error: "webhook non configur\u00e9" }, { status: 503 });
+    }
+    if (request.headers.get("Authorization") !== `Bearer ${secret}`) {
+      return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
+    }
+
+    const body = (await request.json().catch(() => null)) as { event?: RevenueCatEvent } | null;
+    const event = body?.event;
+    if (!event?.type || !event.app_user_id) {
+      return Response.json({ error: "\u00e9v\u00e9nement invalide" }, { status: 400 });
+    }
+    const userId = event.app_user_id;
+    const now = Date.now();
+    const type = event.type.toUpperCase();
+    const isRefund = type === "REFUND" || (type === "CANCELLATION" && event.cancel_reason === "CUSTOMER_SUPPORT");
+
+    if (isRefund) {
+      this.ctx.storage.sql.exec(
+        `INSERT OR REPLACE INTO refunds
+         (event_id, user_id, product_id, store, amount_cents, currency, refunded_at, reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        event.id ?? `${userId}-${now}`,
+        userId,
+        event.product_id ?? null,
+        event.store ?? "APP_STORE",
+        typeof event.price === "number" ? Math.round(event.price * 100) : null,
+        event.currency ?? null,
+        event.event_timestamp_ms ?? now,
+        event.cancel_reason ?? type,
+      );
+      this.ctx.storage.sql.exec(
+        "UPDATE entitlements SET status = 'refunded', updated_at = ? WHERE user_id = ?",
+        now, userId,
+      );
+      this.logAudit("apple", "refund", userId, `Remboursement Apple (${event.product_id ?? "produit inconnu"})`);
+      return Response.json({ ok: true, handled: "refund" });
+    }
+
+    const expired = type === "EXPIRATION";
+    this.ctx.storage.sql.exec(
+      `INSERT OR REPLACE INTO entitlements
+       (user_id, product_id, store, status, started_at, expires_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      userId,
+      event.product_id ?? null,
+      event.store ?? "APP_STORE",
+      expired ? "expired" : "active",
+      event.purchased_at_ms ?? now,
+      event.expiration_at_ms ?? null,
+      now,
+    );
+    return Response.json({ ok: true, handled: type });
   }
 
   // MARK: friends

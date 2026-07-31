@@ -68,6 +68,16 @@ export default {
       return withCors(res);
     }
 
+    // Back-office user administration (password checked inside the Hub DO) and
+    // the store webhook (bearer-secret checked inside the Hub DO).
+    if (url.pathname.startsWith("/api/admin/")) {
+      const res = await dispatchToDo(env, "Hub", "global", request);
+      return withCors(res);
+    }
+    if (url.pathname === "/api/webhooks/revenuecat" && request.method === "POST") {
+      return dispatchToDo(env, "Hub", "global", request);
+    }
+
     // Admin question-review tool: stateless AI proxy. The caller's API key is
     // used only for this single outbound request and is never stored, logged,
     // or forwarded anywhere except straight to the chosen provider — this

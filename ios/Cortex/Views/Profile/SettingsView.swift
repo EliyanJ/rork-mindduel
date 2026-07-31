@@ -10,6 +10,8 @@ struct SettingsView: View {
     @Environment(StoreViewModel.self) private var store
     @Environment(\.dismiss) private var dismiss
 
+    private let notifications = NotificationService.shared
+
     @State private var isDeleteConfirmPresented = false
     @State private var isDeletingAccount = false
     @State private var legalSheet: LegalLink?
@@ -49,6 +51,25 @@ struct SettingsView: View {
                                 .foregroundStyle(Theme.success)
                         }
                     }
+                }
+
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { notifications.isEnabled },
+                        set: { newValue in
+                            Haptics.tap()
+                            notifications.isEnabled = newValue
+                            Task { await notifications.reapply() }
+                        }
+                    )) {
+                        Label("Rappels quotidiens", systemImage: "bell.badge")
+                            .foregroundStyle(Theme.ink)
+                    }
+                    .tint(Theme.primary)
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text(notificationsFooter)
                 }
 
                 Section {
@@ -98,6 +119,9 @@ struct SettingsView: View {
             .sheet(item: $legalSheet) { link in
                 LegalWebView(title: link.title, url: link.url)
             }
+            .task {
+                await notifications.refreshAuthorizationStatus()
+            }
             .confirmationDialog(
                 "Supprimer définitivement ton compte ?",
                 isPresented: $isDeleteConfirmPresented,
@@ -116,6 +140,21 @@ struct SettingsView: View {
             } message: {
                 Text("Ton profil en ligne, ton classement ELO, tes amis et ton historique de duels seront supprimés définitivement. Cette action est irréversible.")
             }
+        }
+    }
+
+    /// Explains what will actually happen, including the case where iOS itself
+    /// is blocking the reminders — an in-app switch cannot override that.
+    private var notificationsFooter: String {
+        switch notifications.authorizationStatus {
+        case .denied:
+            return "Les notifications sont bloquées pour Minduel dans les Réglages de l'iPhone. Active-les là-bas pour recevoir tes rappels."
+        case .notDetermined:
+            return "Tu recevras une demande d'autorisation avant le premier rappel."
+        default:
+            return notifications.isEnabled
+                ? "Des rappels discrets, jamais entre 22 h et 8 h, et aucun si tu as déjà travaillé dans la journée."
+                : "Aucun rappel ne sera envoyé."
         }
     }
 

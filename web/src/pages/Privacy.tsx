@@ -53,8 +53,18 @@ const Privacy = () => {
               <span className="text-white">Données techniques</span> : informations minimales de
               connexion réseau nécessaires au fonctionnement des duels en temps réel.
             </li>
+            <li>
+              <span className="text-white">Statut du compte</span> : un rôle administratif
+              (standard, bêta-testeur, accès offert, suspendu) et, le cas échéant, l'état de ton
+              abonnement et l'historique des remboursements accordés par Apple.
+            </li>
           </ul>
           <p>Nous ne collectons pas de données de localisation, de contacts ou de photos.</p>
+          <p>
+            Nous ne détenons aucun mot de passe : la connexion passe uniquement par Google ou Apple.
+            Nous ne détenons non plus aucune coordonnée bancaire, les paiements éventuels étant
+            traités de bout en bout par Apple.
+          </p>
         </Section>
 
         <Section title="Pourquoi nous utilisons ces données">
@@ -63,7 +73,33 @@ const Privacy = () => {
             <li>Faire fonctionner le matchmaking, les duels en temps réel et le classement.</li>
             <li>Te permettre d'ajouter des amis et de suivre leurs scores.</li>
             <li>Assurer le support technique lorsque tu nous contactes.</li>
+            <li>
+              Gérer les accès : attribuer un accès offert ou un statut de bêta-testeur, et suspendre
+              un compte en cas d'abus.
+            </li>
           </ul>
+        </Section>
+
+        <Section title="Accès administratif">
+          <p>
+            Un back-office réservé permet à l'équipe Minduel de consulter la liste des comptes, de
+            modifier un rôle, d'offrir un accès et de traiter les demandes d'export ou de
+            suppression. L'accès est restreint à des personnes nommément autorisées et chaque action
+            effectuée sur un compte est enregistrée dans un journal d'audit.
+          </p>
+          <p>
+            Ta progression d'apprentissage (leçons terminées, séries, thèmes révisés) reste sur ton
+            appareil et n'est pas consultable depuis ce back-office.
+          </p>
+        </Section>
+
+        <Section title="Achats et remboursements">
+          <p>
+            Si des achats sont proposés dans l'application, Apple en est le vendeur officiel : c'est
+            Apple qui encaisse, émet le reçu et décide seul des remboursements, que tu peux demander
+            depuis reportaproblem.apple.com. Nous recevons uniquement l'état de ton abonnement et la
+            notification d'un remboursement accordé, afin d'ajuster ton accès en conséquence.
+          </p>
         </Section>
 
         <Section title="Partage avec des tiers">
@@ -87,7 +123,13 @@ const Privacy = () => {
         <Section title="Tes droits">
           <p>
             Tu peux demander l'accès, la correction, l'export ou la suppression de tes données
-            personnelles à tout moment via support@minduel.app.
+            personnelles à tout moment via support@minduel.app. L'export t'est remis dans un format
+            lisible et réutilisable. Tu peux aussi supprimer ton compte directement depuis les
+            réglages de l'application, sans passer par nous.
+          </p>
+          <p>
+            Si tu estimes que tes droits ne sont pas respectés, tu peux introduire une réclamation
+            auprès de la CNIL.
           </p>
         </Section>
 

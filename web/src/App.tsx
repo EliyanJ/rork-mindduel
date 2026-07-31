@@ -40,6 +40,7 @@ const App = () => (
               <Route path="/admin-review" element={null} />
               <Route path="/admin-calibration" element={null} />
               <Route path="/admin-path" element={null} />
+              <Route path="/admin-users" element={null} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

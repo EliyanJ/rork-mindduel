@@ -4,6 +4,7 @@ import AdminCalibration from "@/pages/AdminCalibration";
 import AdminGenerator from "@/pages/AdminGenerator";
 import AdminPath from "@/pages/AdminPath";
 import AdminReview from "@/pages/AdminReview";
+import AdminUsers from "@/pages/AdminUsers";
 
 /**
  * Keeps every admin tool mounted at all times and only toggles visibility
@@ -28,6 +29,9 @@ const AdminWorkspace = () => {
       </div>
       <div className={pathname === "/admin-path" ? "" : "hidden"}>
         <AdminPath />
+      </div>
+      <div className={pathname === "/admin-users" ? "" : "hidden"}>
+        <AdminUsers />
       </div>
     </>
   );
