@@ -318,6 +318,10 @@ final class OnlineDuelSession {
         }
         finishedHandled = true
         timerTask?.cancel()
+        // A ranked duel is shorter than one telemetry batch, so without an
+        // explicit flush the whole match's answers would sit in memory and be
+        // lost when the app is closed.
+        AnswerTelemetry.shared.flush()
 
         if let scores = raw["scores"] as? [String: Int] {
             playerScore = scores[you.id] ?? playerScore

@@ -31,6 +31,9 @@ struct ContentView: View {
         // Reminders are rebuilt every time the app comes forward: that is what
         // lets today's remaining slots disappear once the player has practised.
         .onChange(of: scenePhase) { _, phase in
+            // Leaving the foreground is the last safe moment to push whatever
+            // answers are still buffered; iOS may kill the app afterwards.
+            if phase != .active { AnswerTelemetry.shared.flush() }
             guard phase == .active, onboardingStore.isCompleted else { return }
             Task { await refreshReminders() }
         }

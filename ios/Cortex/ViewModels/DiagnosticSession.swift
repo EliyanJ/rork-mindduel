@@ -22,6 +22,9 @@ final class DiagnosticSession {
     private(set) var anagramLetters: [Character] = []
     private(set) var correctCount: Int = 0
     private(set) var wasCorrect: [Bool] = []
+    /// Start of the current question, used to report an honest response time to
+    /// the difficulty calibration telemetry.
+    private var questionShownAt: Date = .now
 
     init(items: [LessonItem], store: ProgressStore) {
         self.items = items
@@ -47,6 +50,17 @@ final class DiagnosticSession {
         wasCorrect.append(correct)
         // Record in spaced repetition but skip XP, activity, and quotas.
         store.recordAnswer(questionId: question.id, disciplineId: current.disciplineId, correct: correct)
+        // The diagnostic is unusually valuable calibration data: it is the only
+        // moment a player answers questions picked independently of their level.
+        AnswerTelemetry.shared.record(AnswerTelemetry.Event(
+            questionId: question.id,
+            correct: correct,
+            timeMs: Int(Date.now.timeIntervalSince(questionShownAt) * 1000),
+            selected: selection,
+            timedOut: false,
+            disciplineId: current.disciplineId,
+            level: nil
+        ))
         phase = .feedback(correct: correct)
     }
 
@@ -54,6 +68,8 @@ final class DiagnosticSession {
         guard case .feedback = phase else { return }
         if isLast {
             phase = .completed
+            // Far below the batch threshold, so push the tail now.
+            AnswerTelemetry.shared.flush()
             Haptics.medium()
         } else {
             index += 1
@@ -65,6 +81,7 @@ final class DiagnosticSession {
 
     private func prepareQuestion() {
         guard !items.isEmpty else { return }
+        questionShownAt = .now
         let question = current.question
         switch question.type {
         case .trueFalse:
