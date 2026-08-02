@@ -6,6 +6,7 @@ import {
   CircleDashed,
   Crown,
   Globe,
+  Layers,
   Loader2,
   Plus,
   RefreshCw,
@@ -46,6 +47,7 @@ import {
   orderedDisciplines,
   PATH_LEVEL_LABEL,
   publishPathLayout,
+  RING_MIN_SIZE,
   RING_SIZE,
   slotsFor,
   TIER_LABEL,
@@ -60,6 +62,7 @@ import {
   materializeSlots,
   moveQuestionToRing,
   placeQuestionAtLevel,
+  rebalanceChapterRings,
   refFor,
   removeQuestionFromSlots,
   removeRing,
@@ -333,6 +336,27 @@ const AdminPath = () => {
     [layout, log, mutateLayout],
   );
 
+  /**
+   * Regroups a chapter's rings purely by each question's *current*
+   * difficulty — the fix for a ring that drifted after several manual
+   * re-levels. Oversized rings are split into fresh ones of at most
+   * `RING_SIZE`; any leftover under `RING_MIN_SIZE` is folded into the
+   * nearest difficulty rather than left to stand alone.
+   */
+  const rebalanceRings = useCallback(
+    (chapter: Chapter) => {
+      const before = buildRings(chapter, selectedDisciplineId, layout).filter((r) => r.kind === "normal").length;
+      const nextSlots = rebalanceChapterRings(chapter, layout);
+      setSlots(chapter.id, nextSlots);
+      const after = nextSlots.filter((s) => s.kind === "normal").length;
+      log(
+        "success",
+        `« ${chapter.title} » réorganisé par difficulté : ${before} → ${after} rond(s), chacun rempli au plus proche de ${RING_SIZE} questions (minimum ${RING_MIN_SIZE}).`,
+      );
+    },
+    [layout, log, selectedDisciplineId, setSlots],
+  );
+
   const resetChapterOrder = useCallback(() => {
     if (!selectedDiscipline) return;
     const fallback = DEFAULT_CHAPTER_ORDER[selectedDiscipline.id] ?? [];
@@ -578,7 +602,7 @@ const AdminPath = () => {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
         <section className="space-y-5">
           <DisciplineTimeline
             disciplines={disciplines}
@@ -628,6 +652,7 @@ const AdminPath = () => {
                     onAddRing={addRing}
                     onRetargetRing={retargetRing}
                     onResetRings={resetChapterRings}
+                    onRebalanceRings={rebalanceRings}
                     onChangeDifficulty={changeDifficulty}
                     onRelocateQuestion={relocateQuestion}
                     onCompose={setComposing}
@@ -640,7 +665,7 @@ const AdminPath = () => {
           )}
         </section>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-16 lg:self-start">
           <PathPreview
             rings={previewRings}
             disciplines={disciplines}
@@ -802,6 +827,7 @@ const ChapterCard = ({
   onAddRing,
   onRetargetRing,
   onResetRings,
+  onRebalanceRings,
   onChangeDifficulty,
   onRelocateQuestion,
   onCompose,
@@ -824,6 +850,7 @@ const ChapterCard = ({
   onAddRing: (chapter: Chapter, level: PathLevel) => void;
   onRetargetRing: (chapter: Chapter, slotIndex: number, level: PathLevel) => void;
   onResetRings: (chapter: Chapter) => void;
+  onRebalanceRings: (chapter: Chapter) => void;
   onChangeDifficulty: (d: Discipline, c: Chapter, q: Question, level: PathLevel) => void;
   onRelocateQuestion: (chapter: Chapter, questionId: string, targetSlotIndex: number) => void;
   onCompose: (target: { chapterId: string; slotIndex: number } | null) => void;
@@ -886,6 +913,15 @@ const ChapterCard = ({
         >
           <Sparkles className="h-3 w-3" />
           Importer
+        </button>
+        <button
+          type="button"
+          onClick={() => onRebalanceRings(chapter)}
+          title="Regroupe les questions par niveau de difficulté actuel, coupe l'excédent en nouveaux ronds et transvase les petits restes vers le niveau le plus proche pour garantir au moins 12 questions par rond."
+          className="flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[10px] font-bold text-white/45 transition hover:border-emerald-400/40 hover:text-emerald-200"
+        >
+          <Layers className="h-3 w-3" />
+          Réorganiser par difficulté
         </button>
         <button
           type="button"

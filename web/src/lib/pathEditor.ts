@@ -22,6 +22,7 @@ import {
   type PathLayout,
   type PathLevel,
   RING_MAX_OVERFLOW,
+  RING_MIN_SIZE,
   RING_SIZE,
   type RingSlot,
   slotsFor,
@@ -331,4 +332,64 @@ export function levelBreakdown(counts: Record<PathLevel, number>): string {
 /** Rough count of how many full rings a set of questions would fill. */
 export function ringsNeeded(questionCount: number): number {
   return Math.max(1, Math.ceil(questionCount / RING_SIZE));
+}
+
+// MARK: - Rebalancing by difficulty
+
+/**
+ * Rebuilds a chapter's normal rings from scratch, purely by current
+ * difficulty. Fixes "I re-levelled a bunch of questions and now facile and
+ * difficile are mixed together in the same rings".
+ *
+ * Every playable question is grouped by its *current* level (not by whichever
+ * ring it happened to sit in), easiest first within each level. Groups are cut
+ * into rings of `RING_SIZE`. A level's leftover under `RING_MIN_SIZE` never
+ * stands alone: it carries forward into the next (harder) level's group — the
+ * nearest difficulty available — cascading forward until it reaches the
+ * minimum or runs out of levels, in which case it folds back into the last
+ * ring built. Recap slots are preserved, moved after the rebuilt ramp.
+ */
+export function rebalanceChapterRings(chapter: Chapter, layout: PathLayout): RingSlot[] {
+  const currentSlots = materializeSlots(chapter, layout);
+  const recaps = currentSlots.filter((slot) => slot.kind === "recap");
+  const index = chapterQuestionIndex(chapter);
+
+  const byLevel = new Map<PathLevel, string[]>();
+  for (const level of LEVEL_ORDER) byLevel.set(level, []);
+  for (const question of orderedQuestions(chapter)) {
+    const level = index.get(question.id)?.level ?? "facile";
+    byLevel.get(level)!.push(question.id);
+  }
+
+  const rings: { questionIds: string[]; targetLevel: PathLevel }[] = [];
+  let carry: string[] = [];
+
+  LEVEL_ORDER.forEach((level, levelIndex) => {
+    const isLastLevel = levelIndex === LEVEL_ORDER.length - 1;
+    let pool = [...carry, ...byLevel.get(level)!];
+    carry = [];
+
+    while (pool.length >= RING_SIZE) {
+      rings.push({ questionIds: pool.slice(0, RING_SIZE), targetLevel: level });
+      pool = pool.slice(RING_SIZE);
+    }
+    if (pool.length === 0) return;
+
+    if (pool.length < RING_MIN_SIZE && !isLastLevel) {
+      carry = pool;
+      return;
+    }
+    if (pool.length < RING_MIN_SIZE && rings.length > 0) {
+      const lastRing = rings[rings.length - 1]!;
+      lastRing.questionIds = [...lastRing.questionIds, ...pool];
+      return;
+    }
+    rings.push({ questionIds: pool, targetLevel: level });
+  });
+
+  const normalSlots: RingSlot[] = rings.length > 0
+    ? rings.map((r) => ({ kind: "normal" as const, questionIds: r.questionIds, targetLevel: r.targetLevel }))
+    : [{ kind: "normal" as const, questionIds: [] }];
+
+  return [...normalSlots, ...(recaps.length > 0 ? recaps : [{ kind: "recap" as const }])];
 }

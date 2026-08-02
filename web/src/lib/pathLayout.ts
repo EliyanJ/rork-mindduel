@@ -33,6 +33,11 @@ export const MIN_TRAILING_RING = 6;
  * beats stranding 3 questions in a ring nobody wants to play.
  */
 export const RING_MAX_OVERFLOW = 20;
+/**
+ * Floor enforced by the "réorganiser par difficulté" tool: a ring under this
+ * size gets folded into the nearest difficulty rather than standing alone.
+ */
+export const RING_MIN_SIZE = 12;
 
 /** Difficulty buckets, easiest first — mirrors Swift's `DifficultyLevel`. */
 export const LEVEL_ORDER = ["facile", "intermediaire", "difficile", "maitre", "legende"] as const;
