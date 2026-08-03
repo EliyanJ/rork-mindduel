@@ -304,6 +304,9 @@ struct ProfileView: View {
             statCard(icon: "crown.fill", color: Theme.primary, value: "\(model.store.masteredChaptersCount)", label: "Étapes maîtrisées")
             statCard(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(progress.duelsWon)", label: "Duels gagnés")
             statCard(icon: "chart.line.uptrend.xyaxis", color: Theme.success, value: online.profile.map { "\($0.displayPoints)" } ?? "\(progress.elo)", label: online.profile != nil ? "Points classés" : "Niveau local")
+            if let profile = online.profile {
+                statCard(icon: "heart.fill", color: Theme.gold, value: "\(profile.displayReputation)", label: "Réputation")
+            }
         }
     }
 

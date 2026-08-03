@@ -4,6 +4,7 @@
 
 export { Hub } from "./hub";
 export { MatchRoom } from "./match-room";
+export { PartyRoom } from "./party-room";
 
 type Env = { DO: Fetcher };
 
@@ -102,6 +103,17 @@ export default {
       }
       url.searchParams.set("userId", userId);
       return dispatchToDo(env, "MatchRoom", matchRoute[1]!, new Request(url.toString(), request));
+    }
+
+    // Party game WebSocket (10v10 / 1v19): /api/party/<partyId>/ws
+    const partyRoute = url.pathname.match(/^\/api\/party\/([^/]+)\/ws$/);
+    if (partyRoute && request.headers.get("Upgrade") === "websocket") {
+      const userId = request.headers.get("X-Rork-User-Id");
+      if (!userId) {
+        return Response.json({ error: "authentification requise" }, { status: 401 });
+      }
+      url.searchParams.set("userId", userId);
+      return dispatchToDo(env, "PartyRoom", partyRoute[1]!, new Request(url.toString(), request));
     }
 
     return Response.json({ error: "not found" }, { status: 404 });

@@ -23,6 +23,12 @@ export type PlayerProfile = {
   losses: number;
   draws: number;
   friendCode: string;
+  /**
+   * Behaviour counter, entirely separate from skill: rewards finishing what
+   * you start and punishes abandoning a lobby or a live party game. Floored
+   * at 0, uncapped above, purely informational for now.
+   */
+  reputation: number;
 };
 
 type PlayerRow = {
@@ -36,6 +42,7 @@ type PlayerRow = {
   draws: number;
   friend_code: string;
   last_seen_at: number;
+  reputation: number;
 };
 
 type QueueRow = {
@@ -49,6 +56,14 @@ type QueueRow = {
 
 const QUEUE_STALE_MS = 12_000;
 const EMOJIS = ["🧠", "🦊", "🦉", "🐼", "🐸", "🐨", "🐯", "🦁", "🐙", "🦄"];
+
+// MARK: party modes (10v10 and 1v19)
+export const PARTY_CAPACITY = 20;
+/** How long a lobby waits for real players before bots fill the rest. */
+const PARTY_FILL_MS = 15_000;
+/** A finalized-but-never-connected lobby is abandoned after this long. */
+const PARTY_STALE_TICKET_MS = 120_000;
+export type PartyMode = "team10" | "solo";
 
 /** Shared secret guarding every admin route. */
 const ADMIN_PASSWORD = "minduel-admin";
@@ -241,6 +256,31 @@ export class Hub extends DurableObject {
       // column already exists
     }
     this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS party_lobbies (
+        lobby_id TEXT PRIMARY KEY,
+        mode TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        started INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS party_queue (
+        user_id TEXT PRIMARY KEY,
+        mode TEXT NOT NULL,
+        elo INTEGER NOT NULL,
+        lobby_id TEXT NOT NULL,
+        queued_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL,
+        match_payload TEXT
+      )
+    `);
+    // Behaviour counter — added after `players` already existed in the wild.
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 0");
+    } catch {
+      // column already exists
+    }
+    this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS content (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         json TEXT NOT NULL,
@@ -425,6 +465,9 @@ export class Hub extends DurableObject {
     if (path === "/internal/match-result" && request.method === "POST") {
       return this.settleMatch(await request.json());
     }
+    if (path === "/internal/party-result" && request.method === "POST") {
+      return this.settleParty(await request.json());
+    }
 
     // Content delivery routes — public GET (app fetches latest content),
     // password-protected POST (admin pushes new content from the generator panel).
@@ -598,6 +641,20 @@ export class Hub extends DurableObject {
 
       if (path === "/api/hub/answers" && request.method === "POST") {
         return this.ingestAnswers(userId, await request.json().catch(() => ({})));
+      }
+
+      if (path === "/api/hub/party/queue/join" && request.method === "POST") {
+        const body = (await request.json().catch(() => ({}))) as { mode?: string };
+        this.ensureProfile(userId, userName);
+        return this.partyQueueJoin(userId, body.mode === "team10" ? "team10" : "solo");
+      }
+
+      if (path === "/api/hub/party/queue/poll" && request.method === "GET") {
+        return this.partyQueuePoll(userId);
+      }
+
+      if (path === "/api/hub/party/queue/leave" && request.method === "POST") {
+        return this.partyQueueLeave(userId);
       }
 
       return Response.json({ error: "not found" }, { status: 404 });
@@ -1313,6 +1370,278 @@ export class Hub extends DurableObject {
     );
   }
 
+  // MARK: party queue (10v10 / 1v19 lobbies, called by the app)
+
+  private partyQueueJoin(userId: string, mode: PartyMode): Response {
+    this.purgePartyQueue();
+    const me = this.playerRow(userId);
+    if (!me) {
+      return Response.json({ error: "profil introuvable" }, { status: 400 });
+    }
+    const existing = this.partyQueueRow(userId);
+    if (existing?.match_payload) {
+      return this.deliverPartyTicket(existing);
+    }
+    if (!existing) {
+      const lobbyId = this.openLobbyFor(mode);
+      this.ctx.storage.sql.exec(
+        `INSERT INTO party_queue (user_id, mode, elo, lobby_id, queued_at, last_seen_at, match_payload)
+         VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+        userId, mode, me.elo, lobbyId, Date.now(), Date.now(),
+      );
+      this.maybeFinalizeLobby(lobbyId);
+    } else {
+      this.ctx.storage.sql.exec(
+        "UPDATE party_queue SET last_seen_at = ? WHERE user_id = ?",
+        Date.now(), userId,
+      );
+      this.maybeFinalizeLobby(existing.lobby_id);
+    }
+    return this.partyQueuePoll(userId);
+  }
+
+  private partyQueuePoll(userId: string): Response {
+    this.purgePartyQueue();
+    const row = this.partyQueueRow(userId);
+    if (!row) {
+      return Response.json({ status: "idle" });
+    }
+    this.ctx.storage.sql.exec(
+      "UPDATE party_queue SET last_seen_at = ? WHERE user_id = ?",
+      Date.now(), userId,
+    );
+    if (row.match_payload) {
+      return this.deliverPartyTicket(row);
+    }
+    this.maybeFinalizeLobby(row.lobby_id);
+    const after = this.partyQueueRow(userId);
+    if (after?.match_payload) {
+      return this.deliverPartyTicket(after);
+    }
+    const lobby = this.partyLobbyRow(row.lobby_id);
+    const members = this.ctx.storage.sql
+      .exec<{ user_id: string }>("SELECT user_id FROM party_queue WHERE lobby_id = ?", row.lobby_id)
+      .toArray()
+      .map((m) => this.getProfile(m.user_id))
+      .filter((p): p is PlayerProfile => p !== null);
+    return Response.json({
+      status: "waiting",
+      lobbyId: row.lobby_id,
+      mode: row.mode,
+      capacity: PARTY_CAPACITY,
+      players: members,
+      waitingSince: lobby?.created_at ?? row.queued_at,
+    });
+  }
+
+  private partyQueueLeave(userId: string): Response {
+    const row = this.partyQueueRow(userId);
+    if (!row) return Response.json({ ok: true });
+    if (row.match_payload) {
+      // Already handed the ticket — leaving now is a mid-game forfeit, handled
+      // by the party room itself over the websocket, not through this route.
+      return Response.json({ error: "la partie a déjà commencé" }, { status: 400 });
+    }
+    this.ctx.storage.sql.exec("DELETE FROM party_queue WHERE user_id = ?", userId);
+    this.adjustReputation(userId, -PARTY_LOBBY_LEAVE_PENALTY);
+    return Response.json({ ok: true });
+  }
+
+  private partyQueueRow(userId: string): PartyQueueRow | null {
+    return this.ctx.storage.sql
+      .exec<PartyQueueRow>("SELECT * FROM party_queue WHERE user_id = ?", userId)
+      .toArray()[0] ?? null;
+  }
+
+  private partyLobbyRow(lobbyId: string): PartyLobbyRow | null {
+    return this.ctx.storage.sql
+      .exec<PartyLobbyRow>("SELECT * FROM party_lobbies WHERE lobby_id = ?", lobbyId)
+      .toArray()[0] ?? null;
+  }
+
+  private deliverPartyTicket(row: PartyQueueRow): Response {
+    this.ctx.storage.sql.exec("DELETE FROM party_queue WHERE user_id = ?", row.user_id);
+    return new Response(row.match_payload, { headers: { "Content-Type": "application/json" } });
+  }
+
+  /** Finds a lobby for `mode` still filling up, or opens a fresh one. */
+  private openLobbyFor(mode: PartyMode): string {
+    const candidates = this.ctx.storage.sql
+      .exec<PartyLobbyRow>(
+        "SELECT * FROM party_lobbies WHERE mode = ? AND started = 0 ORDER BY created_at ASC",
+        mode,
+      )
+      .toArray();
+    for (const lobby of candidates) {
+      const count = this.ctx.storage.sql
+        .exec<{ n: number }>("SELECT COUNT(*) AS n FROM party_queue WHERE lobby_id = ?", lobby.lobby_id)
+        .toArray()[0]?.n ?? 0;
+      if (count < PARTY_CAPACITY) return lobby.lobby_id;
+    }
+    const lobbyId = crypto.randomUUID();
+    this.ctx.storage.sql.exec(
+      "INSERT INTO party_lobbies (lobby_id, mode, created_at, started) VALUES (?, ?, ?, 0)",
+      lobbyId, mode, Date.now(),
+    );
+    return lobbyId;
+  }
+
+  /**
+   * Fills a lobby with bots and hands out match tickets once it is full or
+   * has been waiting `PARTY_FILL_MS`. Bots are generated fresh each time —
+   * nothing about them is ever persisted beyond this one match.
+   */
+  private maybeFinalizeLobby(lobbyId: string): void {
+    const lobby = this.partyLobbyRow(lobbyId);
+    if (!lobby || lobby.started) return;
+    const realRows = this.ctx.storage.sql
+      .exec<PartyQueueRow>("SELECT * FROM party_queue WHERE lobby_id = ?", lobbyId)
+      .toArray();
+    if (realRows.length === 0) return;
+    const age = Date.now() - lobby.created_at;
+    if (realRows.length < PARTY_CAPACITY && age < PARTY_FILL_MS) return;
+
+    const realPlayers: PartyPlayer[] = realRows
+      .map((r) => this.getProfile(r.user_id))
+      .filter((p): p is PlayerProfile => p !== null)
+      .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji, elo: p.elo, isBot: false }));
+    if (realPlayers.length === 0) return;
+
+    const usedNames = new Set(realPlayers.map((p) => p.name.trim().toLowerCase()));
+    const avgElo = Math.round(realPlayers.reduce((s, p) => s + p.elo, 0) / realPlayers.length);
+    const botsNeeded = Math.max(0, PARTY_CAPACITY - realPlayers.length);
+    const bots = generateBotRoster(botsNeeded, avgElo, usedNames, lobbyId);
+
+    const allPlayers = shuffled([...realPlayers, ...bots]);
+    if (lobby.mode === "team10") balanceTeams(allPlayers);
+
+    const seed = randomSeed();
+    const base = {
+      status: "matched",
+      partyId: lobbyId,
+      mode: lobby.mode,
+      seed,
+      rounds: 3,
+      questionsPerRound: 20,
+      roundDuration: 10,
+      players: allPlayers,
+    };
+    const now = Date.now();
+    for (const row of realRows) {
+      const you = allPlayers.find((p) => p.id === row.user_id);
+      if (!you) continue;
+      const payload = JSON.stringify({ ...base, you });
+      this.ctx.storage.sql.exec(
+        "UPDATE party_queue SET match_payload = ?, last_seen_at = ? WHERE user_id = ?",
+        payload, now, row.user_id,
+      );
+    }
+    this.ctx.storage.sql.exec("UPDATE party_lobbies SET started = 1 WHERE lobby_id = ?", lobbyId);
+  }
+
+  private purgePartyQueue(): void {
+    const now = Date.now();
+    this.ctx.storage.sql.exec(
+      "DELETE FROM party_queue WHERE match_payload IS NULL AND last_seen_at < ?",
+      now - QUEUE_STALE_MS,
+    );
+    this.ctx.storage.sql.exec(
+      "DELETE FROM party_queue WHERE match_payload IS NOT NULL AND last_seen_at < ?",
+      now - PARTY_STALE_TICKET_MS,
+    );
+    this.ctx.storage.sql.exec(
+      `DELETE FROM party_lobbies WHERE created_at < ?
+         AND lobby_id NOT IN (SELECT DISTINCT lobby_id FROM party_queue)`,
+      now - PARTY_STALE_TICKET_MS,
+    );
+  }
+
+  /** Floored at 0, never negative — called for both lobby and mid-game exits. */
+  private adjustReputation(userId: string, delta: number): void {
+    this.ctx.storage.sql.exec(
+      "UPDATE players SET reputation = MAX(0, reputation + ?) WHERE user_id = ?",
+      delta, userId,
+    );
+  }
+
+  /**
+   * Settles a finished (or abandoned) party game: visible ladder points for
+   * real players based on final rank/team result, plus the reputation moves
+   * for finishing (and winning) or for leaving mid-game. Bots are never
+   * looked up here — they simply have no matching player row.
+   */
+  private settleParty(body: unknown): Response {
+    const payload = body as {
+      partyId?: string;
+      mode?: string;
+      results?: Array<{ userId: string; score: number; team?: string; isBot?: boolean }>;
+      leftMidGame?: string[];
+    };
+    const results = (payload.results ?? []).filter((r) => typeof r.userId === "string");
+    const leftMidGame = new Set(payload.leftMidGame ?? []);
+    const pointsChanges: Record<string, number> = {};
+    const reputationChanges: Record<string, number> = {};
+
+    if (payload.mode === "team10") {
+      let sumA = 0;
+      let sumB = 0;
+      for (const r of results) {
+        if (r.team === "A") sumA += r.score;
+        else if (r.team === "B") sumB += r.score;
+      }
+      const winner = sumA === sumB ? null : sumA > sumB ? "A" : "B";
+      for (const r of results) {
+        if (r.isBot || !this.playerRow(r.userId)) continue;
+        if (leftMidGame.has(r.userId)) {
+          this.adjustReputation(r.userId, -PARTY_MIDGAME_LEAVE_PENALTY);
+          reputationChanges[r.userId] = -PARTY_MIDGAME_LEAVE_PENALTY;
+          continue;
+        }
+        const won = winner !== null && r.team === winner;
+        const pts = winner === null ? TEAM_DRAW_POINTS : won ? TEAM_WIN_POINTS : TEAM_LOSE_POINTS;
+        const rep = PARTY_FINISH_REPUTATION + (won ? PARTY_WIN_REPUTATION_BONUS : 0);
+        this.applyPartyResult(r.userId, pts, rep);
+        pointsChanges[r.userId] = pts;
+        reputationChanges[r.userId] = rep;
+      }
+    } else {
+      const ranked = [...results].sort((a, b) => b.score - a.score);
+      ranked.forEach((r, index) => {
+        if (r.isBot || !this.playerRow(r.userId)) return;
+        const rank = index + 1;
+        if (leftMidGame.has(r.userId)) {
+          this.adjustReputation(r.userId, -PARTY_MIDGAME_LEAVE_PENALTY);
+          reputationChanges[r.userId] = -PARTY_MIDGAME_LEAVE_PENALTY;
+          return;
+        }
+        const pts = partyRankPoints(rank);
+        const rep = PARTY_FINISH_REPUTATION + (rank <= 3 ? PARTY_WIN_REPUTATION_BONUS : 0);
+        this.applyPartyResult(r.userId, pts, rep);
+        pointsChanges[r.userId] = pts;
+        reputationChanges[r.userId] = rep;
+      });
+    }
+    // Anyone who left before any score was ever reported (pure forfeit) still
+    // takes the mid-game penalty even if the room settled without them.
+    for (const userId of leftMidGame) {
+      if (userId in reputationChanges) continue;
+      if (!this.playerRow(userId)) continue;
+      this.adjustReputation(userId, -PARTY_MIDGAME_LEAVE_PENALTY);
+      reputationChanges[userId] = -PARTY_MIDGAME_LEAVE_PENALTY;
+    }
+    return Response.json({ ok: true, pointsChanges, reputationChanges });
+  }
+
+  private applyPartyResult(userId: string, pointsDelta: number, reputationDelta: number): void {
+    const row = this.playerRow(userId);
+    if (!row) return;
+    const newPoints = clampPoints(row.points + pointsDelta);
+    this.ctx.storage.sql.exec(
+      "UPDATE players SET points = ?, reputation = MAX(0, reputation + ?), last_seen_at = ? WHERE user_id = ?",
+      newPoints, reputationDelta, Date.now(), userId,
+    );
+  }
+
   // MARK: ELO settlement (called by MatchRoom via env.DO)
 
   private settleMatch(body: unknown): Response {
@@ -1907,7 +2236,132 @@ function rowToProfile(row: PlayerRow): PlayerProfile {
     losses: row.losses,
     draws: row.draws,
     friendCode: row.friend_code,
+    reputation: row.reputation ?? 0,
   };
+}
+
+type PartyQueueRow = {
+  user_id: string;
+  mode: string;
+  elo: number;
+  lobby_id: string;
+  queued_at: number;
+  last_seen_at: number;
+  match_payload: string | null;
+};
+
+type PartyLobbyRow = {
+  lobby_id: string;
+  mode: string;
+  created_at: number;
+  started: number;
+};
+
+export type PartyPlayer = {
+  id: string;
+  name: string;
+  emoji: string;
+  elo: number;
+  isBot: boolean;
+  team?: "A" | "B";
+};
+
+const PARTY_FINISH_REPUTATION = 1;
+const PARTY_WIN_REPUTATION_BONUS = 2;
+const PARTY_LOBBY_LEAVE_PENALTY = 3;
+const PARTY_MIDGAME_LEAVE_PENALTY = 5;
+const TEAM_WIN_POINTS = 60;
+const TEAM_LOSE_POINTS = 20;
+const TEAM_DRAW_POINTS = 40;
+
+/**
+ * End-of-game ladder points for the 1v19 mode: podium-heavy, then a gentle
+ * linear decay so 4th place still feels meaningfully better than 20th.
+ */
+function partyRankPoints(rank: number): number {
+  if (rank <= 0) return 0;
+  if (rank === 1) return 100;
+  if (rank === 2) return 70;
+  if (rank === 3) return 55;
+  return Math.max(10, Math.round(45 - (rank - 4) * (35 / 16)));
+}
+
+const BOT_FIRST_NAMES = [
+  "Lea", "Hugo", "Emma", "Nolan", "Chloe", "Liam", "Zoe", "Adam", "Lina", "Noah",
+  "Mila", "Ethan", "Rose", "Sacha", "Nina", "Leo", "Alice", "Malo", "Camille", "Theo",
+  "Jade", "Enzo", "Louise", "Yanis", "Manon", "Tom", "Sarah", "Nathan", "Anna", "Jules",
+];
+const BOT_WORDS = [
+  "Panda", "Ninja", "Tigre", "Comete", "Pixel", "Faucon", "Renard", "Loup", "Eclair",
+  "Nova", "Zenith", "Cobra", "Phenix", "Atlas", "Lynx", "Orage", "Vortex", "Onyx",
+];
+
+/** A plausible player-style handle, never distinguishable from a real one. */
+function generateBotName(used: Set<string>): string {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const first = BOT_FIRST_NAMES[Math.floor(Math.random() * BOT_FIRST_NAMES.length)]!;
+    const candidate = Math.random() < 0.5
+      ? `${first}${Math.random() < 0.7 ? Math.floor(Math.random() * 99) : ""}`
+      : `${first}${BOT_WORDS[Math.floor(Math.random() * BOT_WORDS.length)]}`;
+    const key = candidate.toLowerCase();
+    if (!used.has(key)) {
+      used.add(key);
+      return candidate;
+    }
+  }
+  const fallback = `Joueur${Math.floor(Math.random() * 9999)}`;
+  used.add(fallback.toLowerCase());
+  return fallback;
+}
+
+/**
+ * Bots pitched around the lobby's average rating (±120), so a strong lobby's
+ * bots answer better and faster than a beginner lobby's — never omniscient,
+ * never perfectly on time.
+ */
+function generateBotRoster(
+  count: number,
+  avgElo: number,
+  usedNames: Set<string>,
+  lobbyId: string,
+): PartyPlayer[] {
+  const bots: PartyPlayer[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const jitter = Math.round((Math.random() - 0.5) * 240);
+    bots.push({
+      id: `bot_${lobbyId}_${i}`,
+      name: generateBotName(usedNames),
+      emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠",
+      elo: clampElo(avgElo + jitter),
+      isBot: true,
+    });
+  }
+  return bots;
+}
+
+/** Greedy balance: strongest player always joins whichever team is behind. */
+function balanceTeams(players: PartyPlayer[]): void {
+  const sorted = [...players].sort((a, b) => b.elo - a.elo);
+  let sumA = 0;
+  let sumB = 0;
+  for (const p of sorted) {
+    if (sumA <= sumB) {
+      p.team = "A";
+      sumA += p.elo;
+    } else {
+      p.team = "B";
+      sumB += p.elo;
+    }
+  }
+}
+
+function shuffled<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
+  }
+  return copy;
 }
 
 /** Player-strength buckets of 100 ELO, so success rates stay interpretable. */

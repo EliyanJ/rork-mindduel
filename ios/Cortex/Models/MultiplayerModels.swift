@@ -18,10 +18,15 @@ nonisolated struct PlayerProfile: Codable, Identifiable, Hashable {
     var losses: Int
     var draws: Int
     var friendCode: String
+    /// Behaviour counter (finishing games, not abandoning lobbies/matches),
+    /// entirely separate from skill. Optional so profiles synced before this
+    /// field existed still decode; defaults to 0.
+    var reputation: Int?
 
     /// The number to show the player. Falls back to the hidden rating for
     /// profiles that predate the split.
     var displayPoints: Int { points ?? elo }
+    var displayReputation: Int { reputation ?? 0 }
 }
 
 nonisolated struct RankedEntry: Codable, Identifiable, Hashable {

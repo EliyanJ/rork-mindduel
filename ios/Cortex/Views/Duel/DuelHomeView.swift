@@ -13,6 +13,7 @@ struct DuelHomeView: View {
     @State private var selectedDuelDisciplineId: String? = nil
     @State private var showThemePicker: Bool = false
     @State private var pendingMode: DuelMode = .training
+    @State private var isMultiplayerPresented: Bool = false
 
     private enum DuelMode {
         case ranked
@@ -25,6 +26,7 @@ struct DuelHomeView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     rankedCard
+                    multiplayerCard
                     trainingCard
                     leaderboardPreviewCard
                 }
@@ -35,6 +37,9 @@ struct DuelHomeView: View {
         .background(Theme.background)
         .fullScreenCover(isPresented: $isRankedPresented) {
             OnlineMatchView(catalog: model.catalog, store: model.store, online: online, disciplineId: selectedDuelDisciplineId)
+        }
+        .fullScreenCover(isPresented: $isMultiplayerPresented) {
+            MultiplayerHomeView()
         }
         .fullScreenCover(isPresented: $isTrainingPresented) {
             DuelMatchView(catalog: model.catalog, store: model.store, disciplineId: selectedDuelDisciplineId)
@@ -164,6 +169,43 @@ struct DuelHomeView: View {
                     )
                 )
         )
+    }
+
+    /// Entry point to the two party formats (10 vs 10, 1 vs 19), kept apart
+    /// from the 1v1 ranked flow above.
+    private var multiplayerCard: some View {
+        Button {
+            Haptics.medium()
+            if online.isSignedIn {
+                isMultiplayerPresented = true
+            } else {
+                isSignInPresented = true
+            }
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(Theme.duelAccent)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(Theme.duelAccent.opacity(0.14)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Multijoueur")
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Text("10 vs 10 · 1 vs 19 · lobbies en direct")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.inkMuted)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
     }
 
     private var trainingCard: some View {

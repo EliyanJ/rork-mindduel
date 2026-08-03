@@ -127,6 +127,74 @@ nonisolated struct MultiplayerService {
         _ = try await request(path: "/api/hub/queue/leave", method: "POST", body: [:])
     }
 
+    // MARK: Party lobbies (10 vs 10 / 1 vs 19)
+
+    func joinPartyQueue(mode: PartyMode) async throws -> PartyQueueStatus {
+        let data = try await request(
+            path: "/api/hub/party/queue/join",
+            method: "POST",
+            body: ["mode": mode.rawValue]
+        )
+        return try parseParty(data)
+    }
+
+    func pollPartyQueue() async throws -> PartyQueueStatus {
+        let data = try await request(path: "/api/hub/party/queue/poll", method: "GET")
+        return try parseParty(data)
+    }
+
+    func leavePartyQueue() async throws {
+        _ = try await request(path: "/api/hub/party/queue/leave", method: "POST", body: [:])
+    }
+
+    /// WebSocket URL for a party room, carrying the full roster (real + bots)
+    /// so the first client to connect can initialize the room. `isBot`/`team`
+    /// ride along purely to drive server-side simulation and scoring — no
+    /// screen in the app ever reads or displays them.
+    func partySocketRequest(ticket: PartyTicket) throws -> URLRequest {
+        guard var components = URLComponents(string: "\(Self.baseURL)/api/party/\(ticket.partyId)/ws") else {
+            throw ServiceError.badURL
+        }
+        if components.scheme == "https" { components.scheme = "wss" }
+        if components.scheme == "http" { components.scheme = "ws" }
+        let initPayload: [String: Any] = [
+            "partyId": ticket.partyId,
+            "mode": ticket.mode.rawValue,
+            "seed": ticket.seed,
+            "rounds": ticket.rounds,
+            "questionsPerRound": ticket.questionsPerRound,
+            "roundDuration": ticket.roundDuration,
+            "players": ticket.players.map { p -> [String: Any] in
+                var dict: [String: Any] = [
+                    "id": p.id, "name": p.name, "emoji": p.emoji, "elo": p.elo, "isBot": p.isBot
+                ]
+                if let team = p.team { dict["team"] = team }
+                return dict
+            }
+        ]
+        let initData = try JSONSerialization.data(withJSONObject: initPayload)
+        components.queryItems = [
+            URLQueryItem(name: "init", value: String(data: initData, encoding: .utf8))
+        ]
+        guard let url = components.url else { throw ServiceError.badURL }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return request
+    }
+
+    private func parseParty(_ data: Data) throws -> PartyQueueStatus {
+        struct Status: Codable { let status: String }
+        let status = try decode(Status.self, from: data).status
+        switch status {
+        case "matched":
+            return .matched(try decode(PartyTicket.self, from: data))
+        case "waiting":
+            return .waiting(try decode(PartyLobbyState.self, from: data))
+        default:
+            return .idle
+        }
+    }
+
     // MARK: Account
 
     func deleteAccount() async throws {

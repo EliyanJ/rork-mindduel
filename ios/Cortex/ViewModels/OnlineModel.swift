@@ -103,6 +103,16 @@ final class OnlineModel {
         profile = updated
     }
 
+    /// Called after a party game (10v10 / 1v19) settles: ladder points and
+    /// reputation moved server-side, mirrored here so the UI updates instantly
+    /// instead of waiting for the next profile sync.
+    func applyPartyResult(pointsDelta: Int, reputationDelta: Int) {
+        guard var updated = profile else { return }
+        updated.points = (updated.points ?? updated.elo) + pointsDelta
+        updated.reputation = max(0, (updated.reputation ?? 0) + reputationDelta)
+        profile = updated
+    }
+
     func signOut() async {
         await auth.signOut()
         profile = nil
