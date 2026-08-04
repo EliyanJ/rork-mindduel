@@ -86,6 +86,7 @@ struct OnboardingWelcomeStep: View {
                     Theme.background
                     OnboardingDecor(variant: 0)
                 }
+                .ignoresSafeArea()
             )
             .onAppear {
                 withAnimation(.spring(duration: 0.5)) { appeared = true }
