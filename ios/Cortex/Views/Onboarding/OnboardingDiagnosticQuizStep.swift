@@ -60,15 +60,6 @@ struct OnboardingDiagnosticQuizStep: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(.body, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
-                    .frame(width: 40, height: 40)
-            }
-
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.line)
