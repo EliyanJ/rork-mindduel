@@ -90,7 +90,10 @@ struct OnboardingQuizResultStep: View {
             .padding(.horizontal, 24)
             .padding(.top, compact ? 4 : 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.gold)
+            // A softer wash of the gold accent rather than the saturated,
+            // full-strength color — easier on the eyes for a full-screen fill.
+            .background(Theme.gold.opacity(0.55))
+            .background(Theme.background)
             .task {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { titleVisible = true }
                 try? await Task.sleep(for: .milliseconds(350))
