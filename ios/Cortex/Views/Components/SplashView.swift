@@ -15,18 +15,27 @@ struct SplashView: View {
             Theme.background.ignoresSafeArea()
             OnboardingDecor(variant: 2)
 
-            VStack(spacing: 14) {
-                HStack(spacing: 2) {
-                    Text("Min")
-                        .foregroundStyle(Theme.ink)
-                    Text("duel")
-                        .foregroundStyle(Theme.primary)
-                }
-                .font(.system(size: 50, weight: .black, design: .rounded))
+            VStack(spacing: 18) {
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .clipShape(.rect(cornerRadius: 24))
+                    .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
 
-                Capsule()
-                    .fill(Theme.primary)
-                    .frame(width: underlineWidth, height: 6)
+                VStack(spacing: 14) {
+                    HStack(spacing: 2) {
+                        Text("Min")
+                            .foregroundStyle(Theme.ink)
+                        Text("duel")
+                            .foregroundStyle(Theme.primary)
+                    }
+                    .font(.system(size: 50, weight: .black, design: .rounded))
+
+                    Capsule()
+                        .fill(Theme.primary)
+                        .frame(width: underlineWidth, height: 6)
+                }
             }
             .scaleEffect(logoScale)
             .opacity(logoOpacity)
