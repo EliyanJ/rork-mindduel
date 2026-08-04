@@ -5,7 +5,10 @@ struct OnboardingDailyGoalStep: View {
     @Binding var count: Int
     let onNext: () -> Void
 
-    private let range = 1...10
+    // Capped at 3: this value also drives how many daily reminders the
+    // player will receive, and iOS local notifications are kept to a
+    // reasonable, non-spammy cadence.
+    private let range = 1...3
 
     var body: some View {
         GeometryReader { geo in

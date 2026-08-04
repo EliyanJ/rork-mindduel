@@ -5,6 +5,9 @@ import AuthenticationServices
 /// backed up and online play unlocked, without ever blocking access to the
 /// app. Shown after the paywall decision regardless of purchase outcome.
 struct OnboardingAccountStep: View {
+    /// Daily goal picked earlier in onboarding, sent along on first sync so
+    /// the server-side profile carries it from the very start.
+    let dailyGoal: Int
     let onFinished: () -> Void
 
     @Environment(OnlineModel.self) private var online
@@ -99,12 +102,12 @@ struct OnboardingAccountStep: View {
 
     private func afterSignIn() async {
         guard online.isSignedIn else { return }
-        await online.syncProfile(localElo: model.store.progress.elo)
+        await online.syncProfile(localElo: model.store.progress.elo, dailyGoal: dailyGoal)
         await online.refreshFriends()
         onFinished()
     }
 }
 
 #Preview {
-    OnboardingAccountStep(onFinished: {})
+    OnboardingAccountStep(dailyGoal: 3, onFinished: {})
 }

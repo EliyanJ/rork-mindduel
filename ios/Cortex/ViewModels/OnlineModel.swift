@@ -26,23 +26,23 @@ final class OnlineModel {
         return MultiplayerService(token: token)
     }
 
-    /// Creates the server profile on first sign-in (seeding ELO from local
-    /// progress) and refreshes it afterwards.
-    func syncProfile(localElo: Int) async {
+    /// Creates the server profile on first sign-in (seeding ELO and the
+    /// onboarding daily goal from local state) and refreshes it afterwards.
+    func syncProfile(localElo: Int, dailyGoal: Int? = nil) async {
         guard let service = await service() else { return }
         isSyncing = true
         defer { isSyncing = false }
         do {
-            profile = try await service.syncProfile(initialElo: localElo)
+            profile = try await service.syncProfile(initialElo: localElo, dailyGoal: dailyGoal)
         } catch {
             print("profile sync failed: \(error.localizedDescription)")
         }
     }
 
-    func updateProfile(name: String?, emoji: String?) async {
+    func updateProfile(name: String?, emoji: String?, dailyGoal: Int? = nil) async {
         guard let service = await service() else { return }
         do {
-            profile = try await service.updateProfile(name: name, emoji: emoji)
+            profile = try await service.updateProfile(name: name, emoji: emoji, dailyGoal: dailyGoal)
         } catch {
             friendActionError = error.localizedDescription
         }

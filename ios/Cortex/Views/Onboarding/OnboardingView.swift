@@ -119,7 +119,7 @@ struct OnboardingView: View {
                         onFinish: goNext
                     )
                 case .account:
-                    OnboardingAccountStep(onFinished: finish)
+                    OnboardingAccountStep(dailyGoal: dailyGoal, onFinished: finish)
                 }
             }
             .transition(

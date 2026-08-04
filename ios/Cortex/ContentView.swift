@@ -55,7 +55,10 @@ struct ContentView: View {
         // their server-side profile so they land on the home screen up-to-date.
         if online.auth.user != nil {
             Task {
-                await online.syncProfile(localElo: model.store.progress.elo)
+                await online.syncProfile(
+                    localElo: model.store.progress.elo,
+                    dailyGoal: onboardingStore.preferences.dailyGoal
+                )
             }
         }
         // Ask for notifications only now: the onboarding has just shown what the

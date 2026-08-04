@@ -51,21 +51,24 @@ nonisolated struct MultiplayerService {
 
     // MARK: Profile
 
-    func syncProfile(initialElo: Int) async throws -> PlayerProfile {
+    func syncProfile(initialElo: Int, dailyGoal: Int? = nil) async throws -> PlayerProfile {
         struct Wrapper: Codable { let profile: PlayerProfile }
+        var body: [String: Any] = ["initialElo": initialElo]
+        if let dailyGoal { body["dailyGoal"] = dailyGoal }
         let data = try await request(
             path: "/api/hub/profile/sync",
             method: "POST",
-            body: ["initialElo": initialElo]
+            body: body
         )
         return try decode(Wrapper.self, from: data).profile
     }
 
-    func updateProfile(name: String?, emoji: String?) async throws -> PlayerProfile {
+    func updateProfile(name: String?, emoji: String?, dailyGoal: Int? = nil) async throws -> PlayerProfile {
         struct Wrapper: Codable { let profile: PlayerProfile }
         var body: [String: Any] = [:]
         if let name { body["name"] = name }
         if let emoji { body["emoji"] = emoji }
+        if let dailyGoal { body["dailyGoal"] = dailyGoal }
         let data = try await request(path: "/api/hub/profile/update", method: "POST", body: body)
         return try decode(Wrapper.self, from: data).profile
     }

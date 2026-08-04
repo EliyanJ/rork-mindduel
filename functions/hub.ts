@@ -29,6 +29,12 @@ export type PlayerProfile = {
    * at 0, uncapped above, purely informational for now.
    */
   reputation: number;
+  /**
+   * Personal daily learning goal (1-3 lessons/day), set during onboarding.
+   * Persisted server-side so it survives reinstalls/devices and can drive
+   * how many reminders we plan to send.
+   */
+  dailyGoal: number;
 };
 
 type PlayerRow = {
@@ -43,6 +49,7 @@ type PlayerRow = {
   friend_code: string;
   last_seen_at: number;
   reputation: number;
+  daily_goal: number;
 };
 
 type QueueRow = {
@@ -277,6 +284,13 @@ export class Hub extends DurableObject {
     // Behaviour counter — added after `players` already existed in the wild.
     try {
       this.ctx.storage.sql.exec("ALTER TABLE players ADD COLUMN reputation INTEGER NOT NULL DEFAULT 0");
+    } catch {
+      // column already exists
+    }
+    // Personal daily goal (1-3), collected during onboarding — added after
+    // `players` already existed in the wild.
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE players ADD COLUMN daily_goal INTEGER NOT NULL DEFAULT 3");
     } catch {
       // column already exists
     }
@@ -563,13 +577,14 @@ export class Hub extends DurableObject {
           initialElo?: number;
           name?: string;
           emoji?: string;
+          dailyGoal?: number;
         };
-        const profile = this.ensureProfile(userId, body.name ?? userName, body.initialElo);
+        const profile = this.ensureProfile(userId, body.name ?? userName, body.initialElo, body.dailyGoal);
         return Response.json({ profile });
       }
 
       if (path === "/api/hub/profile/update" && request.method === "POST") {
-        const body = (await request.json()) as { name?: string; emoji?: string };
+        const body = (await request.json()) as { name?: string; emoji?: string; dailyGoal?: number };
         this.ensureProfile(userId, userName);
         if (typeof body.name === "string" && body.name.trim().length > 0) {
           this.ctx.storage.sql.exec(
@@ -582,6 +597,13 @@ export class Hub extends DurableObject {
           this.ctx.storage.sql.exec(
             "UPDATE players SET emoji = ? WHERE user_id = ?",
             body.emoji.slice(0, 8),
+            userId,
+          );
+        }
+        if (typeof body.dailyGoal === "number" && Number.isFinite(body.dailyGoal)) {
+          this.ctx.storage.sql.exec(
+            "UPDATE players SET daily_goal = ? WHERE user_id = ?",
+            Math.max(1, Math.min(3, Math.round(body.dailyGoal))),
             userId,
           );
         }
@@ -666,23 +688,34 @@ export class Hub extends DurableObject {
 
   // MARK: profiles
 
-  private ensureProfile(userId: string, name: string, initialElo?: number): PlayerProfile {
+  private ensureProfile(userId: string, name: string, initialElo?: number, dailyGoal?: number): PlayerProfile {
     const existing = this.playerRow(userId);
     if (existing) {
       this.ctx.storage.sql.exec(
         "UPDATE players SET last_seen_at = ? WHERE user_id = ?",
         Date.now(), userId,
       );
+      // A daily goal sent on a later sync (e.g. changed on another device)
+      // keeps this profile's copy up to date without a dedicated round trip.
+      if (typeof dailyGoal === "number" && Number.isFinite(dailyGoal)) {
+        this.ctx.storage.sql.exec(
+          "UPDATE players SET daily_goal = ? WHERE user_id = ?",
+          Math.max(1, Math.min(3, Math.round(dailyGoal))),
+          userId,
+        );
+        return rowToProfile(this.playerRow(userId)!);
+      }
       return rowToProfile(existing);
     }
     const elo = clampElo(initialElo ?? 1000);
     const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠";
     const code = this.generateFriendCodeFor(name);
+    const goal = Math.max(1, Math.min(3, Math.round(dailyGoal ?? 3)));
     const now = Date.now();
     this.ctx.storage.sql.exec(
-      `INSERT INTO players (user_id, name, emoji, elo, points, wins, losses, draws, friend_code, last_seen_at, created_at)
-       VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?)`,
-      userId, name.slice(0, 24), emoji, elo, elo, code, now, now,
+      `INSERT INTO players (user_id, name, emoji, elo, points, wins, losses, draws, friend_code, last_seen_at, created_at, daily_goal)
+       VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?)`,
+      userId, name.slice(0, 24), emoji, elo, elo, code, now, now, goal,
     );
     return rowToProfile(this.playerRow(userId)!);
   }
@@ -2237,6 +2270,7 @@ function rowToProfile(row: PlayerRow): PlayerProfile {
     draws: row.draws,
     friendCode: row.friend_code,
     reputation: row.reputation ?? 0,
+    dailyGoal: row.daily_goal ?? 3,
   };
 }
 

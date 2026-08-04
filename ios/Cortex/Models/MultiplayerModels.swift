@@ -22,11 +22,16 @@ nonisolated struct PlayerProfile: Codable, Identifiable, Hashable {
     /// entirely separate from skill. Optional so profiles synced before this
     /// field existed still decode; defaults to 0.
     var reputation: Int?
+    /// Personal daily learning goal (1-3), set during onboarding and kept in
+    /// sync server-side so it survives reinstalls/devices. Optional so
+    /// profiles synced before this field existed still decode.
+    var dailyGoal: Int?
 
     /// The number to show the player. Falls back to the hidden rating for
     /// profiles that predate the split.
     var displayPoints: Int { points ?? elo }
     var displayReputation: Int { reputation ?? 0 }
+    var displayDailyGoal: Int { dailyGoal ?? 3 }
 }
 
 nonisolated struct RankedEntry: Codable, Identifiable, Hashable {
