@@ -72,7 +72,7 @@ struct RingPathView: View {
         let fromX = horizontalOffset(for: previous, width: pathWidth)
         let toX = horizontalOffset(for: ring, width: pathWidth)
         let height = connectorHeight(for: ring, isChapterBreak: isChapterBreak)
-        TrailConnector(fromX: fromX, toX: toX)
+        TrailConnector(fromX: fromX, toX: toX, accent: color(for: ring))
             .frame(height: height)
             .opacity(isChapterBreak ? 0.55 : 1)
     }
@@ -83,8 +83,8 @@ struct RingPathView: View {
     private func horizontalOffset(for ring: PathRing, width: CGFloat) -> CGFloat {
         guard ring.kind != .recap else { return 0 }
         var generator = RingWobbleGenerator(seed: ring.id)
-        let maxStep = min(width * 0.32, 96)
-        let magnitude = CGFloat.random(in: 0.3...1, using: &generator)
+        let maxStep = min(width * 0.38, 120)
+        let magnitude = CGFloat.random(in: 0.35...1, using: &generator)
         let sign: CGFloat = Bool.random(using: &generator) ? 1 : -1
         return maxStep * magnitude * sign
     }
@@ -92,9 +92,9 @@ struct RingPathView: View {
     /// Varies the vertical distance between rings a little so the trail
     /// doesn't feel mechanically regular.
     private func connectorHeight(for ring: PathRing, isChapterBreak: Bool) -> CGFloat {
-        if isChapterBreak { return 58 }
+        if isChapterBreak { return 62 }
         var generator = RingWobbleGenerator(seed: ring.id + "-h")
-        return CGFloat.random(in: 78...118, using: &generator)
+        return CGFloat.random(in: 84...128, using: &generator)
     }
 }
 
@@ -118,21 +118,48 @@ private struct RingWobbleGenerator: RandomNumberGenerator {
     }
 }
 
-/// Thick illustrated cord joining two rings with a bold black outline, drawn
-/// as a single S-curve between their (offset) centers — the visual language
-/// of a hand-drawn board-game trail rather than a plain connecting dots.
+/// A single point sampled along the trail curve, paired with the
+/// perpendicular angle to the curve's tangent there.
+private struct TrailStitch {
+    let point: CGPoint
+    let angle: CGFloat
+}
+
+/// Thick illustrated cord joining two rings, drawn as a single S-curve
+/// between their (offset) centers. No hard black outline — instead a soft
+/// drop shadow in the same hue, a bright flashy fill, a glossy highlight on
+/// top, and a row of small rounded stitches for a braided-cord texture.
 private struct TrailConnector: View {
     let fromX: CGFloat
     let toX: CGFloat
+    let accent: Color
 
     var body: some View {
         GeometryReader { proxy in
+            let rect = CGRect(origin: .zero, size: proxy.size)
             let shape = TrailShape(fromX: fromX, toX: toX)
+            let stitches = shape.stitchMarks(in: rect, count: 9)
+            let brightAccent = accent.mix(with: .white, by: 0.1)
             ZStack {
-                shape.stroke(Theme.ink, style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
-                shape.stroke(Theme.gold, style: StrokeStyle(lineWidth: 13, lineCap: .round, lineJoin: .round))
-                shape.stroke(Theme.gold.mix(with: .white, by: 0.35), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                    .offset(x: -2, y: -2)
+                shape
+                    .stroke(accent.mix(with: .black, by: 0.22), style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
+                    .offset(y: 4)
+                shape
+                    .stroke(brightAccent, style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
+                Canvas { context, _ in
+                    for stitch in stitches {
+                        var tick = Path()
+                        let half: CGFloat = 4.5
+                        let dx = cos(stitch.angle) * half
+                        let dy = sin(stitch.angle) * half
+                        tick.move(to: CGPoint(x: stitch.point.x - dx, y: stitch.point.y - dy))
+                        tick.addLine(to: CGPoint(x: stitch.point.x + dx, y: stitch.point.y + dy))
+                        context.stroke(tick, with: .color(.white.opacity(0.45)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    }
+                }
+                shape
+                    .stroke(brightAccent.mix(with: .white, by: 0.55), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    .offset(x: -2.5, y: -2.5)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
@@ -143,16 +170,43 @@ private struct TrailShape: Shape {
     let fromX: CGFloat
     let toX: CGFloat
 
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
+    private func controlPoints(in rect: CGRect) -> (start: CGPoint, control1: CGPoint, control2: CGPoint, end: CGPoint) {
         let start = CGPoint(x: rect.midX + fromX, y: rect.minY)
         let end = CGPoint(x: rect.midX + toX, y: rect.maxY)
         let midY = (rect.minY + rect.maxY) / 2
         let control1 = CGPoint(x: rect.midX + fromX, y: rect.minY + (midY - rect.minY) * 0.75)
         let control2 = CGPoint(x: rect.midX + toX, y: rect.maxY - (rect.maxY - midY) * 0.75)
-        path.move(to: start)
-        path.addCurve(to: end, control1: control1, control2: control2)
+        return (start, control1, control2, end)
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let p = controlPoints(in: rect)
+        path.move(to: p.start)
+        path.addCurve(to: p.end, control1: p.control1, control2: p.control2)
         return path
+    }
+
+    /// Samples evenly-spaced points along the cubic bezier, each paired with
+    /// the perpendicular angle to the curve's tangent there — used to draw
+    /// short cross-stitch ticks for the braided-cord texture.
+    func stitchMarks(in rect: CGRect, count: Int) -> [TrailStitch] {
+        let p = controlPoints(in: rect)
+        var marks: [TrailStitch] = []
+        let steps = max(count, 2)
+        for i in 1..<steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            let mt = 1 - t
+            let point = CGPoint(
+                x: mt * mt * mt * p.start.x + 3 * mt * mt * t * p.control1.x + 3 * mt * t * t * p.control2.x + t * t * t * p.end.x,
+                y: mt * mt * mt * p.start.y + 3 * mt * mt * t * p.control1.y + 3 * mt * t * t * p.control2.y + t * t * t * p.end.y
+            )
+            let dx = 3 * mt * mt * (p.control1.x - p.start.x) + 6 * mt * t * (p.control2.x - p.control1.x) + 3 * t * t * (p.end.x - p.control2.x)
+            let dy = 3 * mt * mt * (p.control1.y - p.start.y) + 6 * mt * t * (p.control2.y - p.control1.y) + 3 * t * t * (p.end.y - p.control2.y)
+            let angle = atan2(dy, dx) + .pi / 2
+            marks.append(TrailStitch(point: point, angle: angle))
+        }
+        return marks
     }
 }
 
@@ -209,7 +263,7 @@ struct RingNodeView: View {
     @State private var isPulsing: Bool = false
 
     private var isRecap: Bool { ring.kind == .recap }
-    private var diameter: CGFloat { isRecap ? 96 : 74 }
+    private var diameter: CGFloat { isRecap ? 108 : 86 }
     private var isLocked: Bool { state == .locked }
 
     var body: some View {
@@ -238,36 +292,36 @@ struct RingNodeView: View {
             if state == .available {
                 Circle()
                     .stroke(ringAccent.opacity(0.35), lineWidth: 4)
-                    .frame(width: diameter + 18, height: diameter + 18)
+                    .frame(width: diameter + 20, height: diameter + 20)
                     .scaleEffect(isPulsing ? 1.05 : 0.94)
             }
             Circle()
                 .fill(fillColor.mix(with: .black, by: 0.25))
                 .frame(width: diameter, height: diameter)
-                .offset(y: 5)
+                .offset(y: 6)
             Circle()
                 .fill(fillColor)
                 .frame(width: diameter, height: diameter)
             if isRecap && !isLocked {
                 Circle()
                     .stroke(.white.opacity(0.45), lineWidth: 3)
-                    .frame(width: diameter - 14, height: diameter - 14)
+                    .frame(width: diameter - 16, height: diameter - 16)
             }
             Image(systemName: iconName)
-                .font(.system(size: isRecap ? 38 : 28, weight: .bold))
+                .font(.system(size: isRecap ? 44 : 32, weight: .bold))
                 .foregroundStyle(isLocked ? Theme.inkMuted : .white)
 
             if let discipline, showsDisciplineBadge, !isRecap {
                 Image(systemName: discipline.icon)
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 11, weight: .black))
                     .foregroundStyle(.white)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 26, height: 26)
                     .background(Circle().fill(discipline.color))
                     .overlay(Circle().stroke(Theme.background, lineWidth: 2.5))
                     .offset(x: diameter / 2 - 6, y: -diameter / 2 + 6)
             }
         }
-        .frame(height: diameter + 18)
+        .frame(height: diameter + 20)
     }
 
     @ViewBuilder

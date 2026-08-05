@@ -8,19 +8,19 @@ struct ChunkyButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.headline, design: .rounded, weight: .heavy))
+            .font(.system(.title3, design: .rounded, weight: .heavy))
             .foregroundStyle(textColor)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 20)
                     .fill(color)
             )
-            .offset(y: configuration.isPressed ? 4 : 0)
+            .offset(y: configuration.isPressed ? 5 : 0)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 20)
                     .fill(color.mix(with: .black, by: 0.28))
-                    .offset(y: 4)
+                    .offset(y: 5)
             )
             .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }

@@ -175,53 +175,49 @@ private struct ThemeCard: View {
                 HStack {
                     Spacer()
                     Image(systemName: discipline.icon)
-                        .font(.system(size: 30, weight: .black))
+                        .font(.system(size: 34, weight: .black))
                         .foregroundStyle(.white.opacity(0.9))
-                        .frame(width: 52, height: 52)
+                        .frame(width: 60, height: 60)
                         .background(Circle().fill(.white.opacity(0.18)))
                         .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 2))
                 }
                 Spacer(minLength: 14)
                 Text(discipline.name)
-                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                    .font(.system(.title3, design: .rounded, weight: .heavy))
                     .foregroundStyle(.white)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer(minLength: 10)
-                VStack(alignment: .leading, spacing: 5) {
+                Spacer(minLength: 12)
+                VStack(alignment: .leading, spacing: 6) {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(.white.opacity(0.25))
                             if progressRatio > 0 {
                                 Capsule()
                                     .fill(.white)
-                                    .frame(width: max(8, geo.size.width * progressRatio))
+                                    .frame(width: max(10, geo.size.width * progressRatio))
                             }
                         }
                     }
-                    .frame(height: 8)
+                    .frame(height: 10)
                     Text("\(progress.done)/\(progress.total) ronds")
-                        .font(.system(.caption2, design: .rounded, weight: .heavy))
+                        .font(.system(.caption, design: .rounded, weight: .heavy))
                         .foregroundStyle(.white.opacity(0.9))
                 }
             }
-            .padding(14)
-            .frame(height: 148)
+            .padding(16)
+            .frame(height: 168)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 22)
-                    .fill(discipline.color.mix(with: .black, by: 0.25))
-                    .offset(y: 4)
+                RoundedRectangle(cornerRadius: 26)
+                    .fill(discipline.color.mix(with: .black, by: 0.22))
+                    .offset(y: 5)
             )
             .background(
-                RoundedRectangle(cornerRadius: 22)
+                RoundedRectangle(cornerRadius: 26)
                     .fill(discipline.color)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 22)
-                    .stroke(Theme.ink, lineWidth: 2.5)
             )
         }
         .buttonStyle(.plain)
