@@ -54,7 +54,7 @@ struct LessonFailureView: View {
                 Circle()
                     .fill(Theme.danger.opacity(0.14))
                     .frame(width: 150, height: 150)
-                Image("MascotRead")
+                Image("MascotShrug")
                     .resizable()
                     .scaledToFit()
                     .frame(height: 110)

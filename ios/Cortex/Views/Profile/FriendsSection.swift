@@ -57,10 +57,17 @@ struct FriendsSection: View {
             }
 
             if online.friends.isEmpty {
-                Text("Aucun ami pour l'instant. Partage ton code ami pour te connecter avec d'autres joueurs !")
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(Theme.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Image("MascotShrug")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 56)
+                        .accessibilityHidden(true)
+                    Text("Aucun ami pour l'instant. Partage ton code ami pour te connecter avec d'autres joueurs !")
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(Theme.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 VStack(spacing: 4) {
                     ForEach(online.friends) { friend in

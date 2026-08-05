@@ -174,12 +174,7 @@ private struct ThemeCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Spacer()
-                    Image(systemName: discipline.icon)
-                        .font(.system(size: 34, weight: .black))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .frame(width: 60, height: 60)
-                        .background(Circle().fill(.white.opacity(0.18)))
-                        .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 2))
+                    disciplineBadge
                 }
                 Spacer(minLength: 14)
                 Text(discipline.name)
@@ -222,6 +217,25 @@ private struct ThemeCard: View {
         }
         .buttonStyle(.plain)
     }
+
+    @ViewBuilder
+    private var disciplineBadge: some View {
+        if let illustratedIconName = discipline.illustratedIconName {
+            Image(illustratedIconName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 60, height: 60)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 2))
+        } else {
+            Image(systemName: discipline.icon)
+                .font(.system(size: 34, weight: .black))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: 60, height: 60)
+                .background(Circle().fill(.white.opacity(0.18)))
+                .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 2))
+        }
+    }
 }
 
 /// Bottom sheet offering the two things a theme card can do.
@@ -235,12 +249,21 @@ private struct ThemeActionSheet: View {
     var body: some View {
         VStack(spacing: 16) {
             HStack(spacing: 12) {
-                Image(systemName: discipline.icon)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(discipline.color))
-                    .overlay(Circle().stroke(Theme.ink, lineWidth: 2))
+                if let illustratedIconName = discipline.illustratedIconName {
+                    Image(illustratedIconName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 44, height: 44)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Theme.ink, lineWidth: 2))
+                } else {
+                    Image(systemName: discipline.icon)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(discipline.color))
+                        .overlay(Circle().stroke(Theme.ink, lineWidth: 2))
+                }
                 Text(discipline.name)
                     .font(.system(.title3, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.ink)

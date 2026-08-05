@@ -25,6 +25,7 @@ struct DuelThemePickerView: View {
                         id: nil,
                         name: "Tous les thèmes",
                         icon: "shuffle.fill",
+                        illustratedIconName: nil,
                         colorHex: "#868E96",
                         subtitle: "Questions de toutes les disciplines"
                     )
@@ -35,6 +36,7 @@ struct DuelThemePickerView: View {
                             id: discipline.id,
                             name: discipline.name,
                             icon: discipline.icon,
+                            illustratedIconName: discipline.illustratedIconName,
                             colorHex: discipline.colorHex,
                             subtitle: "\(count) questions"
                         )
@@ -65,7 +67,7 @@ struct DuelThemePickerView: View {
         }
     }
 
-    private func themeCard(id: String?, name: String, icon: String, colorHex: String, subtitle: String) -> some View {
+    private func themeCard(id: String?, name: String, icon: String, illustratedIconName: String?, colorHex: String, subtitle: String) -> some View {
         let isSelected = selectedId == id
         let color = Color(hex: colorHex)
         return Button {
@@ -73,11 +75,19 @@ struct DuelThemePickerView: View {
             selectedId = id
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(color))
+                if let illustratedIconName {
+                    Image(illustratedIconName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 48, height: 48)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(color))
+                }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)

@@ -312,13 +312,23 @@ struct RingNodeView: View {
                 .foregroundStyle(isLocked ? Theme.inkMuted : .white)
 
             if let discipline, showsDisciplineBadge, !isRecap {
-                Image(systemName: discipline.icon)
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(discipline.color))
-                    .overlay(Circle().stroke(Theme.background, lineWidth: 2.5))
-                    .offset(x: diameter / 2 - 6, y: -diameter / 2 + 6)
+                Group {
+                    if let illustratedIconName = discipline.illustratedIconName {
+                        Image(illustratedIconName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 26, height: 26)
+                            .clipShape(Circle())
+                    } else {
+                        Image(systemName: discipline.icon)
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundStyle(.white)
+                            .frame(width: 26, height: 26)
+                            .background(Circle().fill(discipline.color))
+                    }
+                }
+                .overlay(Circle().stroke(Theme.background, lineWidth: 2.5))
+                .offset(x: diameter / 2 - 6, y: -diameter / 2 + 6)
             }
         }
         .frame(height: diameter + 20)

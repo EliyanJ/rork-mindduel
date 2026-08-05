@@ -138,6 +138,12 @@ struct DuelHomeView: View {
                         .font(.system(.caption2, design: .rounded, weight: .heavy))
                         .foregroundStyle(.white.opacity(0.6))
                 }
+                Spacer(minLength: 0)
+                Image("MascotDuel")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 64)
+                    .accessibilityHidden(true)
             }
             Button {
                 Haptics.medium()

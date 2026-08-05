@@ -43,11 +43,18 @@ struct LeaderboardView: View {
                     entryRow(entry)
                 }
                 if board.top.isEmpty {
-                    Text("Personne au classement pour l'instant.\nSois le premier à jouer un match classé !")
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 60)
+                    VStack(spacing: 12) {
+                        Image("MascotDuel")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 110)
+                            .accessibilityHidden(true)
+                        Text("Personne au classement pour l'instant.\nSois le premier à jouer un match classé !")
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 40)
                 }
             }
             .padding(16)

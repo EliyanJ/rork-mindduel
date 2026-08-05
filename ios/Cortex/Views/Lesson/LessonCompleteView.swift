@@ -29,9 +29,24 @@ struct LessonCompleteView: View {
         return "Courage, tu progresses"
     }
 
+    private var mascotName: String {
+        if accuracy == 1 { return "MascotTrophy" }
+        if accuracy >= 0.8 { return "MascotCheer" }
+        if accuracy >= 0.5 { return "MascotWink" }
+        return "MascotShrug"
+    }
+
     var body: some View {
         VStack(spacing: 22) {
             Spacer(minLength: 8)
+
+            Image(mascotName)
+                .resizable()
+                .scaledToFit()
+                .frame(height: 96)
+                .scaleEffect(hasAppeared ? 1 : 0.4)
+                .opacity(hasAppeared ? 1 : 0)
+                .accessibilityHidden(true)
 
             HStack(spacing: 8) {
                 Label("+\(xp) XP", systemImage: "bolt.fill")
