@@ -20,14 +20,14 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
                 .padding(.bottom, 48)
-                .background(
+                .background(alignment: .top) {
                     GeometryReader { proxy in
                         AlternatingBackgroundPattern(
                             width: proxy.size.width,
-                            minHeight: max(proxy.size.height, UIScreen.main.bounds.height * 1.6)
+                            tileCount: estimatedBackgroundTileCount(width: proxy.size.width)
                         )
                     }
-                )
+                }
             }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -181,6 +181,23 @@ struct HomeView: View {
         )
     }
 
+    /// Estimates how many stacked background tiles are needed to cover the
+    /// whole scrollable path, from the ring count alone rather than from a
+    /// live-measured content height. Measuring the lazily-loaded stack's
+    /// actual height made the background grow (and visibly jump) further as
+    /// the user scrolled and more rings mounted; deriving it directly from
+    /// the (already known) total ring count keeps it stable from the start.
+    private func estimatedBackgroundTileCount(width: CGFloat) -> Int {
+        let tileAspectRatio: CGFloat = 887.0 / 1774.0
+        let tileHeight = width / tileAspectRatio
+        guard tileHeight > 0 else { return 1 }
+        let perRingPitch: CGFloat = 190
+        let headerAllowance: CGFloat = 260
+        let estimatedContentHeight = CGFloat(model.rings.count) * perRingPitch + headerAllowance
+        let minHeight = max(estimatedContentHeight, UIScreen.main.bounds.height * 1.6)
+        return max(1, Int((minHeight / tileHeight).rounded(.up)))
+    }
+
     /// Replays the same ring immediately. Only reachable for normal rings —
     /// a failed recap goes through the cool-down flow instead.
     private func handleLessonRetry(_ retryLaunch: LessonLaunch) {
@@ -201,20 +218,9 @@ struct HomeView: View {
 /// even on long mixed-discipline paths.
 private struct AlternatingBackgroundPattern: View {
     let width: CGFloat
-    let minHeight: CGFloat
+    let tileCount: Int
 
     private static let tileNames = ["BackgroundPatternIcons", "BackgroundPatternMascots"]
-    /// Both source illustrations share the same portrait aspect ratio.
-    private static let tileAspectRatio: CGFloat = 887.0 / 1774.0
-
-    private var tileHeight: CGFloat {
-        width / Self.tileAspectRatio
-    }
-
-    private var tileCount: Int {
-        guard tileHeight > 0 else { return 1 }
-        return max(1, Int((minHeight / tileHeight).rounded(.up)))
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -227,6 +233,7 @@ private struct AlternatingBackgroundPattern: View {
         }
         .opacity(0.32)
         .allowsHitTesting(false)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
