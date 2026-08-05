@@ -118,16 +118,26 @@ La mascotte est une sorte de **petit personnage aux traits ronds, kawaii/chibi**
 
 ### 4.1 Onboarding (écrans de lancement)
 
-L'onboarding utilise actuellement un fond crème avec des emojis flottants (livres, crayons) en fond. Il faut des **illustrations de scène plein cadre**, 1 par étape clé, dans le style flat vectoriel de l'app.
+**Le problème à éviter absolument** : ne PAS demander "une scène d'onboarding" en général à l'IA — c'est ce qui produit des compositions surchargées, avec 15 éléments mal proportionnés, un fond qui part dans tous les sens, et un rendu "AI slop" générique. Chaque image doit être pensée comme une **icône-clé (key art) à un seul sujet central**, pas un décor.
 
-| Nom | Format | Description | Couleurs |
-|---|---|---|---|
-| `onboarding_welcome` | Plein cadre, ratio 9:16, fond transparent ou crème | Scène "bienvenue" : mascotte qui salue, livres flottants, bulles de questions, éléments ludiques liés au savoir. | Crème `#FDF8EF`, orange `#FF6B00`, bleu `#1CB0F6`, vert `#3DD62C` |
-| `onboarding_topics` | Plein cadre | Mascotte entouré.e de petites icônes thématiques (globe, livre, atome, musique, etc.) | Palette des matières |
-| `onboarding_goal` | Plein cadre | Mascotte avec un calendrier, une flamme et une horloge : symbolise l'objectif quotidien et la série. | Orange `#FF6B00`, jaune `#FFC700` |
-| `onboarding_diagnostic_result` | Plein cadre | Mascotte devant un tableau de bord avec des barres/jauges : "on évalue ton niveau". | Vert `#3DD62C`, violet `#9B4DFF` |
+**Règle d'or, à répéter dans chaque prompt** : *"Single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Maximum 2 secondary props floating around the subject. Plain transparent or single flat color background. Think app icon / sticker, not a storybook illustration."*
 
-Contraintes : pas de texte dans les images. Laisser la place au centre/bas pour les textes et boutons. Fond clair, doux, pas de détails trop denses.
+Ce sont donc des **compositions de type "sticker"**, pas des scènes. Voici le brief exact pour chacune, à copier-coller telles quelles dans le prompt (en gardant la structure : 1 sujet + 2 accessoires max + fond neutre) :
+
+| Nom | Sujet central (unique) | Accessoires flottants autorisés (2 max) | Fond | Couleurs dominantes |
+|---|---|---|---|---|
+| `onboarding_welcome` | La mascotte, pose `MascotWave` (debout, qui salue de la main), cadrée épaules-tête bien visible, occupant 60% de la hauteur de l'image | Une bulle de dialogue simple avec un "?" ou un "!" à côté de sa tête. Rien d'autre. | Fond uni transparent ou disque de couleur crème `#FDF8EF` derrière la mascotte, pas de décor | Orange `#FF6B00` (mascotte), crème `#FDF8EF` |
+| `onboarding_topics` | La mascotte assise en tailleur, un livre ouvert posé sur les genoux | Seulement 2 petites icônes plates qui flottent autour (ex: un globe et une note de musique), rien de plus | Fond uni transparent | Bleu `#1CB0F6`, vert `#3DD62C`, mascotte orange |
+| `onboarding_goal` | La mascotte pose `MascotJump` tenant une flamme de série (streak) dans une main, comme un trophée | Un petit badge/calendrier avec une coche, posé à côté (pas un vrai calendrier détaillé, juste une forme simple) | Fond uni transparent | Orange `#FF6B00`, jaune `#FFC700` |
+| `onboarding_diagnostic_result` | La mascotte pose `MascotWink`, debout à côté d'une seule barre de progression verticale simple (comme un thermomètre stylisé), à moitié remplie | Rien d'autre — pas de tableau de bord, pas de multiples jauges | Fond uni transparent | Vert `#3DD62C`, violet `#9B4DFF` |
+
+**Contraintes strictes pour ces 4 images** :
+- **Un seul point focal** : l'œil doit aller directement à la mascotte, pas se balader dans un décor.
+- **Pas de sol, pas d'arrière-plan de pièce, pas de paysage, pas d'horizon.** Fond transparent ou disque de couleur plat derrière le personnage seulement.
+- **Zéro texte** dans l'image (le texte est ajouté par le code).
+- **Silhouette lisible** : si on réduit l'image à la taille d'une icône de 80×80px, on doit encore comprendre le sujet.
+- Réutiliser exactement les poses de mascotte déjà validées (`MascotWave`, `MascotJump`, `MascotWink`) comme référence de pose et de proportions — ne pas réinventer une nouvelle anatomie.
+- Si le rendu ressemble à une illustration de livre pour enfants avec un décor complet → **le refuser et redemander en insistant sur "isolated sticker, no scenery"**.
 
 ### 4.2 Écrans de leçon (fin de session)
 
