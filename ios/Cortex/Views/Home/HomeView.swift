@@ -225,7 +225,7 @@ private struct AlternatingBackgroundPattern: View {
                     .frame(width: width)
             }
         }
-        .opacity(0.5)
+        .opacity(0.32)
         .allowsHitTesting(false)
     }
 }

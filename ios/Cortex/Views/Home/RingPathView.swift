@@ -74,7 +74,7 @@ struct RingPathView: View {
         let height = connectorHeight(for: ring, isChapterBreak: isChapterBreak)
         TrailConnector(fromX: fromX, toX: toX, accent: color(for: ring))
             .frame(height: height)
-            .opacity(isChapterBreak ? 0.55 : 1)
+            .opacity(isChapterBreak ? 0.45 : 0.8)
     }
 
     /// Deterministic pseudo-random horizontal wobble per ring, so the path
@@ -125,10 +125,10 @@ private struct TrailStitch {
     let angle: CGFloat
 }
 
-/// Thick illustrated cord joining two rings, drawn as a single S-curve
-/// between their (offset) centers. No hard black outline — instead a soft
-/// drop shadow in the same hue, a bright flashy fill, a glossy highlight on
-/// top, and a row of small rounded stitches for a braided-cord texture.
+/// Thin, flat cord joining two rings, drawn as a single S-curve between
+/// their (offset) centers. No shadow duplicate and no glossy outline —
+/// just a plain colored stroke with a row of small rounded stitches for a
+/// braided-cord texture.
 private struct TrailConnector: View {
     let fromX: CGFloat
     let toX: CGFloat
@@ -139,13 +139,9 @@ private struct TrailConnector: View {
             let rect = CGRect(origin: .zero, size: proxy.size)
             let shape = TrailShape(fromX: fromX, toX: toX)
             let stitches = shape.stitchMarks(in: rect, count: 9)
-            let brightAccent = accent.mix(with: .white, by: 0.1)
             ZStack {
                 shape
-                    .stroke(accent.mix(with: .black, by: 0.22), style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
-                    .offset(y: 4)
-                shape
-                    .stroke(brightAccent, style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
+                    .stroke(accent, style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
                 Canvas { context, _ in
                     for stitch in stitches {
                         var tick = Path()
@@ -154,12 +150,9 @@ private struct TrailConnector: View {
                         let dy = sin(stitch.angle) * half
                         tick.move(to: CGPoint(x: stitch.point.x - dx, y: stitch.point.y - dy))
                         tick.addLine(to: CGPoint(x: stitch.point.x + dx, y: stitch.point.y + dy))
-                        context.stroke(tick, with: .color(.white.opacity(0.45)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        context.stroke(tick, with: .color(.white.opacity(0.35)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                     }
                 }
-                shape
-                    .stroke(brightAccent.mix(with: .white, by: 0.55), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                    .offset(x: -2.5, y: -2.5)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
