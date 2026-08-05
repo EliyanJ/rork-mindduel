@@ -74,43 +74,47 @@ Police système iOS : `.rounded` (SF Rounded), gras, lourde. Tout est lisible et
 
 ## 3. La mascotte — caractère et style
 
-Minduel a déjà une mascotte. Il faut **strictement respecter le style visuel** pour les nouvelles poses.
+**Important, corrigé après un premier essai raté** : la mascotte n'est PAS un personnage "chibi" générique. C'est un personnage très précis et il faut le décrire exactement comme ça, sinon l'IA invente un tout autre personnage (ça a été le cas : elle a produit une goutte/flamme dégradée au lieu du bon personnage).
 
-### Description actuelle (à observer sur les images existantes) :
+### Description exacte du personnage (à copier telle quelle dans chaque prompt) :
 
-La mascotte est une sorte de **petit personnage aux traits ronds, kawaii/chibi** :
-- Grande tête ronde, proportionnellement plus grosse que le corps.
-- Yeux ronds, très expressifs, sans pupille détaillée (souvent des points noirs ou des formes simples).
-- Petites mains rondes / pattes simples.
-- Corps compact, très petit, souvent caché ou réduit.
-- **Couleurs vives** : on dirait un mélange de teintes pastel/flash (orange, jaune, bleu…). Le personnage ressemble à un petit esprit/cristal ou une goutte de couleur avec un visage.
-- Style : illustration plate, vecteur, pas de ligne noire dure, contours colorés doux.
+La mascotte de Minduel est **un livre rose vivant, avec un cerveau qui pousse sur le dessus** (jeu visuel : "un livre qui pense"). Concrètement :
+- Le **corps entier est un livre** fermé (ou ouvert dans la pose lecture), format portrait, couverture rose vive glossy, avec la tranche des pages visible sur le côté et un petit signet/ruban rose qui pend en bas.
+- Un **cerveau stylisé rose pâle** (circonvolutions rondes et lisses, pas anatomique/gore) pousse directement sur le dessus du livre, à la place d'une tête.
+- **Visage dessiné directement sur la couverture** : deux grands yeux ronds noirs avec un reflet blanc brillant, fins sourcils noirs arqués, bouche ouverte souriante (intérieur rouge/rose), deux joues rondes rosées (blush) de chaque côté.
+- **Bras et jambes blancs**, façon peluche/gant, tout ronds, sans doigts détaillés (mains en mitaine arrondie), qui sortent directement des côtés et du bas du livre.
+- **Rendu 3D glossy/toy-like** : éclairage doux de studio, reflets brillants sur la couverture et le cerveau, ombrage doux en dégradé, légère ombre portée au sol. PAS un flat design, PAS un aplat de couleur uniforme — c'est un rendu "figurine en plastique brillant", proche des mascottes 3D type Duolingo/Pixar.
+- Couleur dominante : **rose vif** (couverture du livre) + **rose pâle** (cerveau) + **blanc** (membres). Pas d'orange, pas de bleu, pas de jaune sur la mascotte elle-même.
+
 - **Poses actuelles dans l'app** :
-  - `MascotWave` : pose de salut/bienvenue.
-  - `MascotJump` : pose victorieuse, bras en l'air, dynamique.
-  - `MascotRead` : pose étude/lecture.
-  - `MascotWink` : pose malicieuse, clin d'œil.
+  - `MascotWave` : debout, une main levée qui salue, sourire ouvert.
+  - `MascotJump` : saute en l'air, les deux poings levés, yeux fermés de joie (^ ^).
+  - `MascotRead` : tient le livre ouvert devant lui (comme s'il se lisait lui-même), les deux mains sur les pages.
+  - `MascotWink` : debout, une main qui salue, pose similaire à Wave.
 
-### Poses à générer (même personnage, fond transparent PNG) :
+### À faire absolument avant de générer les nouvelles poses
+
+**Si l'outil de génération accepte une image de référence (upload/img2img), joins directement une des images `MascotWave` ou `MascotJump` en plus du prompt texte.** C'est beaucoup plus fiable que la description texte seule pour conserver exactement le même personnage (mêmes proportions de livre, même cerveau, même visage). Le texte sert alors juste à décrire la nouvelle pose/les nouveaux accessoires, pas à redécrire le personnage.
+
+### Poses à générer (même personnage livre-cerveau, fond transparent PNG) :
 
 | Nom | Description | Usage |
 |---|---|---|
-| `mascot_trophy` | Mascotte tenant un trophée ou une coupe, super fier.e, bras levé. | Fin de parcours, palier de série, écran de victoire |
-| `mascot_cheer` | Mascotte qui applaudit ou fait un pouce, très encourageant.e. | Écran d'échec léger de leçon, révision |
-| `mascot_duel` | Mascotte en position de défi, avec un petit gant/bouclier ou un éclair, légèrement badass mais mignon. | Accueil onglet Duel |
-| `mascot_waiting` | Mascotte assis.e ou qui regarde un sablier/montre, patient.e. | Lobby multijoueur, chargement |
-| `mascot_shrug` | Mascotte qui hausse les épaules, légèrement désolée mais souriante. | Empty states (pas d'amis, rien à réviser) |
-| `mascot_gift` | Mascotte tenant un cadeau ou une pièce/petit sac de rubis. | Écran de déblocage, boutique, récompense |
-| `mascot_brain` | Mascotte avec un gros cerveau ou une ampoule au-dessus de la tête. | Révision, questions de culture |
-| `mascot_sleep` | Mascotte qui dort ou baille, avec Zzz. | Pas d'activité, cooldown nuit |
+| `mascot_trophy` | Le livre-cerveau tient un trophée doré à deux mains ou levé au-dessus de lui, super fier, grand sourire. | Fin de parcours, palier de série, écran de victoire |
+| `mascot_cheer` | Le livre-cerveau applaudit (mains qui se rejoignent) ou fait un pouce levé, très encourageant. | Écran d'échec léger de leçon, révision |
+| `mascot_duel` | Le livre-cerveau en position de défi, un petit bouclier ou un éclair à la main, pose confiante mais toujours mignonne. | Accueil onglet Duel |
+| `mascot_waiting` | Le livre-cerveau assis, qui regarde un sablier ou une montre, patient et détendu. | Lobby multijoueur, chargement |
+| `mascot_shrug` | Le livre-cerveau hausse les "épaules" (bras écartés, paumes ouvertes vers le haut), légèrement désolé mais souriant. | Empty states (pas d'amis, rien à réviser) |
+| `mascot_gift` | Le livre-cerveau tient un cadeau emballé ou un petit sac de pierres précieuses rouges (rubis), tout content. | Écran de déblocage, boutique, récompense |
+| `mascot_brain` | Le livre-cerveau avec une ampoule allumée qui flotte juste au-dessus de son cerveau, l'air inspiré. | Révision, questions de culture |
+| `mascot_sleep` | Le livre-cerveau qui dort debout ou assis, yeux fermés en traits courbés, quelques "Z" qui flottent au-dessus. | Pas d'activité, cooldown nuit |
 
 **Contraintes techniques** :
 - Fond transparent PNG.
 - Ratio hauteur ~1:1 ou 4:5.
 - Résolution suffisante pour affichage à ~150px de haut sur mobile (générer 512px ou 1024px de haut).
-- Style strictement cohérent avec `MascotWave` / `MascotJump` / `MascotWink` / `MascotRead` existants.
-- Pas de contour noir dur.
-- Couleurs : reprendre les teintes de la mascotte actuelle (pastel flash, orange/jaune dominants).
+- Style strictement cohérent avec `MascotWave` / `MascotJump` / `MascotWink` / `MascotRead` existants : même personnage livre-cerveau, même rendu 3D glossy.
+- Couleurs : rose vif (couverture), rose pâle (cerveau), blanc (membres) — ne pas changer la couleur de base du personnage, seuls les accessoires (trophée, bouclier, cadeau…) suivent la palette de l'app.
 
 ---
 
@@ -243,54 +247,60 @@ Chaque bloc ci-dessous est autonome : copie-colle-le tel quel dans ton IA de gé
 
 ### Mascottes
 
+**Base du personnage à répéter dans chaque prompt ci-dessous (ne change jamais)** :
+> Same exact character as reference: a living pink book mascot with a soft pastel-pink stylized brain (smooth rounded lobes, no gore) growing on top like a head, glossy 3D toy-like render with soft studio lighting and gentle drop shadow — NOT flat vector, NOT 2D illustration. The book body has a vivid glossy pink cover with visible page edges on the side and a small pink ribbon bookmark hanging at the bottom. Face printed on the cover: two big round black eyes with a bright white glossy highlight dot, thin arched black eyebrows, an open smiling mouth, two soft pink round blush cheeks. Chubby soft white plush-like arms and legs with rounded mitten hands, no visible fingers. Colors: vivid pink cover, pale pink brain, white limbs only — no orange, no blue, no yellow on the character itself.
+
 **`mascot_trophy`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no visible pupils detail, soft rounded shapes, no black outlines, colored soft edges only. The mascot proudly holds a golden trophy above its head with one arm raised, joyful triumphant pose. Color palette: vivid orange #FF6B00 and yellow gold #FFC700 dominant, small green #3DD62C accents. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no photorealism, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: standing, proudly holding a small glossy golden trophy up high with both white plush arms raised, huge joyful smile. Small gold #FFC700 sparkle accents around the trophy only. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_cheer`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot is cheering with both arms up or giving a thumbs up, warm encouraging smile, supportive energetic pose. Color palette: vivid orange #FF6B00, green #3DD62C accents. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: both white plush arms raised up cheering, or one arm out doing a thumbs up, warm encouraging open-mouth smile. No extra props. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_duel`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot stands in a confident competitive stance, holding a small round shield or a lightning bolt in one hand, playful "ready to battle" energy but still cute and friendly, not aggressive. Color palette: teal #22D3C5 and dark navy #141B2E as background accent, orange #FF6B00 mascot body, gold #FFC700 highlight on the shield. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: confident competitive stance, holding a small glossy round shield or a cartoon lightning bolt in one plush hand, chest slightly forward, playful "ready to battle" energy but still cute and friendly, not aggressive. Small teal #22D3C5 accent glow on the shield/bolt only. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only, designed to sit on a dark navy #141B2E app background. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_waiting`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot sits cross-legged, calmly looking at a small simple hourglass or wristwatch floating next to it, patient and relaxed pose. Color palette: teal #22D3C5 accent, orange #FF6B00 mascot body. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: sitting down with legs crossed, calmly looking at a small glossy hourglass floating next to it, relaxed patient expression. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_shrug`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot shrugs with both palms up and a gentle apologetic but still smiling expression, slightly tilted head, harmless "nothing here" pose. Color palette: orange #FF6B00 mascot body, muted cream #FDF8EF background tone only as a subtle glow, no real background. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: both plush arms out to the sides with palms/mittens turned up in a shrug, head tilted slightly, gentle apologetic but still smiling expression. No extra props. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_gift`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot happily holds out a small wrapped gift box or a little pouch of red gems, excited giving gesture. Color palette: orange #FF6B00 mascot body, ruby red #D81E3A gems, gold #FFC700 ribbon on the gift. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: holding out a small glossy wrapped gift box with a gold ribbon in both plush arms, excited giving expression, or holding a tiny pouch with a couple of ruby-red #D81E3A gem shapes peeking out. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_brain`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. A single simple glowing light bulb or a small stylized brain icon floats just above the mascot's head, curious thoughtful expression, one hand near the chin. Color palette: orange #FF6B00 mascot body, violet #9B4DFF glow, gold #FFC700 bulb light. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus.] Pose: standing, one small glowing golden light bulb icon floats just above its brain, one plush hand near its chin in a thinking gesture, curious inspired expression. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 **`mascot_sleep`**
-> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, closed curved eyes (sleeping), no black outlines, soft rounded colored edges. The mascot is dozing off, slightly slouched, with two or three small floating "Z" letters above its head, cozy sleepy mood. Color palette: muted orange #FF6B00 mascot body, soft navy #141B2E accents for the "Z" shapes. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+> [Base du personnage ci-dessus, but with eyes closed as two soft curved lines instead of open round eyes.] Pose: dozing off, slightly slumped forward or leaning, two or three small "Z" shapes floating above, cozy sleepy mood. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 ### Onboarding (sticker à sujet unique — pas de scène)
 
+**Base du personnage à répéter dans chaque prompt ci-dessous (identique à la section Mascottes)** :
+> Same exact character as reference: a living pink book mascot with a soft pastel-pink stylized brain (smooth rounded lobes, no gore) growing on top like a head, glossy 3D toy-like render with soft studio lighting and gentle drop shadow — NOT flat vector, NOT 2D illustration. The book body has a vivid glossy pink cover with visible page edges on the side and a small pink ribbon bookmark hanging at the bottom. Face printed on the cover: two big round black eyes with a bright white glossy highlight dot, thin arched black eyebrows, an open smiling mouth, two soft pink round blush cheeks. Chubby soft white plush-like arms and legs with rounded mitten hands, no visible fingers. Colors: vivid pink cover, pale pink brain, white limbs only.
+
 **`onboarding_welcome`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, waving one hand in a friendly greeting, big expressive round eyes, warm welcoming smile, no black outlines, soft rounded colored edges. Exactly one small speech bubble with a simple "?" or "!" symbol floats near its head — nothing else. Plain transparent background, or a simple flat cream circle #FDF8EF directly behind the character only. Color palette: vivid orange #FF6B00 mascot, cream #FDF8EF accent, small touches of blue #1CB0F6 and green #3DD62C. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+> [Base du personnage ci-dessus.] Single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Pose: waving one arm in a friendly greeting, warm welcoming smile. Exactly one small speech bubble with a simple "?" or "!" symbol floats near it — nothing else. Plain transparent background, or a simple flat cream circle #FDF8EF directly behind the character only. Mobile app asset, glossy 3D toy render, no text, think app icon / sticker, not a storybook illustration.
 
 **`onboarding_topics`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, sitting cross-legged with an open book resting on its lap, calm curious expression, no black outlines, soft rounded colored edges. Maximum two small simple flat icons floating around it (for example a tiny globe and a tiny music note) — nothing more. Plain transparent background only. Color palette: blue #1CB0F6, green #3DD62C, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+> [Base du personnage ci-dessus.] Single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Pose: sitting cross-legged with a small open book resting on its lap, calm curious expression. Maximum two small simple flat colored icons floating around it (for example a tiny globe and a tiny music note) — nothing more. Plain transparent background only. Mobile app asset, glossy 3D toy render, no text, think app icon / sticker, not a storybook illustration.
 
 **`onboarding_goal`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, jumping joyfully while holding a single stylized flame (streak symbol) above its head like a trophy, no black outlines, soft rounded colored edges. Only one small simple badge or checkmark shape floats beside it — nothing else, no detailed calendar grid. Plain transparent background only. Color palette: vivid orange #FF6B00 mascot and flame, gold #FFC700 badge. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+> [Base du personnage ci-dessus.] Single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Pose: jumping joyfully with both fists up (like `MascotJump`), a single stylized orange #FF6B00 flame (streak symbol) floating right beside it. Only one small simple gold badge or checkmark shape floats nearby — nothing else, no detailed calendar grid. Plain transparent background only. Mobile app asset, glossy 3D toy render, no text, think app icon / sticker, not a storybook illustration.
 
 **`onboarding_diagnostic_result`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, standing next to exactly one simple vertical progress bar shape (like a rounded thermometer), half filled, winking playfully, no black outlines, soft rounded colored edges. Nothing else in the frame — no dashboard, no multiple gauges. Plain transparent background only. Color palette: green #3DD62C progress fill, violet #9B4DFF outline/track, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+> [Base du personnage ci-dessus.] Single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Pose: standing next to exactly one simple vertical progress bar shape (like a rounded thermometer) half filled with green #3DD62C, one arm pointing at it, winking playfully. Nothing else in the frame — no dashboard, no multiple gauges. Plain transparent background only. Mobile app asset, glossy 3D toy render, no text, think app icon / sticker, not a storybook illustration.
 
 ### Écrans de fin de leçon
 
-**`lesson_success`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character holding a golden trophy up high, huge round joyful eyes, no black outlines, soft rounded colored edges. A few simple confetti shapes (small circles, triangles, stars) and one small crown float around it — keep it light, not cluttered. Plain transparent background only. Color palette: orange #FF6B00 mascot, gold #FFC700 trophy and confetti, green #3DD62C accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+**`lesson_success`** *(réutilise `mascot_trophy` directement si déjà généré)*
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: holding a golden trophy up high, huge joyful smile. A few simple confetti shapes (small circles, triangles, stars) and one small crown float around it — keep it light, not cluttered. Plain transparent background only. Confetti/crown colors: gold #FFC700, green #3DD62C. Mobile app asset, glossy 3D toy render, no text.
 
 **`session_streak`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. One large stylized flame shape (streak symbol) with the cute chibi mascot peeking out from behind or standing next to it, excited expression, no black outlines, soft rounded colored edges. Optionally a few small floating spark shapes around the flame — nothing else. Plain transparent background only. Color palette: vivid orange #FF6B00 and gold #FFC700 flame, small red #FF3B5C accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. One large glossy stylized flame shape (streak symbol) in orange #FF6B00 and gold #FFC700, with the mascot peeking out from behind it or standing right next to it, excited expression. Optionally a few small floating spark shapes around the flame — nothing else. Plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
-**`unlock_celebration`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character holding a wrapped gift box that is opening, with a couple of ruby gem shapes floating out of it, excited surprised expression, no black outlines, soft rounded colored edges. Plain transparent background only. Color palette: orange #FF6B00 mascot, ruby red #D81E3A gems, gold #FFC700 ribbon and sparkle accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+**`unlock_celebration`** *(réutilise `mascot_gift` directement si déjà généré)*
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: holding a wrapped gift box that is opening, with a couple of ruby-red #D81E3A gem shapes floating out of it, excited surprised expression. Gold #FFC700 ribbon and sparkle accents only. Plain transparent background only. Mobile app asset, glossy 3D toy render, no text.
 
 ### Icônes de matières (fond transparent, silhouette blanche simple)
 
@@ -321,30 +331,30 @@ Chaque bloc ci-dessous est autonome : copie-colle-le tel quel dans ton IA de gé
 ### Mode Duel
 
 **`duel_hero`**
-> Flat vector illustration sticker, single composition, isolated, no environment, no ground, no room, no landscape. Two cute chibi mascot characters (same species, different simple color variation like orange and teal) facing each other in a friendly competitive stance, each holding a small round shield or a lightning bolt, playful energetic "face-off" pose, no black outlines, soft rounded colored edges. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: teal #22D3C5, orange #FF6B00, gold #FFC700 accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+> Two identical "living pink book with a brain on top" mascots (same character as reference — glossy 3D toy render, pink glossy book body, pale pink brain on top, white plush arms and legs, big round eyes) facing each other in a friendly competitive stance, each holding a small glossy round shield or a cartoon lightning bolt, playful energetic "face-off" pose, not aggressive. Single composition, isolated, no environment, no ground, no room, no landscape. Plain transparent background, designed to sit on a dark navy #141B2E app background. Small teal #22D3C5 and gold #FFC700 accents on the shields/bolts only. Mobile app asset, glossy 3D toy render, no text.
 
 **`duel_podium`**
-> Flat vector illustration sticker, single centered subject, isolated, no environment, no ground plane beyond the podium itself. Simple three-step podium shape (1st taller, 2nd and 3rd shorter) with one small medal or star icon on each step, clean geometric shapes, no black outlines. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: gold #FFC700 for 1st, silver #C0C0C0 for 2nd, bronze #CD7F32 for 3rd. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+> Simple glossy three-step podium shape (1st taller, 2nd and 3rd shorter), toy-like 3D render matching the mascot's glossy plastic material, with one small medal or star icon on each step. Single centered subject, isolated, no environment, no ground plane beyond the podium itself. Plain transparent background, designed to sit on a dark navy #141B2E app background. Colors: gold #FFC700 for 1st, silver #C0C0C0 for 2nd, bronze #CD7F32 for 3rd. Mobile app asset, no text.
 
 **`duel_waiting`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character sitting patiently next to one simple hourglass shape with sand flowing, calm relaxed expression, no black outlines, soft rounded colored edges. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: teal #22D3C5 accent, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: sitting patiently next to one simple glossy hourglass shape with sand flowing, calm relaxed expression. Plain transparent background, designed to sit on a dark navy #141B2E app background. Small teal #22D3C5 accent on the hourglass only. Mobile app asset, glossy 3D toy render, no text.
 
 **`duel_invite`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character holding out a simple envelope or a small card with a friendly wave, welcoming inviting gesture, no black outlines, soft rounded colored edges. Plain transparent background. Color palette: teal #22D3C5, orange #FF6B00 mascot body, gold #FFC700 small accent. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: holding out a simple glossy envelope or a small card with a friendly wave, welcoming inviting gesture. Plain transparent background. Small teal #22D3C5 and gold #FFC700 accents on the envelope only. Mobile app asset, glossy 3D toy render, no text.
 
 ### Empty states
 
-**`empty_friends`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character shrugging with both palms up, gentle apologetic but smiling expression, one or two faint ghost-like empty circle silhouettes floating nearby suggesting "no friends yet", no black outlines, soft rounded colored edges. Plain transparent background. Color palette: orange #FF6B00 mascot, muted cream #FDF8EF faint accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+**`empty_friends`** *(réutilise `mascot_shrug` directement si déjà généré)*
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: shrugging with both plush arms up, gentle apologetic but smiling expression, one or two faint ghost-like empty circle silhouettes floating nearby suggesting "no friends yet". Plain transparent background. Mobile app asset, glossy 3D toy render, no text.
 
 **`empty_review`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character shrugging cheerfully, one small simple brain or checkmark icon floating above indicating "all caught up", no black outlines, soft rounded colored edges. Plain transparent background. Color palette: orange #FF6B00 mascot, green #3DD62C checkmark accent. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: shrugging cheerfully, one small simple green #3DD62C checkmark icon floating above indicating "all caught up". Plain transparent background. Mobile app asset, glossy 3D toy render, no text.
 
-**`empty_leaderboard`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character in a confident ready stance holding a single medal, inviting "be the first" energy, no black outlines, soft rounded colored edges. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: teal #22D3C5, gold #FFC700 medal, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+**`empty_leaderboard`** *(réutilise `mascot_duel` directement si déjà généré)*
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: confident ready stance holding a single gold #FFC700 medal, inviting "be the first" energy. Plain transparent background, designed to sit on a dark navy #141B2E app background. Mobile app asset, glossy 3D toy render, no text.
 
-**`empty_notifications`**
-> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character dozing off sleepily with small "Z" shapes floating above, one simple empty envelope shape resting nearby, calm quiet mood, no black outlines, soft rounded colored edges. Plain transparent background. Color palette: muted orange #FF6B00 mascot, soft navy #141B2E accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+**`empty_notifications`** *(réutilise `mascot_sleep` directement si déjà généré)*
+> [Base du personnage "livre-cerveau glossy 3D" — voir section Mascottes, eyes closed as soft curved lines.] Single centered subject, isolated, no background scenery, no ground, no environment. Pose: dozing off sleepily with small "Z" shapes floating above, one simple empty envelope shape resting nearby, calm quiet mood. Plain transparent background. Mobile app asset, glossy 3D toy render, no text.
 
 ### Fond d'ambiance
 
