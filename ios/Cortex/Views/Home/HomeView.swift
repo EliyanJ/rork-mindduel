@@ -26,9 +26,8 @@ struct HomeView: View {
             ZStack {
                 Theme.background
                 Image("BackgroundPattern")
-                    .resizable()
-                    .scaledToFill()
-                    .opacity(0.08)
+                    .resizable(resizingMode: .tile)
+                    .opacity(0.28)
                     .allowsHitTesting(false)
             }
             .ignoresSafeArea()
