@@ -22,7 +22,17 @@ struct HomeView: View {
                 .padding(.bottom, 48)
             }
         }
-        .background(Theme.background)
+        .background(
+            ZStack {
+                Theme.background
+                Image("BackgroundPattern")
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(0.08)
+                    .allowsHitTesting(false)
+            }
+            .ignoresSafeArea()
+        )
         .fullScreenCover(item: $lessonLaunch) { launch in
             LessonView(launch: launch, store: model.store) { retryLaunch in
                 handleLessonRetry(retryLaunch)
