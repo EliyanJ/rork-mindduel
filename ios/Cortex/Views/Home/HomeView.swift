@@ -76,10 +76,7 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Revenir au parcours mélangé")
             } else {
-                Text("Minduel")
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.primary)
-                    .lineLimit(1)
+                MinduelWordmark()
             }
             Spacer()
             HStack(spacing: 6) {
@@ -210,6 +207,23 @@ struct HomeView: View {
             chapterIdRaw: retryLaunch.chapterIdRaw,
             ringKind: retryLaunch.ringKind
         )
+    }
+}
+
+/// The app's wordmark: "Min" in ink, "duel" in the brand orange, set tight
+/// together as a single logotype rather than a plain title label.
+struct MinduelWordmark: View {
+    var size: CGFloat = 22
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text("Min")
+                .foregroundStyle(Theme.ink)
+            Text("duel")
+                .foregroundStyle(Theme.primary)
+        }
+        .font(.system(size: size, weight: .heavy, design: .rounded))
+        .lineLimit(1)
     }
 }
 
