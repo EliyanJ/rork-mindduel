@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Central design tokens: warm cream learning side, deep navy duel arena.
+/// Central design tokens: clean white learning side, deep navy duel arena.
 enum Theme {
-    static let background = Color(hex: "FDF8EF")
+    static let background = Color.white
     static let card = Color.white
-    static let line = Color(hex: "EAE0D0")
+    static let line = Color(hex: "ECECEC")
     static let ink = Color(hex: "3B2E28")
     static let inkMuted = Color(hex: "9B8A7C")
     static let primary = Color(hex: "FF6B00")
