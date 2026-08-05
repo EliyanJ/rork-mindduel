@@ -27,7 +27,7 @@ struct HomeView: View {
                 Theme.background
                 Image("BackgroundPattern")
                     .resizable(resizingMode: .tile)
-                    .opacity(0.28)
+                    .opacity(0.5)
                     .allowsHitTesting(false)
             }
             .ignoresSafeArea()
