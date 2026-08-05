@@ -22,14 +22,10 @@ struct HomeView: View {
                 .padding(.bottom, 48)
                 .background(
                     GeometryReader { proxy in
-                        Image("BackgroundPattern")
-                            .resizable(resizingMode: .tile)
-                            .opacity(0.5)
-                            .allowsHitTesting(false)
-                            .frame(
-                                width: proxy.size.width,
-                                height: max(proxy.size.height, UIScreen.main.bounds.height * 1.6)
-                            )
+                        AlternatingBackgroundPattern(
+                            width: proxy.size.width,
+                            minHeight: max(proxy.size.height, UIScreen.main.bounds.height * 1.6)
+                        )
                     }
                 )
             }
@@ -197,6 +193,40 @@ struct HomeView: View {
             chapterIdRaw: retryLaunch.chapterIdRaw,
             ringKind: retryLaunch.ringKind
         )
+    }
+}
+
+/// Stacks the two decorative background illustrations one after another,
+/// alternating down the whole scrollable path so it never abruptly stops
+/// even on long mixed-discipline paths.
+private struct AlternatingBackgroundPattern: View {
+    let width: CGFloat
+    let minHeight: CGFloat
+
+    private static let tileNames = ["BackgroundPatternIcons", "BackgroundPatternMascots"]
+    /// Both source illustrations share the same portrait aspect ratio.
+    private static let tileAspectRatio: CGFloat = 887.0 / 1774.0
+
+    private var tileHeight: CGFloat {
+        width / Self.tileAspectRatio
+    }
+
+    private var tileCount: Int {
+        guard tileHeight > 0 else { return 1 }
+        return max(1, Int((minHeight / tileHeight).rounded(.up)))
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<tileCount, id: \.self) { index in
+                Image(Self.tileNames[index % Self.tileNames.count])
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: width)
+            }
+        }
+        .opacity(0.5)
+        .allowsHitTesting(false)
     }
 }
 
