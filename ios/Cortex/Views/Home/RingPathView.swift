@@ -39,7 +39,8 @@ struct RingPathView: View {
                 ) {
                     onSelect(ring)
                 }
-                .offset(x: ring.kind == .recap ? 0 : horizontalOffset(for: index, width: pathWidth))
+                .zIndex(1)
+                .offset(x: horizontalOffset(for: ring, width: pathWidth))
             }
         }
         .frame(maxWidth: .infinity)
@@ -62,23 +63,96 @@ struct RingPathView: View {
         model.discipline(withId: ring.disciplineId)?.color ?? Theme.primary
     }
 
+    /// The thick, winding cord that joins two consecutive rings — replaces
+    /// the old plain dotted connector with a bold illustrated trail.
     @ViewBuilder
     private func connector(before ring: PathRing, at index: Int) -> some View {
-        let isChapterBreak = !model.isMixedPath && model.rings[index - 1].chapterId != ring.chapterId
-        VStack(spacing: 5) {
-            ForEach(0..<(isChapterBreak ? 2 : 3), id: \.self) { _ in
-                Circle()
-                    .fill(Theme.line)
-                    .frame(width: 7, height: 7)
-            }
-        }
-        .padding(.vertical, isChapterBreak ? 14 : 10)
+        let previous = model.rings[index - 1]
+        let isChapterBreak = !model.isMixedPath && previous.chapterId != ring.chapterId
+        let fromX = horizontalOffset(for: previous, width: pathWidth)
+        let toX = horizontalOffset(for: ring, width: pathWidth)
+        let height = connectorHeight(for: ring, isChapterBreak: isChapterBreak)
+        TrailConnector(fromX: fromX, toX: toX)
+            .frame(height: height)
+            .opacity(isChapterBreak ? 0.55 : 1)
     }
 
-    private func horizontalOffset(for index: Int, width: CGFloat) -> CGFloat {
-        let step = min(width * 0.22, 72)
-        let pattern: [CGFloat] = [0, -step, 0, step]
-        return pattern[index % pattern.count]
+    /// Deterministic pseudo-random horizontal wobble per ring, so the path
+    /// reads as hand-drawn and playful rather than a repeating zig-zag.
+    /// Stable across renders since it's seeded from the ring's own id.
+    private func horizontalOffset(for ring: PathRing, width: CGFloat) -> CGFloat {
+        guard ring.kind != .recap else { return 0 }
+        var generator = RingWobbleGenerator(seed: ring.id)
+        let maxStep = min(width * 0.32, 96)
+        let magnitude = CGFloat.random(in: 0.3...1, using: &generator)
+        let sign: CGFloat = Bool.random(using: &generator) ? 1 : -1
+        return maxStep * magnitude * sign
+    }
+
+    /// Varies the vertical distance between rings a little so the trail
+    /// doesn't feel mechanically regular.
+    private func connectorHeight(for ring: PathRing, isChapterBreak: Bool) -> CGFloat {
+        if isChapterBreak { return 58 }
+        var generator = RingWobbleGenerator(seed: ring.id + "-h")
+        return CGFloat.random(in: 78...118, using: &generator)
+    }
+}
+
+/// A tiny, stable pseudo-random source seeded from a string so the same ring
+/// always gets the same wobble and gap, even across view refreshes.
+private struct RingWobbleGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: String) {
+        var hasher = Hasher()
+        hasher.combine(seed)
+        let hashed = hasher.finalize()
+        state = UInt64(bitPattern: Int64(hashed)) &+ 0x9E3779B97F4A7C15
+    }
+
+    mutating func next() -> UInt64 {
+        state ^= state << 13
+        state ^= state >> 7
+        state ^= state << 17
+        return state
+    }
+}
+
+/// Thick illustrated cord joining two rings with a bold black outline, drawn
+/// as a single S-curve between their (offset) centers — the visual language
+/// of a hand-drawn board-game trail rather than a plain connecting dots.
+private struct TrailConnector: View {
+    let fromX: CGFloat
+    let toX: CGFloat
+
+    var body: some View {
+        GeometryReader { proxy in
+            let shape = TrailShape(fromX: fromX, toX: toX)
+            ZStack {
+                shape.stroke(Theme.ink, style: StrokeStyle(lineWidth: 20, lineCap: .round, lineJoin: .round))
+                shape.stroke(Theme.gold, style: StrokeStyle(lineWidth: 13, lineCap: .round, lineJoin: .round))
+                shape.stroke(Theme.gold.mix(with: .white, by: 0.35), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    .offset(x: -2, y: -2)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+    }
+}
+
+private struct TrailShape: Shape {
+    let fromX: CGFloat
+    let toX: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let start = CGPoint(x: rect.midX + fromX, y: rect.minY)
+        let end = CGPoint(x: rect.midX + toX, y: rect.maxY)
+        let midY = (rect.minY + rect.maxY) / 2
+        let control1 = CGPoint(x: rect.midX + fromX, y: rect.minY + (midY - rect.minY) * 0.75)
+        let control2 = CGPoint(x: rect.midX + toX, y: rect.maxY - (rect.maxY - midY) * 0.75)
+        path.move(to: start)
+        path.addCurve(to: end, control1: control1, control2: control2)
+        return path
     }
 }
 
