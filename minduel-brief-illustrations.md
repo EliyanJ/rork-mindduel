@@ -237,4 +237,120 @@ Adapter selon l'image demandée.
 
 ---
 
+## 9. Prompts prêts à copier-coller (un par élément)
+
+Chaque bloc ci-dessous est autonome : copie-colle-le tel quel dans ton IA de génération d'image, un par un. Le style, les couleurs et les contraintes sont déjà injectés dedans.
+
+### Mascottes
+
+**`mascot_trophy`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no visible pupils detail, soft rounded shapes, no black outlines, colored soft edges only. The mascot proudly holds a golden trophy above its head with one arm raised, joyful triumphant pose. Color palette: vivid orange #FF6B00 and yellow gold #FFC700 dominant, small green #3DD62C accents. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no photorealism, no gradients, no text.
+
+**`mascot_cheer`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot is cheering with both arms up or giving a thumbs up, warm encouraging smile, supportive energetic pose. Color palette: vivid orange #FF6B00, green #3DD62C accents. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+**`mascot_duel`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot stands in a confident competitive stance, holding a small round shield or a lightning bolt in one hand, playful "ready to battle" energy but still cute and friendly, not aggressive. Color palette: teal #22D3C5 and dark navy #141B2E as background accent, orange #FF6B00 mascot body, gold #FFC700 highlight on the shield. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+**`mascot_waiting`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot sits cross-legged, calmly looking at a small simple hourglass or wristwatch floating next to it, patient and relaxed pose. Color palette: teal #22D3C5 accent, orange #FF6B00 mascot body. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+**`mascot_shrug`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot shrugs with both palms up and a gentle apologetic but still smiling expression, slightly tilted head, harmless "nothing here" pose. Color palette: orange #FF6B00 mascot body, muted cream #FDF8EF background tone only as a subtle glow, no real background. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+**`mascot_gift`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. The mascot happily holds out a small wrapped gift box or a little pouch of red gems, excited giving gesture. Color palette: orange #FF6B00 mascot body, ruby red #D81E3A gems, gold #FFC700 ribbon on the gift. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+**`mascot_brain`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, huge expressive round eyes, no black outlines, soft rounded colored edges. A single simple glowing light bulb or a small stylized brain icon floats just above the mascot's head, curious thoughtful expression, one hand near the chin. Color palette: orange #FF6B00 mascot body, violet #9B4DFF glow, gold #FFC700 bulb light. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+**`mascot_sleep`**
+> Flat vector illustration sticker, cute chibi mascot character with a big round head and tiny compact body, closed curved eyes (sleeping), no black outlines, soft rounded colored edges. The mascot is dozing off, slightly slouched, with two or three small floating "Z" letters above its head, cozy sleepy mood. Color palette: muted orange #FF6B00 mascot body, soft navy #141B2E accents for the "Z" shapes. Isolated single subject, no background scenery, no ground, no environment — plain transparent background only. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no gradients, no text.
+
+### Onboarding (sticker à sujet unique — pas de scène)
+
+**`onboarding_welcome`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, waving one hand in a friendly greeting, big expressive round eyes, warm welcoming smile, no black outlines, soft rounded colored edges. Exactly one small speech bubble with a simple "?" or "!" symbol floats near its head — nothing else. Plain transparent background, or a simple flat cream circle #FDF8EF directly behind the character only. Color palette: vivid orange #FF6B00 mascot, cream #FDF8EF accent, small touches of blue #1CB0F6 and green #3DD62C. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+
+**`onboarding_topics`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, sitting cross-legged with an open book resting on its lap, calm curious expression, no black outlines, soft rounded colored edges. Maximum two small simple flat icons floating around it (for example a tiny globe and a tiny music note) — nothing more. Plain transparent background only. Color palette: blue #1CB0F6, green #3DD62C, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+
+**`onboarding_goal`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, jumping joyfully while holding a single stylized flame (streak symbol) above its head like a trophy, no black outlines, soft rounded colored edges. Only one small simple badge or checkmark shape floats beside it — nothing else, no detailed calendar grid. Plain transparent background only. Color palette: vivid orange #FF6B00 mascot and flame, gold #FFC700 badge. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+
+**`onboarding_diagnostic_result`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no environment, no horizon, no room, no landscape. Cute chibi mascot character, big round head, tiny body, standing next to exactly one simple vertical progress bar shape (like a rounded thermometer), half filled, winking playfully, no black outlines, soft rounded colored edges. Nothing else in the frame — no dashboard, no multiple gauges. Plain transparent background only. Color palette: green #3DD62C progress fill, violet #9B4DFF outline/track, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients, think app icon / sticker, not a storybook illustration.
+
+### Écrans de fin de leçon
+
+**`lesson_success`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character holding a golden trophy up high, huge round joyful eyes, no black outlines, soft rounded colored edges. A few simple confetti shapes (small circles, triangles, stars) and one small crown float around it — keep it light, not cluttered. Plain transparent background only. Color palette: orange #FF6B00 mascot, gold #FFC700 trophy and confetti, green #3DD62C accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`session_streak`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. One large stylized flame shape (streak symbol) with the cute chibi mascot peeking out from behind or standing next to it, excited expression, no black outlines, soft rounded colored edges. Optionally a few small floating spark shapes around the flame — nothing else. Plain transparent background only. Color palette: vivid orange #FF6B00 and gold #FFC700 flame, small red #FF3B5C accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`unlock_celebration`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character holding a wrapped gift box that is opening, with a couple of ruby gem shapes floating out of it, excited surprised expression, no black outlines, soft rounded colored edges. Plain transparent background only. Color palette: orange #FF6B00 mascot, ruby red #D81E3A gems, gold #FFC700 ribbon and sparkle accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+### Icônes de matières (fond transparent, silhouette blanche simple)
+
+**`theme_icon_histoire`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple ancient columns / temple front with a small triangular pediment, symmetrical and clean, single unified shape, no gradients, no shading, no outline stroke besides the white fill itself. Transparent background. Must read clearly as "History" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_sciences`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple atom symbol made of one circle and two intersecting oval orbit rings, clean and symmetrical, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Science" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_geographie`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple globe shape with two or three simple curved continent shapes on it, clean rounded circle base, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Geography" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_litterature`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple open book shape seen from the front with a small bookmark ribbon, clean and symmetrical, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Literature" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_arts`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple painter's palette shape with a couple of small round paint dots cut out, clean rounded shape, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Arts" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_nature`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple single leaf shape with a clean center vein line, rounded and organic but minimal, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Nature" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_technologie`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple light bulb shape with a small rocket silhouette accent or simple filament lines inside, clean and rounded, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Technology" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+**`theme_icon_football`**
+> Flat minimal line-and-shape icon, pure white silhouette, simple soccer ball shape with classic pentagon pattern lines, clean round shape, single unified shape, no gradients, no shading. Transparent background. Must read clearly as "Football" at small size (60x60px). Vector icon style, rounded corners, no text.
+
+### Mode Duel
+
+**`duel_hero`**
+> Flat vector illustration sticker, single composition, isolated, no environment, no ground, no room, no landscape. Two cute chibi mascot characters (same species, different simple color variation like orange and teal) facing each other in a friendly competitive stance, each holding a small round shield or a lightning bolt, playful energetic "face-off" pose, no black outlines, soft rounded colored edges. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: teal #22D3C5, orange #FF6B00, gold #FFC700 accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`duel_podium`**
+> Flat vector illustration sticker, single centered subject, isolated, no environment, no ground plane beyond the podium itself. Simple three-step podium shape (1st taller, 2nd and 3rd shorter) with one small medal or star icon on each step, clean geometric shapes, no black outlines. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: gold #FFC700 for 1st, silver #C0C0C0 for 2nd, bronze #CD7F32 for 3rd. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`duel_waiting`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character sitting patiently next to one simple hourglass shape with sand flowing, calm relaxed expression, no black outlines, soft rounded colored edges. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: teal #22D3C5 accent, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`duel_invite`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character holding out a simple envelope or a small card with a friendly wave, welcoming inviting gesture, no black outlines, soft rounded colored edges. Plain transparent background. Color palette: teal #22D3C5, orange #FF6B00 mascot body, gold #FFC700 small accent. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+### Empty states
+
+**`empty_friends`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character shrugging with both palms up, gentle apologetic but smiling expression, one or two faint ghost-like empty circle silhouettes floating nearby suggesting "no friends yet", no black outlines, soft rounded colored edges. Plain transparent background. Color palette: orange #FF6B00 mascot, muted cream #FDF8EF faint accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`empty_review`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character shrugging cheerfully, one small simple brain or checkmark icon floating above indicating "all caught up", no black outlines, soft rounded colored edges. Plain transparent background. Color palette: orange #FF6B00 mascot, green #3DD62C checkmark accent. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`empty_leaderboard`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character in a confident ready stance holding a single medal, inviting "be the first" energy, no black outlines, soft rounded colored edges. Plain transparent background, designed to sit on a dark navy #141B2E app background. Color palette: teal #22D3C5, gold #FFC700 medal, orange #FF6B00 mascot body. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+**`empty_notifications`**
+> Flat vector illustration sticker, single centered subject, isolated, no background scenery, no ground, no environment. Cute chibi mascot character dozing off sleepily with small "Z" shapes floating above, one simple empty envelope shape resting nearby, calm quiet mood, no black outlines, soft rounded colored edges. Plain transparent background. Color palette: muted orange #FF6B00 mascot, soft navy #141B2E accents. Mobile app asset, clean 2D vector style, Duolingo-like aesthetic, no text, no gradients.
+
+### Fond d'ambiance
+
+**`bg_pattern_light`**
+> Seamless tileable flat vector pattern, very light and subtle, scattered tiny flat icons like small books, pencils, speech bubbles and stars, low opacity around 10 percent, thin simple shapes, no gradients, no black outlines, evenly spaced across the tile, soft pastel cream and orange tones on a fully transparent background. Designed as a barely-visible background texture for a mobile app screen, extremely subtle and non-distracting.
+
+---
+
 *Brief généré le 2026-08-05 pour Minduel — app iOS de culture générale.*
