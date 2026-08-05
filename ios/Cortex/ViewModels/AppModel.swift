@@ -240,6 +240,25 @@ final class AppModel {
         catalog.disciplines.first { $0.id == id }
     }
 
+    /// Rings cleared vs. total for one discipline, shown as "done/total" on
+    /// its theme card.
+    func themeRingProgress(disciplineId: String) -> (done: Int, total: Int) {
+        let all = ringsByDiscipline[disciplineId] ?? []
+        return (all.filter { store.isRingPassed($0.id) }.count, all.count)
+    }
+
+    /// Due-for-review questions restricted to one discipline, for the
+    /// "Réviser" action on a theme card.
+    func dueLessonItems(disciplineId: String, limit: Int = 10) -> [LessonItem] {
+        var picked: [LessonItem] = []
+        for id in store.dueQuestionIds() {
+            guard let entry = questionIndex[id], entry.disciplineId == disciplineId else { continue }
+            picked.append(LessonItem(question: entry.question, disciplineId: entry.disciplineId))
+            if picked.count >= limit { break }
+        }
+        return picked
+    }
+
     /// Average memory strength across every question of a discipline (unseen = 0).
     func masteryPercent(for discipline: Discipline) -> Double {
         let questionCount = discipline.chapters.reduce(0) { $0 + $1.questionCount }

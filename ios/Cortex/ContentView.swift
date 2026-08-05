@@ -1,9 +1,16 @@
 import SwiftUI
 
+/// Tab identifiers used to switch tabs programmatically (e.g. jumping from
+/// a theme card straight to its dedicated path).
+private enum AppTab: Hashable {
+    case parcours, themes, duel, profil
+}
+
 struct ContentView: View {
     @State private var model = AppModel()
     @State private var onboardingStore = OnboardingStore()
     @State private var showSplash = true
+    @State private var selectedTab: AppTab = .parcours
     @Environment(OnlineModel.self) private var online
     @Environment(\.scenePhase) private var scenePhase
 
@@ -80,17 +87,20 @@ struct ContentView: View {
     }
 
     private var mainTabs: some View {
-        TabView {
-            Tab("Apprendre", systemImage: "map.fill") {
+        TabView(selection: $selectedTab) {
+            Tab("Parcours", systemImage: "map.fill", value: AppTab.parcours) {
                 HomeView()
             }
-            Tab("Révisions", systemImage: "brain.head.profile") {
-                ReviewView()
+            Tab("Thèmes", systemImage: "square.grid.2x2.fill", value: AppTab.themes) {
+                ThemesView { disciplineId in
+                    model.selectedDisciplineId = disciplineId
+                    selectedTab = .parcours
+                }
             }
-            Tab("Duel", systemImage: "bolt.fill") {
+            Tab("Duel", systemImage: "bolt.fill", value: AppTab.duel) {
                 DuelHomeView()
             }
-            Tab("Profil", systemImage: "person.crop.circle.fill") {
+            Tab("Profil", systemImage: "person.crop.circle.fill", value: AppTab.profil) {
                 ProfileView()
             }
         }

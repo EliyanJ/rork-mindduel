@@ -4,45 +4,25 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(StoreViewModel.self) private var store
     @State private var lessonLaunch: LessonLaunch?
-    @State private var isMenuOpen: Bool = false
     @State private var lockedRingPending: PathRing?
     @State private var cooldownRing: PathRing?
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            VStack(spacing: 0) {
-                statsHeader
-                ScrollView {
-                    VStack(spacing: 28) {
-                        dailyLessonCard
-                        RingPathView { ring in
-                            startRing(ring)
-                        }
+        VStack(spacing: 0) {
+            statsHeader
+            ScrollView {
+                VStack(spacing: 28) {
+                    dailyLessonCard
+                    RingPathView { ring in
+                        startRing(ring)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 48)
                 }
-            }
-            .background(Theme.background)
-
-            if isMenuOpen {
-                Button {
-                    closeMenu()
-                } label: {
-                    Color.black.opacity(0.35)
-                }
-                .buttonStyle(.plain)
-                .ignoresSafeArea()
-                .transition(.opacity)
-                .accessibilityLabel("Fermer le menu")
-
-                ThemeMenuView {
-                    closeMenu()
-                }
-                .transition(.move(edge: .leading))
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                .padding(.bottom, 48)
             }
         }
+        .background(Theme.background)
         .fullScreenCover(item: $lessonLaunch) { launch in
             LessonView(launch: launch, store: model.store) { retryLaunch in
                 handleLessonRetry(retryLaunch)
@@ -64,33 +44,29 @@ struct HomeView: View {
 
     private var statsHeader: some View {
         HStack(spacing: 8) {
-            Button {
-                Haptics.tap()
-                withAnimation(.spring(duration: 0.32)) {
-                    isMenuOpen = true
-                }
-            } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Theme.card))
-                    .overlay(Circle().stroke(Theme.line, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Choisir un parcours")
-
             if let discipline = model.selectedDiscipline {
-                HStack(spacing: 6) {
-                    Image(systemName: discipline.icon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(discipline.color)
-                    Text(discipline.name)
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.65)
+                Button {
+                    Haptics.tap()
+                    model.selectedDisciplineId = nil
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 13, weight: .bold))
+                        Image(systemName: discipline.icon)
+                            .font(.system(size: 14, weight: .bold))
+                        Text(discipline.name)
+                            .font(.system(size: 17, weight: .heavy, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(discipline.color))
+                    .overlay(Capsule().stroke(Theme.ink, lineWidth: 2))
                 }
-                .foregroundStyle(discipline.color)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Revenir au parcours mélangé")
             } else {
                 Text("Minduel")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
@@ -165,12 +141,6 @@ struct HomeView: View {
             return "\(count) questions · tes erreurs + les plus dures"
         }
         return "\(ring.shortTitle) · \(count) questions · \(theme)"
-    }
-
-    private func closeMenu() {
-        withAnimation(.spring(duration: 0.32)) {
-            isMenuOpen = false
-        }
     }
 
     /// Launches a ring, after checking it isn't gated by the daily quota or by
