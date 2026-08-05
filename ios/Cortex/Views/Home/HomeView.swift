@@ -20,18 +20,21 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
                 .padding(.bottom, 48)
+                .background(
+                    GeometryReader { proxy in
+                        Image("BackgroundPattern")
+                            .resizable(resizingMode: .tile)
+                            .opacity(0.5)
+                            .allowsHitTesting(false)
+                            .frame(
+                                width: proxy.size.width,
+                                height: max(proxy.size.height, UIScreen.main.bounds.height * 1.6)
+                            )
+                    }
+                )
             }
         }
-        .background(
-            ZStack {
-                Theme.background
-                Image("BackgroundPattern")
-                    .resizable(resizingMode: .tile)
-                    .opacity(0.5)
-                    .allowsHitTesting(false)
-            }
-            .ignoresSafeArea()
-        )
+        .background(Theme.background.ignoresSafeArea())
         .fullScreenCover(item: $lessonLaunch) { launch in
             LessonView(launch: launch, store: model.store) { retryLaunch in
                 handleLessonRetry(retryLaunch)
