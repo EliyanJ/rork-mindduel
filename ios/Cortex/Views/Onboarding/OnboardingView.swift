@@ -33,7 +33,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if step != .welcome {
+            if step != .welcome && step != .account {
                 header
             }
 
@@ -172,7 +172,7 @@ struct OnboardingView: View {
         .padding(.horizontal, 20)
         .padding(.top, 8)
         .padding(.bottom, 8)
-        .background(step == .quizResult ? Theme.gold : Theme.background)
+        .background(Theme.background)
     }
 
     private var headerForeground: Color {

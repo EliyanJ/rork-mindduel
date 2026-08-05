@@ -49,11 +49,11 @@ struct OnboardingQuizResultStep: View {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text("\(displayedScore)")
                         .font(.system(size: scoreSize, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.primary)
                         .contentTransition(.numericText())
                     Text("/\(total)")
                         .font(.system(size: totalSize, weight: .black, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Theme.primary.opacity(0.6))
                 }
                 .padding(.top, 8)
 
@@ -71,7 +71,7 @@ struct OnboardingQuizResultStep: View {
                     ForEach(0..<total, id: \.self) { i in
                         Image(systemName: i < score ? "star.fill" : "star")
                             .font(.system(size: 22))
-                            .foregroundStyle(i < score ? Theme.ink : Theme.ink.opacity(0.25))
+                            .foregroundStyle(i < score ? Theme.gold : Theme.ink.opacity(0.2))
                             .scaleEffect(i < displayedScore ? 1 : 0.4)
                             .opacity(i < displayedScore ? 1 : 0.4)
                     }
@@ -90,10 +90,14 @@ struct OnboardingQuizResultStep: View {
             .padding(.horizontal, 24)
             .padding(.top, compact ? 4 : 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // A softer wash of the gold accent rather than the saturated,
-            // full-strength color — easier on the eyes for a full-screen fill.
-            .background(Theme.gold.opacity(0.55))
-            .background(Theme.background)
+            // Same clean white + floating-emoji treatment as the rest of the
+            // onboarding flow, instead of a full-strength gold fill.
+            .background(
+                ZStack {
+                    Theme.background
+                    OnboardingDecor(variant: 1)
+                }
+            )
             .task {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { titleVisible = true }
                 try? await Task.sleep(for: .milliseconds(350))
