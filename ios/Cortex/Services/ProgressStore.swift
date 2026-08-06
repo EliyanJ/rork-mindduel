@@ -6,6 +6,7 @@ import Observation
 @Observable
 final class ProgressStore {
     private static let storageKey = "cortex.progress.v1"
+    private static let firstLessonReviewPromptKey = "cortex.review.firstLessonPrompted.v1"
 
     // MARK: - Livres economy tuning
     static let freeLessonDailyLimit = 1
@@ -157,6 +158,16 @@ final class ProgressStore {
         rolloverIfNeeded()
         progress.dailyUsage.lessonsCompleted += 1
         save()
+    }
+
+    /// True exactly once, the first time it is called after a lesson
+    /// completes — the ideal moment to surface Apple's native "rate the
+    /// app" prompt (right after a first small win, never interrupting a
+    /// failure or a mid-session moment). Every later call returns false.
+    func shouldPromptReviewAfterFirstLesson() -> Bool {
+        guard !UserDefaults.standard.bool(forKey: Self.firstLessonReviewPromptKey) else { return false }
+        UserDefaults.standard.set(true, forKey: Self.firstLessonReviewPromptKey)
+        return true
     }
 
     @discardableResult

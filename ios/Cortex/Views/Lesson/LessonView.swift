@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 struct LessonLaunch: Identifiable {
@@ -140,6 +141,7 @@ struct LessonView: View {
         .onChange(of: session.phase) { _, newPhase in
             guard newPhase == .completed, !session.isLevelFailed, !session.isRecapFailed else { return }
             buildPostLessonQueueIfNeeded()
+            requestReviewIfFirstLessonEver()
         }
     }
 
@@ -183,6 +185,22 @@ struct LessonView: View {
             queue.append(.unlock(kind))
         }
         postScreenQueue = queue
+    }
+
+    /// Surfaces Apple's native "rate the app" sheet right after the very
+    /// first lesson ever completed successfully — a real win, before any
+    /// friction, and never more than once (`shouldPromptReviewAfterFirstLesson`
+    /// guards that). iOS silently ignores the call if it decides the moment
+    /// isn't right (e.g. quota already used this year).
+    private func requestReviewIfFirstLessonEver() {
+        guard model.store.shouldPromptReviewAfterFirstLesson() else { return }
+        Task {
+            try? await Task.sleep(for: .seconds(1.2))
+            if let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+                AppStore.requestReview(in: scene)
+            }
+        }
     }
 
     private func retryNow() {

@@ -17,6 +17,7 @@ struct FriendsSection: View {
                 .foregroundStyle(Theme.ink)
 
             addFriendField
+            ContactInviteButton()
 
             if let confirmationMessage {
                 Text(confirmationMessage)

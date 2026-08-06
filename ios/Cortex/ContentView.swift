@@ -74,6 +74,11 @@ struct ContentView: View {
             await NotificationService.shared.requestAuthorization()
             await refreshReminders()
         }
+        // Same reasoning for App Tracking Transparency: only ask once the
+        // player has seen the app's value, and only once ever per install.
+        Task {
+            await TrackingManager.requestAuthorizationIfNeeded()
+        }
     }
 
     private func refreshReminders() async {
