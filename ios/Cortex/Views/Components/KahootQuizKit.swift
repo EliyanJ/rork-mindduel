@@ -184,7 +184,54 @@ struct QuestionRevealBeat: View {
     }
 }
 
-// MARK: - Periodic scoreboard
+// MARK: - Vote distribution ("who answered what") reveal chart
+
+/// The Kahoot moment right after time's up: a bar per answer showing how
+/// many people picked it, the correct one glowing green and the rest dim.
+/// Sits above the answer tiles during the reveal beat.
+struct QuestionVoteBars: View {
+    let options: [String]
+    let counts: [Int]
+    let correctAnswer: String
+
+    private var maxCount: Int { max(counts.max() ?? 0, 1) }
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            ForEach(Array(options.enumerated()), id: \.offset) { index, option in
+                let isCorrect = option.comparisonKey == correctAnswer.comparisonKey
+                let count = index < counts.count ? counts[index] : 0
+                VStack(spacing: 6) {
+                    Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(isCorrect ? Theme.success : Theme.quizInkMuted.opacity(0.6))
+                    Text("\(count)")
+                        .font(.system(.caption, design: .rounded, weight: .heavy))
+                        .foregroundStyle(isCorrect ? Theme.success : Theme.quizInkMuted)
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isCorrect ? Theme.success : AnswerBadgeStyle.style(at: index).color.opacity(0.3))
+                        .frame(height: barHeight(for: count))
+                        .overlay(alignment: .top) {
+                            AnswerBadgeStyle.style(at: index).shape(size: 14)
+                                .opacity(isCorrect ? 1 : 0.6)
+                                .padding(.top, 6)
+                        }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: 96, alignment: .bottom)
+        .padding(.horizontal, 4)
+        .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)))
+    }
+
+    private func barHeight(for count: Int) -> CGFloat {
+        let fraction = CGFloat(count) / CGFloat(maxCount)
+        return max(10, fraction * 58)
+    }
+}
+
+// MARK: - Interactive leaderboard page
 
 struct QuizLeaderboardEntry: Identifiable, Hashable {
     let id: String
@@ -192,13 +239,18 @@ struct QuizLeaderboardEntry: Identifiable, Hashable {
     let emoji: String
     let score: Int
     let isYou: Bool
+    var previousRank: Int? = nil
 }
 
-/// White, airy "tableau des scores" shown every 2 questions — works for a
-/// 1v1 duel (2 entries) all the way up to a 20-player party (top 5).
+/// A real, full-screen "classement" page — not a dismissible popup — shown
+/// between questions. Rows reorder with a spring as scores change (pass the
+/// update through `withAnimation` at the call site), each carries an up/down
+/// arrow versus its rank before this round, and the biggest riser gets a
+/// callout banner at the bottom, Kahoot-style.
 struct QuizLeaderboardOverlay: View {
     let entries: [QuizLeaderboardEntry]
-    var title: String = "Tableau des scores"
+    var title: String = "Classement"
+    var subtitle: String? = nil
     var autoDismissAfter: Double? = 2.4
     var onDismiss: (() -> Void)?
 
@@ -206,46 +258,158 @@ struct QuizLeaderboardOverlay: View {
         entries.sorted { $0.score > $1.score }
     }
 
-    var body: some View {
-        VStack(spacing: 16) {
-            Text(title)
-                .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.quizInk)
-                .padding(.top, 20)
-            VStack(spacing: 10) {
-                ForEach(Array(ranked.enumerated()), id: \.element.id) { index, entry in
-                    HStack(spacing: 12) {
-                        Text(rankLabel(index + 1))
-                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                            .frame(width: 30)
-                            .foregroundStyle(index < 3 ? Theme.gold.mix(with: .black, by: 0.2) : Theme.quizInkMuted)
-                        Text(entry.emoji).font(.system(size: 20))
-                        Text(entry.name)
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
-                            .lineLimit(1)
-                        Spacer()
-                        Text("\(entry.score)")
-                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                            .foregroundStyle(Theme.quizInkMuted)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(entry.isYou ? Theme.primary.opacity(0.08) : Theme.quizCanvas)
-                    )
-                }
+    private var you: (entry: QuizLeaderboardEntry, rank: Int)? {
+        ranked.enumerated().first { $0.element.isYou }.map { (entry: $0.element, rank: $0.offset + 1) }
+    }
+
+    /// The entry that gained the most ranks since the previous board, if any.
+    private var biggestRiser: (entry: QuizLeaderboardEntry, delta: Int)? {
+        ranked.enumerated()
+            .compactMap { index, entry -> (QuizLeaderboardEntry, Int)? in
+                guard let previous = entry.previousRank else { return nil }
+                let delta = previous - (index + 1)
+                return delta > 0 ? (entry, delta) : nil
             }
-            .padding(.horizontal, 16)
-            Spacer(minLength: 8)
+            .max { $0.1 < $1.1 }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            ScrollView {
+                VStack(spacing: 10) {
+                    ForEach(Array(ranked.enumerated()), id: \.element.id) { index, entry in
+                        row(entry: entry, rank: index + 1)
+                    }
+                }
+                .padding(16)
+                .padding(.bottom, biggestRiser != nil ? 64 : 16)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
+        .overlay(alignment: .bottom) {
+            if let biggestRiser {
+                riserToast(biggestRiser.entry, delta: biggestRiser.delta)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 18)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.4), value: biggestRiser?.entry.id)
         .task {
             guard let autoDismissAfter else { return }
             try? await Task.sleep(for: .seconds(autoDismissAfter))
             onDismiss?()
         }
+    }
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            Text(title)
+                .font(.system(.title3, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.quizInk)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(Theme.quizInkMuted)
+            }
+            if let you {
+                HStack(spacing: 12) {
+                    Text(you.entry.emoji)
+                        .font(.system(size: 24))
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.primary.opacity(0.12)))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Toi")
+                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.primary)
+                        Text("\(you.entry.score) pts")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(Theme.quizInkMuted)
+                    }
+                    Spacer()
+                    rankBadge(you.rank)
+                }
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Theme.primary.opacity(0.08)))
+                .padding(.horizontal, 16)
+            }
+        }
+        .padding(.top, 18)
+        .padding(.bottom, 14)
+    }
+
+    private func rankBadge(_ rank: Int) -> some View {
+        Text("#\(rank)")
+            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Theme.primary))
+    }
+
+    private func row(entry: QuizLeaderboardEntry, rank: Int) -> some View {
+        HStack(spacing: 12) {
+            Text(rankLabel(rank))
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .frame(width: 30)
+                .foregroundStyle(rank <= 3 ? Theme.gold.mix(with: .black, by: 0.2) : Theme.quizInkMuted)
+            Text(entry.emoji).font(.system(size: 20))
+            Text(entry.name)
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
+                .lineLimit(1)
+            Spacer()
+            rankArrow(entry: entry, rank: rank)
+            Text("\(entry.score)")
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.quizInkMuted)
+                .contentTransition(.numericText())
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(entry.isYou ? Theme.primary.opacity(0.1) : Theme.quizCanvas)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(entry.isYou ? Theme.primary.opacity(0.35) : .clear, lineWidth: 1.5)
+                )
+        )
+        .id(entry.id)
+    }
+
+    @ViewBuilder
+    private func rankArrow(entry: QuizLeaderboardEntry, rank: Int) -> some View {
+        if let previous = entry.previousRank {
+            let delta = previous - rank
+            if delta > 0 {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(Theme.success)
+            } else if delta < 0 {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(Theme.danger)
+            }
+        }
+    }
+
+    private func riserToast(_ entry: QuizLeaderboardEntry, delta: Int) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.up")
+                .font(.system(size: 14, weight: .heavy))
+            Text("\(entry.name) est monté de \(delta) place\(delta > 1 ? "s" : "") !")
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .lineLimit(1)
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(Capsule().fill(Theme.success))
+        .shadow(color: Theme.success.opacity(0.35), radius: 12, y: 4)
     }
 
     private func rankLabel(_ rank: Int) -> String {

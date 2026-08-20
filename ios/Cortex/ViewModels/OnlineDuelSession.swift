@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 /// Real online ranked duel: joins the matchmaking queue (HTTP polling),
 /// then connects to the match room over WebSocket. The server drives the
@@ -54,7 +55,11 @@ final class OnlineDuelSession {
     private(set) var searchSeconds: Int = 0
     private(set) var isPreviewing: Bool = false
     private(set) var showScoreboard: Bool = false
+    private(set) var lastPlayerAnswerText: String?
+    private(set) var lastOpponentAnswerText: String?
+    private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
 
+    private var previousRanks: [String: Int] = [:]
     private var socket: URLSessionWebSocketTask?
     private var queueTask: Task<Void, Never>?
     private var receiveTask: Task<Void, Never>?
@@ -282,6 +287,15 @@ final class OnlineDuelSession {
         let myCorrect = mine?["correct"] as? Bool ?? false
         let theirCorrect = theirs?["correct"] as? Bool ?? false
         let theirTimeMs = theirs?["timeMs"] as? Double ?? roundDuration * 1000
+        lastPlayerAnswerText = mine?["answer"] as? String
+        lastOpponentAnswerText = theirs?["answer"] as? String
+
+        // Snapshot the rank order before this round's points land, so the
+        // leaderboard page can show who just overtook whom.
+        previousRanks = [
+            "you": playerScore >= opponentScore ? 1 : 2,
+            "opp": opponentScore >= playerScore ? 1 : 2
+        ]
 
         lastPlayerPoints = myPoints
         lastOpponentPoints = theirPoints
@@ -323,10 +337,14 @@ final class OnlineDuelSession {
 
         if (index + 1) % 2 == 0 {
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(1.6))
-                guard let self, self.phase == .reveal else { return }
-                self.showScoreboard = true
                 try? await Task.sleep(for: .seconds(2.2))
+                guard let self, self.phase == .reveal else { return }
+                self.leaderboardEntries = [
+                    QuizLeaderboardEntry(id: "you", name: "Toi", emoji: you.emoji, score: self.playerScore, isYou: true, previousRank: self.previousRanks["you"]),
+                    QuizLeaderboardEntry(id: "opp", name: opp.name, emoji: opp.emoji, score: self.opponentScore, isYou: false, previousRank: self.previousRanks["opp"])
+                ]
+                withAnimation(.spring(duration: 0.4)) { self.showScoreboard = true }
+                try? await Task.sleep(for: .seconds(3))
                 self.showScoreboard = false
             }
         }

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 /// Drives one party game end-to-end: HTTP-polls the lobby until it is full
 /// (real players trickling in, then bots after 15s server-side), opens the
@@ -72,7 +73,10 @@ final class PartySession {
     private(set) var pointsDelta: Int = 0
     private(set) var reputationDelta: Int = 0
     private(set) var winningTeam: String?
+    private(set) var voteCounts: [Int] = []
+    private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
 
+    private var previousBoardRanks: [String: Int] = [:]
     private var scoresAtRoundStart: [String: Int] = [:]
     private var socket: URLSessionWebSocketTask?
     private var queueTask: Task<Void, Never>?
@@ -308,6 +312,14 @@ final class PartySession {
             lastPlayerPoints = (scores[youId] ?? 0) - (scoresAtRoundStart[youId] ?? 0)
         }
 
+        // The server only reports how many people answered correctly, not
+        // which wrong option each of them picked (it never sees question
+        // content) — so wrong votes are distributed evenly across the wrong
+        // options while the player's own pick is always exact.
+        let correctCount = raw["correctCount"] as? Int ?? (lastPlayerCorrect ? 1 : 0)
+        let totalAnswered = raw["totalAnswered"] as? Int ?? 1
+        voteCounts = distributedVoteCounts(correctCount: correctCount, totalAnswered: totalAnswered, question: question)
+
         store.recordAnswer(
             questionId: question.id,
             disciplineId: questionDiscipline[question.id] ?? "",
@@ -326,6 +338,30 @@ final class PartySession {
 
         updateLeaderboard(revealIndex: index)
         phase = .reveal
+    }
+
+    private func distributedVoteCounts(correctCount: Int, totalAnswered: Int, question: Question) -> [Int] {
+        guard let correctIndex = currentOptions.firstIndex(where: { $0.comparisonKey == question.answer.comparisonKey }) else {
+            return Array(repeating: 0, count: currentOptions.count)
+        }
+        var counts = Array(repeating: 0, count: currentOptions.count)
+        counts[correctIndex] = max(0, correctCount)
+        let wrongIndices = currentOptions.indices.filter { $0 != correctIndex }
+        var remaining = max(0, totalAnswered - correctCount)
+        // Make sure the player's own pick always shows up accurately.
+        if !lastPlayerCorrect, let mine = playerAnswer, let mineIndex = currentOptions.firstIndex(of: mine) {
+            counts[mineIndex] += 1
+            remaining = max(0, remaining - 1)
+        }
+        if !wrongIndices.isEmpty {
+            let share = remaining / wrongIndices.count
+            var leftover = remaining % wrongIndices.count
+            for wrongIndex in wrongIndices {
+                counts[wrongIndex] += share
+                if leftover > 0 { counts[wrongIndex] += 1; leftover -= 1 }
+            }
+        }
+        return counts
     }
 
     /// Recomputes the top 5 every 2 questions, and fires the "surge" callout
@@ -364,8 +400,15 @@ final class PartySession {
         }
 
         if (revealIndex + 1) % 2 == 0 {
-            topBoard = Array(ranked.prefix(5))
-            showLeaderboard = true
+            let newTop = Array(ranked.prefix(5))
+            leaderboardEntries = newTop.map {
+                QuizLeaderboardEntry(id: $0.id, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: $0.isYou, previousRank: previousBoardRanks[$0.id])
+            }
+            for (index, entry) in newTop.enumerated() {
+                previousBoardRanks[entry.id] = index + 1
+            }
+            topBoard = newTop
+            withAnimation(.spring(duration: 0.4)) { showLeaderboard = true }
         }
     }
 

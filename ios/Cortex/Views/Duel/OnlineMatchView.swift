@@ -35,14 +35,18 @@ struct OnlineMatchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
-        .sheet(isPresented: Binding(get: { session.showScoreboard }, set: { _ in })) {
-            QuizLeaderboardOverlay(entries: [
-                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: session.you?.emoji ?? "🧠", score: session.playerScore, isYou: true),
-                QuizLeaderboardEntry(id: "opp", name: session.opponent?.name ?? "Adversaire", emoji: session.opponent?.emoji ?? "🎯", score: session.opponentScore, isYou: false)
-            ])
-            .presentationDetents([.height(320)])
-            .presentationDragIndicator(.visible)
+        .overlay {
+            if session.showScoreboard {
+                QuizLeaderboardOverlay(
+                    entries: session.leaderboardEntries,
+                    subtitle: "Question \(session.currentIndex + 1)/\(session.questions.count)",
+                    autoDismissAfter: nil,
+                    onDismiss: nil
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
+        .animation(.spring(duration: 0.35), value: session.showScoreboard)
         .task { session.start() }
         .onDisappear { session.cancel() }
     }
@@ -191,17 +195,26 @@ private struct OnlineQuestionStage: View {
                     QuestionRevealBeat()
                 } else {
                     ScrollView {
-                        VStack(spacing: 10) {
-                            ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
-                                KahootOptionButton(
-                                    index: index,
-                                    text: option,
-                                    isCorrect: option.comparisonKey == question.answer.comparisonKey,
-                                    isPicked: option == session.playerAnswer,
-                                    isReveal: isReveal,
-                                    isDisabled: session.playerHasAnswered || isReveal
-                                ) {
-                                    session.answer(option)
+                        VStack(spacing: 14) {
+                            if isReveal {
+                                QuestionVoteBars(
+                                    options: session.currentOptions,
+                                    counts: voteCounts(question: question),
+                                    correctAnswer: question.answer
+                                )
+                            }
+                            VStack(spacing: 10) {
+                                ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
+                                    KahootOptionButton(
+                                        index: index,
+                                        text: option,
+                                        isCorrect: option.comparisonKey == question.answer.comparisonKey,
+                                        isPicked: option == session.playerAnswer,
+                                        isReveal: isReveal,
+                                        isDisabled: session.playerHasAnswered || isReveal
+                                    ) {
+                                        session.answer(option)
+                                    }
                                 }
                             }
                         }
@@ -277,6 +290,16 @@ private struct OnlineQuestionStage: View {
             .padding(.vertical, 3)
             .background(Capsule().fill(Theme.gold))
             .transition(.scale.combined(with: .opacity))
+    }
+
+    /// The server only tells each client its own answer text plus the
+    /// opponent's — exact for a 1v1, unlike the bigger party rooms.
+    private func voteCounts(question: Question) -> [Int] {
+        session.currentOptions.map { option in
+            let mine = session.lastPlayerAnswerText == option ? 1 : 0
+            let theirs = session.lastOpponentAnswerText == option ? 1 : 0
+            return mine + theirs
+        }
     }
 
     @ViewBuilder

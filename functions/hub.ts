@@ -1565,7 +1565,7 @@ export class Hub extends DurableObject {
       partyId: lobbyId,
       mode: lobby.mode,
       seed,
-      rounds: 3,
+      rounds: 1,
       questionsPerRound: 20,
       roundDuration: 10,
       players: allPlayers,

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 /// Real-time PvP duel engine (Kahoot-style) against a simulated opponent:
 /// simultaneous questions, locked buzzers, speed bonus and ELO update.
@@ -54,9 +55,13 @@ final class DuelSession {
     private(set) var results: [RoundResult] = []
     private(set) var eloChange: Int = 0
     private(set) var showScoreboard: Bool = false
+    private(set) var botAnswer: String?
+    private(set) var voteCounts: [Int] = []
+    private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
 
     private var playerAnswerTime: Double?
     private var runTask: Task<Void, Never>?
+    private var previousRanks: [String: Int] = [:]
 
     init(catalog: ContentCatalog, store: ProgressStore, disciplineId: String? = nil) {
         self.store = store
@@ -128,6 +133,7 @@ final class DuelSession {
         playerAnswer = nil
         playerAnswerTime = nil
         botHasAnswered = false
+        botAnswer = nil
 
         // A short "read the question first" beat, Kahoot-style, before the
         // answers unlock and the round timer starts ticking.
@@ -137,6 +143,9 @@ final class DuelSession {
         timeRemaining = Self.roundDuration
         let botTime = Double.random(in: 2.5...12.5)
         let botCorrect = Double.random(in: 0...1) < 0.6
+        botAnswer = botCorrect
+            ? question.answer
+            : (currentOptions.first { $0.comparisonKey != question.answer.comparisonKey } ?? question.answer)
         phase = .question
 
         var elapsed: Double = 0
@@ -159,11 +168,22 @@ final class DuelSession {
         let effectiveBotTime = min(botTime, Self.roundDuration)
         let botPoints = botCorrect ? 100 + Int((1 - effectiveBotTime / Self.roundDuration) * 100) : 0
 
+        // Snapshot the rank order before this round's points land, so the
+        // leaderboard page can show who just overtook whom.
+        previousRanks = [
+            "you": playerScore >= botScore ? 1 : 2,
+            "bot": botScore >= playerScore ? 1 : 2
+        ]
+
         lastPlayerPoints = playerPoints
         lastBotPoints = botPoints
         playerScore += playerPoints
         botScore += botPoints
         if playerCorrect { Haptics.success() } else { Haptics.error() }
+
+        voteCounts = currentOptions.map { option in
+            (playerAnswer == option ? 1 : 0) + (botAnswer == option ? 1 : 0)
+        }
 
         results.append(RoundResult(
             id: question.id,
@@ -192,11 +212,15 @@ final class DuelSession {
         ))
 
         phase = .reveal
-        try await Task.sleep(for: .seconds(1.6))
+        try await Task.sleep(for: .seconds(2.2))
 
         if (index + 1) % 2 == 0, index < questions.count - 1 {
-            showScoreboard = true
-            try await Task.sleep(for: .seconds(2.2))
+            leaderboardEntries = [
+                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "\u{1F9E0}", score: playerScore, isYou: true, previousRank: previousRanks["you"]),
+                QuizLeaderboardEntry(id: "bot", name: opponent.name, emoji: opponent.emoji, score: botScore, isYou: false, previousRank: previousRanks["bot"])
+            ]
+            withAnimation(.spring(duration: 0.4)) { showScoreboard = true }
+            try await Task.sleep(for: .seconds(3))
             showScoreboard = false
         }
     }

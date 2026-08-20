@@ -23,14 +23,18 @@ struct DuelMatchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
-        .sheet(isPresented: Binding(get: { session.showScoreboard }, set: { _ in })) {
-            QuizLeaderboardOverlay(entries: [
-                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "🧠", score: session.playerScore, isYou: true),
-                QuizLeaderboardEntry(id: "bot", name: session.opponent.name, emoji: session.opponent.emoji, score: session.botScore, isYou: false)
-            ])
-            .presentationDetents([.height(320)])
-            .presentationDragIndicator(.visible)
+        .overlay {
+            if session.showScoreboard {
+                QuizLeaderboardOverlay(
+                    entries: session.leaderboardEntries,
+                    subtitle: "Question \(session.currentIndex + 1)/\(session.questions.count)",
+                    autoDismissAfter: nil,
+                    onDismiss: nil
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
+        .animation(.spring(duration: 0.35), value: session.showScoreboard)
         .task { session.start() }
         .onDisappear { session.cancel() }
     }
@@ -139,17 +143,22 @@ private struct DuelQuestionStage: View {
                     QuestionRevealBeat()
                 } else {
                     ScrollView {
-                        VStack(spacing: 10) {
-                            ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
-                                KahootOptionButton(
-                                    index: index,
-                                    text: option,
-                                    isCorrect: option.comparisonKey == question.answer.comparisonKey,
-                                    isPicked: option == session.playerAnswer,
-                                    isReveal: isReveal,
-                                    isDisabled: session.playerHasAnswered || isReveal
-                                ) {
-                                    session.answer(option)
+                        VStack(spacing: 14) {
+                            if isReveal {
+                                QuestionVoteBars(options: session.currentOptions, counts: session.voteCounts, correctAnswer: question.answer)
+                            }
+                            VStack(spacing: 10) {
+                                ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
+                                    KahootOptionButton(
+                                        index: index,
+                                        text: option,
+                                        isCorrect: option.comparisonKey == question.answer.comparisonKey,
+                                        isPicked: option == session.playerAnswer,
+                                        isReveal: isReveal,
+                                        isDisabled: session.playerHasAnswered || isReveal
+                                    ) {
+                                        session.answer(option)
+                                    }
                                 }
                             }
                         }

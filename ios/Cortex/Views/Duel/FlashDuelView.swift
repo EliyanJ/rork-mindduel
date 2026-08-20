@@ -98,12 +98,15 @@ private final class FlashSession {
     private(set) var lastGain = 0
     private(set) var finalEntries: [FinalEntry] = []
     private(set) var showScoreboard: Bool = false
+    private(set) var voteCounts: [Int] = []
 
     private let store: ProgressStore
     private let questionDiscipline: [String: String]
     private var timerTask: Task<Void, Never>?
     private var revealTask: Task<Void, Never>?
     private var roundStartedAt: Date?
+    private var previousRanks: [String: Int] = [:]
+    private var lastRivalAnswers: [String] = []
 
     var currentQuestion: Question? {
         questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
@@ -111,9 +114,11 @@ private final class FlashSession {
 
     /// You + every rival, ranked \u2014 fed to the periodic scoreboard.
     var liveLeaderboard: [QuizLeaderboardEntry] {
-        var entries = rivals.map { QuizLeaderboardEntry(id: $0.id.uuidString, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: false) }
-        entries.append(QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "🧠", score: score, isYou: true))
-        return entries
+        var entries = rivals.map {
+            QuizLeaderboardEntry(id: $0.id.uuidString, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: false, previousRank: previousRanks[$0.id.uuidString])
+        }
+        entries.append(QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "🧠", score: score, isYou: true, previousRank: previousRanks["you"]))
+        return entries.sorted { $0.score > $1.score }
     }
 
     init(catalog: ContentCatalog, store: ProgressStore, capacity: Int) {
@@ -242,13 +247,26 @@ private final class FlashSession {
     /// Rivals gain a plausible amount every round too, so the interim
     /// scoreboard shown every 2 questions reflects a real, live race.
     private func settleRivals() {
+        guard let question = currentQuestion else { return }
+        lastRivalAnswers = []
         for index in rivals.indices {
             let correct = Double.random(in: 0...1) < (0.3 + rivals[index].skill * 0.35)
             let speedFraction = Double.random(in: 0.2...1)
             let gain = correct ? 100 + Int((speedFraction * 100).rounded()) : 0
             rivals[index].score += gain
+            let pick = correct
+                ? question.answer
+                : (currentOptions.first { $0.comparisonKey != question.answer.comparisonKey } ?? question.answer)
+            lastRivalAnswers.append(pick)
+        }
+        voteCounts = currentOptions.map { option in
+            let mine = (playerAnswer == option) ? 1 : 0
+            let rivalHits = lastRivalAnswers.filter { $0 == option }.count
+            return mine + rivalHits
         }
         if (currentIndex + 1) % 2 == 0 {
+            let ranked = liveLeaderboard
+            for (index, entry) in ranked.enumerated() { previousRanks[entry.id] = index + 1 }
             revealScoreboardSoon()
         }
     }
@@ -256,8 +274,8 @@ private final class FlashSession {
     private func revealScoreboardSoon() {
         Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(650))
-            await MainActor.run { self?.showScoreboard = true }
-            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run { withAnimation(.spring(duration: 0.4)) { self?.showScoreboard = true } }
+            try? await Task.sleep(for: .seconds(2.6))
             await MainActor.run { self?.showScoreboard = false }
         }
     }
@@ -439,17 +457,22 @@ private struct FlashQuestionBody: View {
                 if isPreview {
                     QuestionRevealBeat()
                 } else {
-                    VStack(spacing: 10) {
-                        ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
-                            KahootOptionButton(
-                                index: index,
-                                text: option,
-                                isCorrect: option.comparisonKey == question.answer.comparisonKey,
-                                isPicked: option == session.playerAnswer,
-                                isReveal: isRevealing,
-                                isDisabled: isRevealing
-                            ) {
-                                session.answer(option)
+                    VStack(spacing: 14) {
+                        if isRevealing {
+                            QuestionVoteBars(options: session.currentOptions, counts: session.voteCounts, correctAnswer: question.answer)
+                        }
+                        VStack(spacing: 10) {
+                            ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
+                                KahootOptionButton(
+                                    index: index,
+                                    text: option,
+                                    isCorrect: option.comparisonKey == question.answer.comparisonKey,
+                                    isPicked: option == session.playerAnswer,
+                                    isReveal: isRevealing,
+                                    isDisabled: isRevealing
+                                ) {
+                                    session.answer(option)
+                                }
                             }
                         }
                     }

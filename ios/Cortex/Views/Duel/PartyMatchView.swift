@@ -29,20 +29,20 @@ struct PartyMatchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
-        .sheet(isPresented: Binding(
-            get: { session.showLeaderboard },
-            set: { _ in }
-        )) {
-            QuizLeaderboardOverlay(
-                entries: session.topBoard.map {
-                    QuizLeaderboardEntry(id: $0.id, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: $0.isYou)
-                },
-                title: "Classement"
-            )
-            .presentationDetents([.height(360)])
-            .presentationDragIndicator(.visible)
+        .overlay {
+            if session.showLeaderboard {
+                QuizLeaderboardOverlay(
+                    entries: session.leaderboardEntries,
+                    title: "Classement",
+                    subtitle: "Top 5 · Question \(session.currentQuestionInRound + 1)/\(session.ticket?.questionsPerRound ?? 20)",
+                    autoDismissAfter: nil,
+                    onDismiss: nil
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
         .animation(.spring(duration: 0.35), value: session.surge)
+        .animation(.spring(duration: 0.35), value: session.showLeaderboard)
     }
 
     private var questionBody: some View {
@@ -50,7 +50,7 @@ struct PartyMatchView: View {
             scoreHeader
             if let question = session.currentQuestion {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Manche \(session.currentRound + 1)/3 · Question \(session.currentQuestionInRound + 1)/20")
+                    Text("Question \(session.currentGlobalIndex + 1)/\(session.totalQuestions)")
                         .font(.system(.caption, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.quizInkMuted)
                     Text(question.prompt)
@@ -63,17 +63,22 @@ struct PartyMatchView: View {
                     QuestionRevealBeat()
                 } else {
                     ScrollView {
-                        VStack(spacing: 10) {
-                            ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
-                                KahootOptionButton(
-                                    index: index,
-                                    text: option,
-                                    isCorrect: option.comparisonKey == question.answer.comparisonKey,
-                                    isPicked: option == session.playerAnswer,
-                                    isReveal: isReveal,
-                                    isDisabled: session.playerAnswer != nil || isReveal
-                                ) {
-                                    session.answer(option)
+                        VStack(spacing: 14) {
+                            if isReveal {
+                                QuestionVoteBars(options: session.currentOptions, counts: session.voteCounts, correctAnswer: question.answer)
+                            }
+                            VStack(spacing: 10) {
+                                ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
+                                    KahootOptionButton(
+                                        index: index,
+                                        text: option,
+                                        isCorrect: option.comparisonKey == question.answer.comparisonKey,
+                                        isPicked: option == session.playerAnswer,
+                                        isReveal: isReveal,
+                                        isDisabled: session.playerAnswer != nil || isReveal
+                                    ) {
+                                        session.answer(option)
+                                    }
                                 }
                             }
                         }
