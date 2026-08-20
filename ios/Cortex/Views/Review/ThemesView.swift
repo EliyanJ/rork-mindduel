@@ -131,7 +131,7 @@ struct ThemesView: View {
             }
             .padding(.horizontal, 16)
 
-            Text("\(totalPackCount) packs écrits à la main.")
+            Text("\(totalPackCount) thèmes écrits à la main.")
                 .font(.system(.caption, design: .rounded, weight: .semibold))
                 .foregroundStyle(Theme.inkMuted)
         }
