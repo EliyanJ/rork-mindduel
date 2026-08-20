@@ -7,8 +7,9 @@ struct LessonItem: Identifiable, Hashable {
     var id: String { question.id }
 }
 
-/// Drives a lesson or a review session: question flow, answer checking,
-/// feedback, XP and spaced-repetition recording.
+/// Drives a lesson: question flow, answer checking, feedback, XP, and the
+/// per-question mastery data used by recap rings. A wrong answer costs
+/// one heart of energy.
 @Observable
 final class LessonSession {
     enum Phase: Equatable {
@@ -130,6 +131,7 @@ final class LessonSession {
             Haptics.success()
         } else {
             Haptics.error()
+            store.consumeEnergy()
             wrongAnswers.append(WrongAnswer(
                 question: question,
                 selectedAnswer: selection,

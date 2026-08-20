@@ -229,13 +229,6 @@ final class AppModel {
 
     // MARK: - Lookups
 
-    func dueLessonItems(limit: Int = 10) -> [LessonItem] {
-        Array(store.dueQuestionIds().prefix(limit)).compactMap { id in
-            guard let entry = questionIndex[id] else { return nil }
-            return LessonItem(question: entry.question, disciplineId: entry.disciplineId)
-        }
-    }
-
     func discipline(withId id: String) -> Discipline? {
         catalog.disciplines.first { $0.id == id }
     }
@@ -247,25 +240,50 @@ final class AppModel {
         return (all.filter { store.isRingPassed($0.id) }.count, all.count)
     }
 
-    /// Due-for-review questions restricted to one discipline, for the
-    /// "Réviser" action on a theme card.
-    func dueLessonItems(disciplineId: String, limit: Int = 10) -> [LessonItem] {
-        var picked: [LessonItem] = []
-        for id in store.dueQuestionIds() {
-            guard let entry = questionIndex[id], entry.disciplineId == disciplineId else { continue }
-            picked.append(LessonItem(question: entry.question, disciplineId: entry.disciplineId))
-            if picked.count >= limit { break }
-        }
-        return picked
+    // MARK: - Theme packs (chapters of a discipline)
+
+    /// Chapters of a discipline in published path order.
+    func orderedChapters(for discipline: Discipline) -> [Chapter] {
+        PathLayout.apply(
+            order: layout.chapterOrder[discipline.id] ?? [],
+            to: discipline.chapters,
+            id: { $0.id }
+        )
     }
 
-    /// Average memory strength across every question of a discipline (unseen = 0).
-    func masteryPercent(for discipline: Discipline) -> Double {
-        let questionCount = discipline.chapters.reduce(0) { $0 + $1.questionCount }
-        guard questionCount > 0 else { return 0 }
-        let total = store.progress.reviewItems.values
-            .filter { $0.disciplineId == discipline.id }
-            .reduce(0.0) { $0 + $1.strength }
-        return min(1, total / Double(questionCount))
+    /// Rings of one chapter, in playing order (normals first, recap last).
+    func rings(inChapter chapterId: String, disciplineId: String) -> [PathRing] {
+        (ringsByDiscipline[disciplineId] ?? []).filter { $0.chapterId == chapterId }
+    }
+
+    /// A pack counts as done once every ring of its chapter has been passed.
+    func isPackDone(chapterId: String, disciplineId: String) -> Bool {
+        let chapterRings = rings(inChapter: chapterId, disciplineId: disciplineId)
+        guard !chapterRings.isEmpty else { return false }
+        return chapterRings.allSatisfy { store.isRingPassed($0.id) }
+    }
+
+    /// Done vs. total packs for a discipline — drives the "X / Y terminés"
+    /// header of a theme detail page.
+    func packProgress(disciplineId: String) -> (done: Int, total: Int) {
+        guard let discipline = discipline(withId: disciplineId) else { return (0, 0) }
+        let chapters = orderedChapters(for: discipline)
+        return (chapters.filter { isPackDone(chapterId: $0.id, disciplineId: disciplineId) }.count, chapters.count)
+    }
+
+    /// Average best score across a discipline's rings (0–1), shown as
+    /// "Moy. X %" on the theme detail header.
+    func averageScore(disciplineId: String) -> Double {
+        let all = ringsByDiscipline[disciplineId] ?? []
+        guard !all.isEmpty else { return 0 }
+        let total = all.reduce(0.0) { $0 + (store.ringRecord($1.id)?.bestScore ?? 0) }
+        return total / Double(all.count)
+    }
+
+    /// The next ring to play inside a chapter: the first not yet passed, or
+    /// the last ring when everything is cleared (replay).
+    func nextPlayableRing(chapterId: String, disciplineId: String) -> PathRing? {
+        let chapterRings = rings(inChapter: chapterId, disciplineId: disciplineId)
+        return chapterRings.first { !store.isRingPassed($0.id) } ?? chapterRings.last
     }
 }

@@ -97,10 +97,7 @@ struct ContentView: View {
                 HomeView()
             }
             Tab("Thèmes", systemImage: "square.grid.2x2.fill", value: AppTab.themes) {
-                ThemesView { disciplineId in
-                    model.selectedDisciplineId = disciplineId
-                    selectedTab = .parcours
-                }
+                ThemesView()
             }
             Tab("Duel", systemImage: "bolt.fill", value: AppTab.duel) {
                 DuelHomeView()

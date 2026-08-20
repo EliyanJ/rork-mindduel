@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var lessonLaunch: LessonLaunch?
     @State private var lockedRingPending: PathRing?
     @State private var cooldownRing: PathRing?
+    @State private var isEnergyOutPresented = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,39 +49,22 @@ struct HomeView: View {
             )
             .presentationDetents([.height(340)])
         }
+        .sheet(isPresented: $isEnergyOutPresented) {
+            EnergyRefillView(progressStore: model.store, quitTitle: "Fermer") {
+                isEnergyOutPresented = false
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     private var statsHeader: some View {
         HStack(spacing: 8) {
-            if let discipline = model.selectedDiscipline {
-                Button {
-                    Haptics.tap()
-                    model.selectedDisciplineId = nil
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 13, weight: .bold))
-                        Image(systemName: discipline.icon)
-                            .font(.system(size: 14, weight: .bold))
-                        Text(discipline.name)
-                            .font(.system(size: 17, weight: .heavy, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.65)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(discipline.color))
-                    .overlay(Capsule().stroke(Theme.ink, lineWidth: 2))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Revenir au parcours mélangé")
-            } else {
-                MinduelWordmark()
-            }
+            MinduelWordmark()
             Spacer()
             HStack(spacing: 6) {
-                StatPill(icon: "bolt.fill", color: Theme.gold, value: "\(model.store.progress.xp)")
+                StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
+                StatPill(icon: "heart.fill", color: Theme.danger, value: "\(model.store.energy)")
+                StatPill(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)")
             }
         }
         .padding(.horizontal, 16)
@@ -158,6 +142,11 @@ struct HomeView: View {
         }
         guard model.lock(for: ring) == nil else {
             Haptics.error()
+            return
+        }
+        if model.store.energy <= 0 {
+            Haptics.error()
+            isEnergyOutPresented = true
             return
         }
         if !bypassCheck, !model.store.canStartLesson(isPremium: store.isPremium) {
@@ -248,46 +237,5 @@ private struct AlternatingBackgroundPattern: View {
         .opacity(0.32)
         .allowsHitTesting(false)
         .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// Explains why a failed recap is locked and points the player at revision.
-private struct RecapCooldownSheet: View {
-    let ring: PathRing
-    let unlockDate: Date
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 18) {
-            ZStack {
-                Circle()
-                    .fill(Theme.danger.opacity(0.12))
-                    .frame(width: 92, height: 92)
-                Image(systemName: "hourglass")
-                    .font(.system(size: 38, weight: .bold))
-                    .foregroundStyle(Theme.danger)
-            }
-            .padding(.top, 12)
-
-            VStack(spacing: 8) {
-                Text("Récap verrouillé")
-                    .font(.system(.title2, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.ink)
-                Text("Le récap de « \(ring.chapterTitle) » se débloque \(unlockDate, style: .relative). Profites-en pour revoir tes erreurs dans l'onglet Révisions.")
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(Theme.inkMuted)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Button("J'ai compris") {
-                Haptics.tap()
-                dismiss()
-            }
-            .buttonStyle(ChunkyButtonStyle(color: Theme.primary))
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity)
     }
 }

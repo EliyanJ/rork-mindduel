@@ -1,25 +1,29 @@
 import Foundation
 import Observation
 
-/// Persists user progress (XP, streak, chapter mastery, spaced repetition, ELO)
-/// and implements the spaced-repetition scheduling logic.
+/// Persists user progress (XP, streak, ring mastery, energy, ELO) and holds the
+/// per-question mastery data that personalises the recap rings.
 @Observable
 final class ProgressStore {
     private static let storageKey = "cortex.progress.v1"
     private static let firstLessonReviewPromptKey = "cortex.review.firstLessonPrompted.v1"
 
-    // MARK: - Livres economy tuning
+    // MARK: - Rubis economy tuning
     static let freeLessonDailyLimit = 1
     static let premiumLessonDailyLimit = 4
-    static let freeReviewDailyCap = 10
-    static let extraReviewGrant = 5
-    static let extraReviewCost = 5
     static let extraLessonCost = 10
     static let rewardedAdLivres = 2
     static let rewardedAdDailyCap = 20
     static let streakLivreReward = 1
+    static let ringRubisReward = 5
+    static let recapRubisReward = 10
     static let rankedDuelAdInterval = 2
     static let botMatchAdInterval = 3
+
+    // MARK: - Energy (hearts) tuning
+    static let energyMax = 5
+    static let energyRegenMinutes = 120
+    static let energyRefillCost = 15
 
     // MARK: - Spaced repetition (ease-factor / SM-2 inspired)
     private static let easeDefault: Double = 2.5
@@ -180,31 +184,63 @@ final class ProgressStore {
         return true
     }
 
-    // MARK: - Reviews quota
+    // MARK: - Energy (hearts)
 
-    func reviewDailyCap() -> Int {
-        Self.freeReviewDailyCap + dailyUsage.extraReviewCardsUnlocked
+    /// Current energy with any elapsed regen applied. One heart every
+    /// `energyRegenMinutes` while below the cap; nil timer at full energy.
+    var energy: Int {
+        regenEnergyIfNeeded()
+        return progress.energy
     }
 
-    func remainingFreeReviewCards(isPremium: Bool) -> Int {
-        isPremium ? Int.max : max(0, reviewDailyCap() - dailyUsage.reviewCardsUsed)
-    }
-
-    func registerReviewCardsUsed(_ count: Int) {
-        guard count > 0 else { return }
-        rolloverIfNeeded()
-        progress.dailyUsage.reviewCardsUsed += count
+    private func regenEnergyIfNeeded(reference: Date = .now) {
+        guard progress.energy < Self.energyMax, let since = progress.energyRegenAt else { return }
+        let gained = Int(reference.timeIntervalSince(since) / 60) / Self.energyRegenMinutes
+        guard gained > 0 else { return }
+        progress.energy = min(Self.energyMax, progress.energy + gained)
+        if progress.energy >= Self.energyMax {
+            progress.energyRegenAt = nil
+        } else {
+            progress.energyRegenAt = since.addingTimeInterval(TimeInterval(gained * Self.energyRegenMinutes * 60))
+        }
         save()
     }
 
+    /// Spends one heart (wrong answer in a lesson). Starts the regen timer
+    /// when dropping below the cap.
+    func consumeEnergy(reference: Date = .now) {
+        regenEnergyIfNeeded(reference: reference)
+        guard progress.energy > 0 else { return }
+        if progress.energy == Self.energyMax { progress.energyRegenAt = reference }
+        progress.energy -= 1
+        save()
+    }
+
+    /// Buys a full energy refill with rubis. Returns false when too poor.
     @discardableResult
-    func unlockExtraReviewCards() -> Bool {
-        rolloverIfNeeded()
-        guard progress.livresBalance >= Self.extraReviewCost else { return false }
-        progress.livresBalance -= Self.extraReviewCost
-        progress.dailyUsage.extraReviewCardsUnlocked += Self.extraReviewGrant
+    func refillEnergyWithRubis() -> Bool {
+        regenEnergyIfNeeded()
+        guard progress.livresBalance >= Self.energyRefillCost else { return false }
+        progress.livresBalance -= Self.energyRefillCost
+        progress.energy = Self.energyMax
+        progress.energyRegenAt = nil
         save()
         return true
+    }
+
+    /// Grants energy for watching a rewarded ad (shares the daily ad cap).
+    func grantEnergyFromAd(_ amount: Int = 1) {
+        rolloverIfNeeded()
+        guard canWatchRewardedAd() else { return }
+        regenEnergyIfNeeded()
+        progress.dailyUsage.rewardedAdsWatched += 1
+        progress.energy = min(Self.energyMax, progress.energy + amount)
+        if progress.energy >= Self.energyMax {
+            progress.energyRegenAt = nil
+        } else if progress.energyRegenAt == nil {
+            progress.energyRegenAt = .now
+        }
+        save()
     }
 
     // MARK: - Rewarded ads
@@ -295,10 +331,16 @@ final class ProgressStore {
     /// Records the outcome of a ring. A failed recap locks itself until the
     /// next calendar day so the player revises before retrying, exactly like
     /// the chapter-level cooldown but expressed in days rather than hours.
+    /// The first successful pass of a ring awards rubis.
     func recordRingResult(ringId: String, kind: RingKind, score: Double, reference: Date = .now) {
         var record = progress.chapterRecords[ringId] ?? ChapterRecord(bestScore: 0, attempts: 0)
         record.attempts += 1
-        record.bestScore = max(record.bestScore, score)
+        let previousBest = record.bestScore
+        record.bestScore = max(previousBest, score)
+        let passThreshold = kind == .recap ? Self.ringMasteryScore : Self.ringPassScore
+        if previousBest < passThreshold, score >= passThreshold {
+            progress.livresBalance += kind == .recap ? Self.recapRubisReward : Self.ringRubisReward
+        }
         if kind == .recap {
             record.lockedUntil = score >= Self.ringMasteryScore ? nil : Self.startOfNextDay(after: reference)
         }
@@ -314,6 +356,8 @@ final class ProgressStore {
 
     /// Question ids the player has recently got wrong, hardest lapses first.
     /// Drives the personalised content of a recap ring.
+    /// Kept purely as internal mastery data — there is no standalone review
+    /// tab anymore, only the recap rings on the path.
     func laspedQuestionIds(among candidates: [String]) -> [String] {
         let candidateSet = Set(candidates)
         return progress.reviewItems.values
@@ -371,25 +415,6 @@ final class ProgressStore {
         progress.xp += max(5, score / 10)
         save()
         registerActivity()
-    }
-
-    func dueQuestionIds(reference: Date = .now) -> [String] {
-        progress.reviewItems.values
-            .filter { $0.dueDate <= reference }
-            .sorted { $0.dueDate < $1.dueDate }
-            .map(\.questionId)
-    }
-
-    /// Average retention per discipline, decayed when reviews are overdue.
-    func memorizationScore(disciplineId: String, reference: Date = .now) -> Double? {
-        let items = progress.reviewItems.values.filter { $0.disciplineId == disciplineId }
-        guard !items.isEmpty else { return nil }
-        let calendar = Calendar.current
-        let total = items.reduce(0.0) { partial, item in
-            let overdueDays = max(0, calendar.dateComponents([.day], from: item.dueDate, to: reference).day ?? 0)
-            return partial + item.strength * pow(0.85, Double(overdueDays))
-        }
-        return total / Double(items.count)
     }
 
     var masteredChaptersCount: Int {

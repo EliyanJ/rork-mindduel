@@ -4,6 +4,9 @@ import SwiftUI
 enum Theme {
     static let background = Color.white
     static let card = Color.white
+    /// Soft lavender-grey canvas used by the Thèmes screens so the pastel
+    /// packs stand out like in the reference app.
+    static let canvas = Color(hex: "F6F5FA")
     static let line = Color(hex: "ECECEC")
     static let ink = Color(hex: "3B2E28")
     static let inkMuted = Color(hex: "9B8A7C")

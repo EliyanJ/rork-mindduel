@@ -129,7 +129,28 @@ struct LessonView: View {
                             .scaleEffect(1.5)
                     }
             }
+
+            // Out of hearts mid-lesson: the player must refill to continue.
+            if model.store.energy <= 0, session.phase != .completed, !isWatchingAd {
+                Color.black.opacity(0.45)
+                    .ignoresSafeArea()
+                    .overlay {
+                        EnergyRefillView(
+                            progressStore: model.store,
+                            quitTitle: "Arrêter la leçon"
+                        ) {
+                            dismiss()
+                        }
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 28).fill(Theme.card))
+                        .padding(20)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
+                    .transition(.opacity)
+                    .zIndex(5)
+            }
         }
+        .animation(.spring(duration: 0.3), value: model.store.energy <= 0)
         .alert("Erreur", isPresented: .init(
             get: { AdsManager.shared.lastError != nil },
             set: { if !$0 { AdsManager.shared.lastError = nil } }
@@ -242,6 +263,20 @@ struct LessonView: View {
         }
     }
 
+    /// Live hearts row: one heart lost per wrong answer, over the course of
+    /// the lesson. Full hearts stay coloured, spent hearts go hollow.
+    private var heartsRow: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<ProgressStore.energyMax, id: \.self) { index in
+                Image(systemName: index < model.store.energy ? "heart.fill" : "heart")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(index < model.store.energy ? Theme.danger : Theme.inkMuted.opacity(0.4))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .accessibilityLabel("Énergie : \(model.store.energy) cœurs sur \(ProgressStore.energyMax)")
+    }
+
     private var lessonContent: some View {
         VStack(spacing: 0) {
             topBar
@@ -284,6 +319,7 @@ struct LessonView: View {
                     .foregroundStyle(Theme.inkMuted)
                     .lineLimit(1)
                     .frame(minWidth: 32)
+                heartsRow
             }
             if session.isMultiSessionLevel {
                 HStack(spacing: 6) {

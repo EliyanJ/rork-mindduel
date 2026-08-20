@@ -301,6 +301,7 @@ struct ProfileView: View {
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             statCard(icon: "text.book.closed.fill", color: Theme.gold, value: "\(progress.xp)", label: "XP total")
             statCard(icon: "diamond.fill", color: Theme.livres, value: "\(progress.livresBalance)", label: "Rubis")
+            statCard(icon: "heart.fill", color: Theme.danger, value: "\(model.store.energy)/\(ProgressStore.energyMax)", label: "Énergie")
             statCard(icon: "crown.fill", color: Theme.primary, value: "\(model.store.masteredChaptersCount)", label: "Étapes maîtrisées")
             statCard(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(progress.duelsWon)", label: "Duels gagnés")
             statCard(icon: "chart.line.uptrend.xyaxis", color: Theme.success, value: online.profile.map { "\($0.displayPoints)" } ?? "\(progress.elo)", label: online.profile != nil ? "Points classés" : "Niveau local")
@@ -330,28 +331,29 @@ struct ProfileView: View {
 
     private var masteryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Maîtrise par thème")
+            Text("Progression par thème")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.ink)
             ForEach(model.catalog.disciplines) { discipline in
-                let mastery = model.masteryPercent(for: discipline)
+                let progress = model.themeRingProgress(disciplineId: discipline.id)
+                let ratio = progress.total > 0 ? Double(progress.done) / Double(progress.total) : 0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Label(discipline.name, systemImage: discipline.icon)
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(discipline.color)
                         Spacer()
-                        Text("\(Int(mastery * 100)) %")
+                        Text("\(progress.done)/\(progress.total) ronds")
                             .font(.system(.subheadline, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
                     }
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Theme.line.opacity(0.6))
-                            if mastery > 0 {
+                            if ratio > 0 {
                                 Capsule()
                                     .fill(discipline.color)
-                                    .frame(width: max(10, geo.size.width * mastery))
+                                    .frame(width: max(10, geo.size.width * ratio))
                             }
                         }
                     }

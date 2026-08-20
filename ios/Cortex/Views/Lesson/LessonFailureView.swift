@@ -210,7 +210,7 @@ struct LessonFailureView: View {
                     .font(.system(.title3, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.ink)
 
-                Text("Revois tes erreurs ci-dessus, puis entraîne-toi dans l'onglet Révisions. Les ronds de ce chapitre restent jouables en attendant.")
+                Text("Revois tes erreurs ci-dessus, puis rejoue les ronds de ce pack pour t'entraîner avant de retenter.")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(Theme.inkMuted)
                     .multilineTextAlignment(.center)
@@ -222,8 +222,8 @@ struct LessonFailureView: View {
                 onLater()
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "brain.head.profile")
-                    Text("Aller réviser")
+                    Image(systemName: "map.fill")
+                    Text("Retour au parcours")
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: Theme.primary))

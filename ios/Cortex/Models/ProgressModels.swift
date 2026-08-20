@@ -173,9 +173,13 @@ nonisolated struct UserProgress: Codable {
     var duelsPlayed: Int
     var duelsWon: Int
 
-    // MARK: - Monetization (livres economy)
+    // MARK: - Monetization (rubis + énergie economy)
     var livresBalance: Int
     var lastLivreAwardDay: Date?
+    /// Hearts spent on wrong answers in lessons; refills over time or with rubis.
+    var energy: Int
+    /// When the energy regen timer started; nil while energy is full.
+    var energyRegenAt: Date?
     var dailyUsage: DailyUsage
     var duelsSinceLastAd: Int
     var botMatchesSinceLastAd: Int
@@ -196,6 +200,8 @@ nonisolated struct UserProgress: Codable {
         duelsWon: 0,
         livresBalance: 0,
         lastLivreAwardDay: nil,
+        energy: 5,
+        energyRegenAt: nil,
         dailyUsage: .empty(day: Calendar.current.startOfDay(for: .now)),
         duelsSinceLastAd: 0,
         botMatchesSinceLastAd: 0,
@@ -204,7 +210,8 @@ nonisolated struct UserProgress: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case xp, streak, lastActiveDay, activeDays, chapterRecords, reviewItems, elo, duelsPlayed, duelsWon
-        case livresBalance, lastLivreAwardDay, dailyUsage, duelsSinceLastAd, botMatchesSinceLastAd
+        case livresBalance, lastLivreAwardDay, energy, energyRegenAt
+        case dailyUsage, duelsSinceLastAd, botMatchesSinceLastAd
         case chapterProgress
     }
 
@@ -220,6 +227,8 @@ nonisolated struct UserProgress: Codable {
         duelsWon: Int,
         livresBalance: Int,
         lastLivreAwardDay: Date?,
+        energy: Int,
+        energyRegenAt: Date?,
         dailyUsage: DailyUsage,
         duelsSinceLastAd: Int,
         botMatchesSinceLastAd: Int,
@@ -236,6 +245,8 @@ nonisolated struct UserProgress: Codable {
         self.duelsWon = duelsWon
         self.livresBalance = livresBalance
         self.lastLivreAwardDay = lastLivreAwardDay
+        self.energy = energy
+        self.energyRegenAt = energyRegenAt
         self.dailyUsage = dailyUsage
         self.duelsSinceLastAd = duelsSinceLastAd
         self.botMatchesSinceLastAd = botMatchesSinceLastAd
@@ -257,6 +268,9 @@ nonisolated struct UserProgress: Codable {
         duelsWon = try container.decode(Int.self, forKey: .duelsWon)
         livresBalance = try container.decodeIfPresent(Int.self, forKey: .livresBalance) ?? 0
         lastLivreAwardDay = try container.decodeIfPresent(Date.self, forKey: .lastLivreAwardDay)
+        // Energy arrived with the rubis/hearts economy — older saves start full.
+        energy = try container.decodeIfPresent(Int.self, forKey: .energy) ?? 5
+        energyRegenAt = try container.decodeIfPresent(Date.self, forKey: .energyRegenAt)
         dailyUsage = try container.decodeIfPresent(DailyUsage.self, forKey: .dailyUsage)
             ?? .empty(day: Calendar.current.startOfDay(for: .now))
         duelsSinceLastAd = try container.decodeIfPresent(Int.self, forKey: .duelsSinceLastAd) ?? 0

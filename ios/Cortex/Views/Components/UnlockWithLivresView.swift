@@ -1,21 +1,15 @@
 import SwiftUI
 
-/// Shared "quota reached" screen for both lessons and reviews: explains the
-/// daily free limit, offers to spend rubis or watch a rewarded ad to top
-/// up the balance, and always shows a way to buy more rubis or subscribe.
+/// Shared "quota reached" screen: explains the daily free lesson limit,
+/// offers to spend rubis or watch a rewarded ad to top up the balance.
 struct UnlockWithLivresView: View {
     enum Kind {
         case lesson
-        case review
 
-        var title: String { self == .lesson ? "Leçon du jour terminée" : "Révisions du jour terminées" }
-        var message: String {
-            self == .lesson
-                ? "Tu as utilisé ta leçon gratuite d'aujourd'hui. Débloque-en une de plus avec des rubis, ou reviens demain."
-                : "Tu as atteint tes 10 cartes gratuites d'aujourd'hui. Débloque 5 cartes de plus avec des rubis, ou reviens demain."
-        }
-        var cost: Int { self == .lesson ? ProgressStore.extraLessonCost : ProgressStore.extraReviewCost }
-        var unlockLabel: String { self == .lesson ? "Débloquer cette leçon" : "Débloquer 5 cartes" }
+        var title: String { "Leçon du jour terminée" }
+        var message: String { "Tu as utilisé ta leçon gratuite d'aujourd'hui. Débloque-en une de plus avec des rubis, ou reviens demain." }
+        var cost: Int { ProgressStore.extraLessonCost }
+        var unlockLabel: String { "Débloquer cette leçon" }
     }
 
     let kind: Kind
@@ -111,7 +105,7 @@ struct UnlockWithLivresView: View {
     }
 
     private func unlock() {
-        let ok = kind == .lesson ? progressStore.unlockExtraLesson() : progressStore.unlockExtraReviewCards()
+        let ok = progressStore.unlockExtraLesson()
         if ok {
             Haptics.success()
             dismiss()
