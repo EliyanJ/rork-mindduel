@@ -38,7 +38,7 @@ struct PartyMatchView: View {
                     autoDismissAfter: nil,
                     onDismiss: nil
                 )
-                .transition(.move(edge: .trailing).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.spring(duration: 0.35), value: session.surge)
@@ -60,7 +60,7 @@ struct PartyMatchView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if session.isPreviewing {
-                    QuestionRevealBeat()
+                    QuestionRevealBeat(duration: PartySession.readingBeat)
                 } else {
                     ScrollView {
                         VStack(spacing: 14) {
@@ -86,6 +86,9 @@ struct PartyMatchView: View {
                     .scrollBounceBehavior(.basedOnSize)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
+            }
+            if !session.isPreviewing, !isReveal, let capacity = session.ticket?.players.count {
+                LiveVoteCounter(answered: session.answeredCount, total: capacity)
             }
             statusBanner
         }
@@ -119,10 +122,7 @@ struct PartyMatchView: View {
                     teamPill(label: "B", score: teamScores.b, isMine: session.you?.team == "B")
                 }
             } else if isReveal, session.lastPlayerPoints > 0 {
-                Text("+\(session.lastPlayerPoints)")
-                    .font(.system(.title3, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.gold)
-                    .transition(.scale.combined(with: .opacity))
+                AnimatedPointsBadge(points: session.lastPlayerPoints)
             }
         }
     }

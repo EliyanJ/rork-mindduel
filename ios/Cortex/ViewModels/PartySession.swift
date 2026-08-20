@@ -75,6 +75,9 @@ final class PartySession {
     private(set) var winningTeam: String?
     private(set) var voteCounts: [Int] = []
     private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
+    private(set) var answeredCount: Int = 0
+
+    static let readingBeat: Double = 5
 
     private var previousBoardRanks: [String: Int] = [:]
     private var scoresAtRoundStart: [String: Int] = [:]
@@ -83,6 +86,7 @@ final class PartySession {
     private var receiveTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
     private var surgeTask: Task<Void, Never>?
+    private var voteProgressTask: Task<Void, Never>?
     private var roundStartedAt: Date?
     private var playerAnswerTime: Double?
     private var finishedHandled = false
@@ -131,6 +135,8 @@ final class PartySession {
         receiveTask?.cancel()
         timerTask?.cancel()
         surgeTask?.cancel()
+        voteProgressTask?.cancel()
+        SoundManager.shared.stopAmbience()
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
         guard !leftBeforeStart, ticket == nil else { return }
@@ -226,6 +232,7 @@ final class PartySession {
         case "start":
             phase = .countdown
             Haptics.medium()
+            SoundManager.shared.startAmbience()
         case "round":
             guard let index = raw["globalIndex"] as? Int else { return }
             startRound(index: index, durationMs: raw["durationMs"] as? Double ?? roundDuration * 1000)
@@ -252,14 +259,16 @@ final class PartySession {
         timeRemaining = durationMs / 1000
         surge = nil
         showLeaderboard = false
+        answeredCount = 0
         phase = .question
         runLocalTimer(total: durationMs / 1000)
+        simulateVoteProgress(total: durationMs / 1000)
 
         // Cosmetic "read the question first" beat — the server's timer keeps
         // running underneath, so this stays purely a client-side reveal delay.
         isPreviewing = true
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.1))
+            try? await Task.sleep(for: .seconds(Self.readingBeat))
             guard let self, self.currentGlobalIndex == index else { return }
             self.isPreviewing = false
         }
@@ -267,6 +276,7 @@ final class PartySession {
 
     private func runLocalTimer(total: Double) {
         timerTask?.cancel()
+        SoundManager.shared.resetTension()
         timerTask = Task {
             var elapsed: Double = 0
             while elapsed < total && !Task.isCancelled {
@@ -274,8 +284,36 @@ final class PartySession {
                 elapsed += 0.05
                 if phase == .question {
                     timeRemaining = max(0, total - elapsed)
+                    if !isPreviewing {
+                        SoundManager.shared.pulseTension(fraction: timeRemaining / total)
+                    }
                 } else {
                     return
+                }
+            }
+        }
+    }
+
+    /// The server never streams individual party "someone just answered"
+    /// events (too chatty for 20 players), so the live "X/Y ont voté"
+    /// counter is simulated: it climbs on a plausible, staggered schedule
+    /// toward the full roster as the round plays out, and always includes
+    /// the local player's own answer the instant they lock one in.
+    private func simulateVoteProgress(total: Double) {
+        voteProgressTask?.cancel()
+        let capacity = max(ticket?.players.count ?? 1, 1)
+        voteProgressTask = Task { [weak self] in
+            guard let self else { return }
+            var settled = 1
+            await MainActor.run { self.answeredCount = min(settled, capacity) }
+            while settled < capacity && !Task.isCancelled {
+                let delay = Double.random(in: 0.2...0.9)
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled else { return }
+                settled += Int.random(in: 1...3)
+                await MainActor.run {
+                    guard self.phase == .question else { return }
+                    self.answeredCount = min(settled, capacity)
                 }
             }
         }
@@ -289,6 +327,7 @@ final class PartySession {
         let correct = option.comparisonKey == question.answer.comparisonKey
         lastPlayerCorrect = correct
         Haptics.tap()
+        answeredCount = max(answeredCount, 1)
         send([
             "type": "answer",
             "index": currentGlobalIndex,
@@ -334,7 +373,9 @@ final class PartySession {
             disciplineId: questionDiscipline[question.id] ?? "",
             level: nil
         ))
-        if lastPlayerCorrect { Haptics.success() } else { Haptics.error() }
+        if lastPlayerCorrect { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
+        voteProgressTask?.cancel()
+        if let capacity = ticket?.players.count { answeredCount = capacity }
 
         updateLeaderboard(revealIndex: index)
         phase = .reveal
@@ -409,6 +450,11 @@ final class PartySession {
             }
             topBoard = newTop
             withAnimation(.spring(duration: 0.4)) { showLeaderboard = true }
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(4.6))
+                guard let self, self.showLeaderboard else { return }
+                withAnimation(.spring(duration: 0.35)) { self.showLeaderboard = false }
+            }
         }
     }
 
@@ -420,6 +466,8 @@ final class PartySession {
         finishedHandled = true
         timerTask?.cancel()
         surgeTask?.cancel()
+        voteProgressTask?.cancel()
+        SoundManager.shared.stopAmbience()
         AnswerTelemetry.shared.flush()
 
         if let serverScores = raw["scores"] as? [String: Int] {

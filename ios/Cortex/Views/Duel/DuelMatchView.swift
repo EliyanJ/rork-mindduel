@@ -31,7 +31,7 @@ struct DuelMatchView: View {
                     autoDismissAfter: nil,
                     onDismiss: nil
                 )
-                .transition(.move(edge: .trailing).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.spring(duration: 0.35), value: session.showScoreboard)
@@ -44,15 +44,10 @@ struct DuelMatchView: View {
             Text("Prêt ?")
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(Theme.quizInkMuted)
-            Text("\(count)")
-                .font(.system(size: 110, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.duelAccent)
-                .id(count)
-                .transition(.scale(scale: 0.4).combined(with: .opacity))
+            CountdownDigits(value: count)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
-        .animation(.spring(duration: 0.35), value: count)
     }
 }
 
@@ -140,7 +135,7 @@ private struct DuelQuestionStage: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if isPreview {
-                    QuestionRevealBeat()
+                    QuestionRevealBeat(duration: DuelSession.readingBeat)
                 } else {
                     ScrollView {
                         VStack(spacing: 14) {
@@ -167,6 +162,7 @@ private struct DuelQuestionStage: View {
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
+            voteCounter
             statusBanner
         }
         .padding(16)
@@ -201,14 +197,14 @@ private struct DuelQuestionStage: View {
         VStack(alignment: alignment, spacing: 3) {
             HStack(spacing: 6) {
                 if alignment == .trailing, isReveal, points > 0 {
-                    pointsChip(points)
+                    AnimatedPointsBadge(points: points)
                 }
                 Text(emoji).font(.system(size: 26))
                 Text(name)
                     .font(.system(.subheadline, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.quizInk)
                 if alignment == .leading, isReveal, points > 0 {
-                    pointsChip(points)
+                    AnimatedPointsBadge(points: points)
                 }
             }
             Text("\(score)")
@@ -217,16 +213,6 @@ private struct DuelQuestionStage: View {
                 .contentTransition(.numericText())
                 .animation(.spring(duration: 0.5), value: score)
         }
-    }
-
-    private func pointsChip(_ points: Int) -> some View {
-        Text("+\(points)")
-            .font(.system(.caption, design: .rounded, weight: .heavy))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(Theme.gold))
-            .transition(.scale.combined(with: .opacity))
     }
 
     @ViewBuilder
@@ -255,5 +241,12 @@ private struct DuelQuestionStage: View {
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.quizCanvas))
         .animation(.easeOut(duration: 0.2), value: session.botHasAnswered)
         .animation(.easeOut(duration: 0.2), value: session.playerHasAnswered)
+    }
+
+    @ViewBuilder
+    private var voteCounter: some View {
+        if !isPreview, !isReveal {
+            LiveVoteCounter(answered: session.answeredCount, total: DuelSession.totalVoters)
+        }
     }
 }

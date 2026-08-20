@@ -58,6 +58,10 @@ final class OnlineDuelSession {
     private(set) var lastPlayerAnswerText: String?
     private(set) var lastOpponentAnswerText: String?
     private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
+    private(set) var answeredCount: Int = 0
+
+    static let totalVoters: Int = 2
+    static let readingBeat: Double = 5
 
     private var previousRanks: [String: Int] = [:]
     private var socket: URLSessionWebSocketTask?
@@ -195,12 +199,14 @@ final class OnlineDuelSession {
         case "start":
             phase = .countdown
             Haptics.medium()
+            SoundManager.shared.startAmbience()
         case "round":
             guard let index = raw["index"] as? Int else { return }
             startRound(index: index, durationMs: raw["durationMs"] as? Double ?? roundDuration * 1000)
         case "opponent_answered":
             if (raw["index"] as? Int) == currentIndex {
                 opponentHasAnswered = true
+                answeredCount = (playerAnswer != nil ? 1 : 0) + 1
             }
         case "reveal":
             handleReveal(raw)
@@ -223,6 +229,7 @@ final class OnlineDuelSession {
         playerAnswer = nil
         playerAnswerTime = nil
         opponentHasAnswered = false
+        answeredCount = 0
         roundStartedAt = .now
         timeRemaining = durationMs / 1000
         phase = .question
@@ -232,7 +239,7 @@ final class OnlineDuelSession {
         // running underneath, so this stays purely a client-side reveal delay.
         isPreviewing = true
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.1))
+            try? await Task.sleep(for: .seconds(Self.readingBeat))
             guard let self, self.currentIndex == index else { return }
             self.isPreviewing = false
         }
@@ -240,6 +247,7 @@ final class OnlineDuelSession {
 
     private func runLocalTimer(total: Double) {
         timerTask?.cancel()
+        SoundManager.shared.resetTension()
         timerTask = Task {
             var elapsed: Double = 0
             while elapsed < total && !Task.isCancelled {
@@ -247,6 +255,9 @@ final class OnlineDuelSession {
                 elapsed += 0.05
                 if phase == .question {
                     timeRemaining = max(0, total - elapsed)
+                    if !isPreviewing {
+                        SoundManager.shared.pulseTension(fraction: timeRemaining / total)
+                    }
                 } else {
                     return
                 }
@@ -261,6 +272,7 @@ final class OnlineDuelSession {
         playerAnswerTime = min(elapsed, roundDuration)
         let correct = option.comparisonKey == question.answer.comparisonKey
         Haptics.tap()
+        answeredCount = (opponentHasAnswered ? 1 : 0) + 1
         send([
             "type": "answer",
             "index": currentIndex,
@@ -332,7 +344,7 @@ final class OnlineDuelSession {
             disciplineId: questionDiscipline[question.id] ?? "",
             level: nil
         ))
-        if myCorrect { Haptics.success() } else { Haptics.error() }
+        if myCorrect { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
         phase = .reveal
 
         if (index + 1) % 2 == 0 {
@@ -344,7 +356,7 @@ final class OnlineDuelSession {
                     QuizLeaderboardEntry(id: "opp", name: opp.name, emoji: opp.emoji, score: self.opponentScore, isYou: false, previousRank: self.previousRanks["opp"])
                 ]
                 withAnimation(.spring(duration: 0.4)) { self.showScoreboard = true }
-                try? await Task.sleep(for: .seconds(3))
+                try? await Task.sleep(for: .seconds(4.2))
                 self.showScoreboard = false
             }
         }
@@ -357,6 +369,7 @@ final class OnlineDuelSession {
         }
         finishedHandled = true
         timerTask?.cancel()
+        SoundManager.shared.stopAmbience()
         // A ranked duel is shorter than one telemetry batch, so without an
         // explicit flush the whole match's answers would sit in memory and be
         // lost when the app is closed.

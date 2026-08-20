@@ -166,14 +166,44 @@ struct QuizTimerRing: View {
 
 /// The question appears alone for a short beat before the answer tiles
 /// slide in — the same suspense pause Kahoot gives a host reading the
-/// question aloud, compressed to fit a single phone screen.
+/// question aloud before the choices unlock. `duration` controls how long
+/// this beat lasts so call sites can show a live countdown ring.
 struct QuestionRevealBeat: View {
     var label: String = "Regarde bien…"
+    var duration: Double? = nil
+
+    @State private var remaining: Double = 0
 
     var body: some View {
         VStack(spacing: 10) {
-            ProgressView()
-                .tint(Theme.duelAccent)
+            if let duration {
+                ZStack {
+                    Circle().stroke(Theme.quizLine, lineWidth: 4)
+                    Circle()
+                        .trim(from: 0, to: max(0, min(1, remaining / duration)))
+                        .stroke(Theme.duelAccent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.linear(duration: 0.1), value: remaining)
+                    Text("\(Int(remaining.rounded(.up)))")
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.quizInk)
+                        .contentTransition(.numericText())
+                }
+                .frame(width: 40, height: 40)
+                .onAppear {
+                    remaining = duration
+                    Task {
+                        var elapsed: Double = 0
+                        while elapsed < duration {
+                            try? await Task.sleep(for: .milliseconds(100))
+                            elapsed += 0.1
+                            remaining = max(0, duration - elapsed)
+                        }
+                    }
+                }
+            } else {
+                ProgressView().tint(Theme.duelAccent)
+            }
             Text(label)
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .foregroundStyle(Theme.quizInkMuted)
@@ -181,6 +211,81 @@ struct QuestionRevealBeat: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
         .transition(.opacity)
+    }
+}
+
+// MARK: - Live "who has voted" counter
+
+/// A small pill that counts up in real time while players are locking in
+/// their answer — "10/12 ont voté" — so a round never feels frozen even
+/// when nobody around you seems to be doing anything.
+struct LiveVoteCounter: View {
+    let answered: Int
+    let total: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 11, weight: .bold))
+            Text("\(answered)/\(total) ont voté")
+                .font(.system(.caption, design: .rounded, weight: .heavy))
+                .contentTransition(.numericText())
+        }
+        .foregroundStyle(Theme.quizInkMuted)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Theme.quizCanvas))
+        .animation(.spring(duration: 0.3), value: answered)
+    }
+}
+
+// MARK: - Countdown digits
+
+/// The big "3-2-1" number used by every launch screen. Explicitly animates
+/// on every change of `value` (rather than depending on the call site
+/// remembering to wrap the mutation in `withAnimation`), so the digits
+/// always visibly scroll through instead of snapping.
+struct CountdownDigits: View {
+    let value: Int
+
+    var body: some View {
+        Text("\(value)")
+            .font(.system(size: 110, weight: .heavy, design: .rounded))
+            .foregroundStyle(Theme.duelAccent)
+            .id(value)
+            .transition(.asymmetric(
+                insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 1.3)),
+                removal: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.6))
+            ))
+            .animation(.spring(response: 0.42, dampingFraction: 0.68), value: value)
+    }
+}
+
+// MARK: - Animated points badge
+
+/// The "+120" callout shown right after a reveal. Punches in with an
+/// overshoot scale and a little upward drift instead of a flat fade, so
+/// the reward actually feels rewarding.
+struct AnimatedPointsBadge: View {
+    let points: Int
+    var color: Color = Theme.gold
+
+    @State private var didAppear = false
+
+    var body: some View {
+        Text("+\(points)")
+            .font(.system(.title2, design: .rounded, weight: .heavy))
+            .foregroundStyle(color)
+            .scaleEffect(didAppear ? 1 : 0.2)
+            .offset(y: didAppear ? -4 : 6)
+            .opacity(didAppear ? 1 : 0)
+            .onAppear {
+                didAppear = false
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+                    didAppear = true
+                }
+            }
+            .transition(.identity)
     }
 }
 
@@ -193,6 +298,10 @@ struct QuestionVoteBars: View {
     let options: [String]
     let counts: [Int]
     let correctAnswer: String
+
+    /// Bars start flat and grow into place on appear — a static chart never
+    /// sells the "votes coming in" feeling the way a rising bar does.
+    @State private var grown = false
 
     private var maxCount: Int { max(counts.max() ?? 0, 1) }
 
@@ -208,21 +317,28 @@ struct QuestionVoteBars: View {
                     Text("\(count)")
                         .font(.system(.caption, design: .rounded, weight: .heavy))
                         .foregroundStyle(isCorrect ? Theme.success : Theme.quizInkMuted)
+                        .contentTransition(.numericText())
                     RoundedRectangle(cornerRadius: 8)
                         .fill(isCorrect ? Theme.success : AnswerBadgeStyle.style(at: index).color.opacity(0.3))
-                        .frame(height: barHeight(for: count))
+                        .frame(height: grown ? barHeight(for: count) : 4)
                         .overlay(alignment: .top) {
-                            AnswerBadgeStyle.style(at: index).shape(size: 14)
-                                .opacity(isCorrect ? 1 : 0.6)
-                                .padding(.top, 6)
+                            if grown {
+                                AnswerBadgeStyle.style(at: index).shape(size: 14)
+                                    .opacity(isCorrect ? 1 : 0.6)
+                                    .padding(.top, 6)
+                                    .transition(.opacity)
+                            }
                         }
                 }
                 .frame(maxWidth: .infinity)
+                .animation(.spring(response: 0.5, dampingFraction: 0.72).delay(Double(index) * 0.08), value: grown)
             }
         }
         .frame(height: 96, alignment: .bottom)
         .padding(.horizontal, 4)
         .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)))
+        .onAppear { grown = true }
+        .onChange(of: counts) { grown = false; DispatchQueue.main.async { grown = true } }
     }
 
     private func barHeight(for count: Int) -> CGFloat {
@@ -376,7 +492,9 @@ struct QuizLeaderboardOverlay: View {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(entry.isYou ? Theme.primary.opacity(0.35) : .clear, lineWidth: 1.5)
                 )
+                .shadow(color: .black.opacity(entry.isYou ? 0.1 : 0), radius: 8, y: 3)
         )
+        .zIndex(entry.isYou ? 1 : 0)
         .id(entry.id)
     }
 

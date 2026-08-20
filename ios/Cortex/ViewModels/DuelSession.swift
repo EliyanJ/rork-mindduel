@@ -58,6 +58,10 @@ final class DuelSession {
     private(set) var botAnswer: String?
     private(set) var voteCounts: [Int] = []
     private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
+    private(set) var answeredCount: Int = 0
+
+    static let totalVoters: Int = 2
+    static let readingBeat: Double = 5
 
     private var playerAnswerTime: Double?
     private var runTask: Task<Void, Never>?
@@ -114,9 +118,11 @@ final class DuelSession {
             phase = .found
             try await Task.sleep(for: .seconds(1.8))
             for count in [3, 2, 1] {
-                phase = .countdown(count)
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { phase = .countdown(count) }
+                Haptics.tap()
                 try await Task.sleep(for: .seconds(0.8))
             }
+            SoundManager.shared.startAmbience()
             for index in questions.indices {
                 try await playRound(index: index)
             }
@@ -134,11 +140,12 @@ final class DuelSession {
         playerAnswerTime = nil
         botHasAnswered = false
         botAnswer = nil
+        answeredCount = 0
 
-        // A short "read the question first" beat, Kahoot-style, before the
-        // answers unlock and the round timer starts ticking.
+        // A short "read the question first" beat, Kahoot-style: the answers
+        // stay fully hidden while the question sinks in before unlocking.
         phase = .preview
-        try await Task.sleep(for: .seconds(1.3))
+        try await Task.sleep(for: .seconds(Self.readingBeat))
 
         timeRemaining = Self.roundDuration
         let botTime = Double.random(in: 2.5...12.5)
@@ -153,14 +160,18 @@ final class DuelSession {
             try await Task.sleep(for: .milliseconds(50))
             elapsed += 0.05
             timeRemaining = max(0, Self.roundDuration - elapsed)
+            SoundManager.shared.pulseTension(fraction: timeRemaining / Self.roundDuration)
             if !botHasAnswered && elapsed >= botTime {
                 botHasAnswered = true
             }
+            answeredCount = (playerAnswer != nil ? 1 : 0) + (botHasAnswered ? 1 : 0)
             if playerAnswer != nil && botHasAnswered {
                 break
             }
         }
         botHasAnswered = true
+        answeredCount = Self.totalVoters
+        SoundManager.shared.resetTension()
 
         let playerCorrect = playerAnswer.map { $0.comparisonKey == question.answer.comparisonKey } ?? false
         let answerTime = playerAnswerTime ?? Self.roundDuration
@@ -179,7 +190,7 @@ final class DuelSession {
         lastBotPoints = botPoints
         playerScore += playerPoints
         botScore += botPoints
-        if playerCorrect { Haptics.success() } else { Haptics.error() }
+        if playerCorrect { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
 
         voteCounts = currentOptions.map { option in
             (playerAnswer == option ? 1 : 0) + (botAnswer == option ? 1 : 0)
@@ -220,13 +231,14 @@ final class DuelSession {
                 QuizLeaderboardEntry(id: "bot", name: opponent.name, emoji: opponent.emoji, score: botScore, isYou: false, previousRank: previousRanks["bot"])
             ]
             withAnimation(.spring(duration: 0.4)) { showScoreboard = true }
-            try await Task.sleep(for: .seconds(3))
+            try await Task.sleep(for: .seconds(4.2))
             showScoreboard = false
         }
     }
 
     private func finish() {
         AnswerTelemetry.shared.flush()
+        SoundManager.shared.stopAmbience()
         let won = playerScore > botScore
         let draw = playerScore == botScore
         eloChange = draw ? 4 : (won ? 18 : -12)

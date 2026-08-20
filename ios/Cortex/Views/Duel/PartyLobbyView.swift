@@ -126,12 +126,7 @@ struct PartyLobbyView: View {
             Text("La partie commence")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.quizInkMuted)
-            Text("\(countdown)")
-                .font(.system(size: 90, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.duelAccent)
-                .contentTransition(.numericText())
-                .id(countdown)
-                .transition(.scale.combined(with: .opacity))
+            CountdownDigits(value: countdown)
         }
     }
 
@@ -140,10 +135,10 @@ struct PartyLobbyView: View {
         isCountingDown = true
         countdown = 3
         Task {
-            for value in stride(from: 3, through: 1, by: -1) {
-                withAnimation(.spring(duration: 0.3)) { countdown = value }
-                Haptics.tap()
+            for value in stride(from: 2, through: 1, by: -1) {
                 try? await Task.sleep(for: .seconds(1))
+                countdown = value
+                Haptics.tap()
             }
         }
     }

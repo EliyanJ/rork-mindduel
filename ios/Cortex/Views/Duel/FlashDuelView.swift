@@ -27,16 +27,18 @@ struct FlashDuelView: View {
             let s = FlashSession(catalog: catalog, store: store, capacity: capacity)
             session = s
         }
-        .sheet(isPresented: Binding(get: { session?.showScoreboard ?? false }, set: { _ in })) {
-            if let session {
+        .overlay {
+            if let session, session.showScoreboard {
                 QuizLeaderboardOverlay(
                     entries: session.liveLeaderboard,
-                    title: "Tableau des scores"
+                    title: "Tableau des scores",
+                    autoDismissAfter: nil,
+                    onDismiss: nil
                 )
-                .presentationDetents([.height(360)])
-                .presentationDragIndicator(.visible)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.spring(duration: 0.35), value: session?.showScoreboard ?? false)
     }
 
     @ViewBuilder
@@ -99,6 +101,9 @@ private final class FlashSession {
     private(set) var finalEntries: [FinalEntry] = []
     private(set) var showScoreboard: Bool = false
     private(set) var voteCounts: [Int] = []
+    private(set) var answeredCount: Int = 0
+
+    static let readingBeat: Double = 5
 
     private let store: ProgressStore
     private let questionDiscipline: [String: String]
@@ -159,10 +164,11 @@ private final class FlashSession {
         guard phase == .filling else { return }
         phase = .countdown
         Haptics.medium()
+        SoundManager.shared.startAmbience()
         Task { [weak self] in
             guard let self else { return }
             for value in stride(from: 3, through: 1, by: -1) {
-                await MainActor.run { withAnimation(.spring(duration: 0.3)) { self.countdown = value } }
+                await MainActor.run { self.countdown = value }
                 Haptics.tap()
                 try? await Task.sleep(for: .seconds(1))
             }
@@ -181,24 +187,27 @@ private final class FlashSession {
         playerAnswer = nil
         lastGain = 0
         roundStartedAt = nil
+        answeredCount = 0
 
-        // Kahoot-style beat: show the question alone for a moment before the
-        // answers unlock and the round timer starts.
+        // Kahoot-style beat: show the question alone — fully hidden answers —
+        // for a few seconds before the choices unlock and the timer starts.
         phase = .preview
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.1))
+            try? await Task.sleep(for: .seconds(Self.readingBeat))
             await MainActor.run {
                 guard let self, self.currentIndex == index else { return }
                 self.timeRemaining = Self.roundDuration
                 self.roundStartedAt = .now
                 self.phase = .question
                 self.runTimer()
+                self.simulateRivalVotes()
             }
         }
     }
 
     private func runTimer() {
         timerTask?.cancel()
+        SoundManager.shared.resetTension()
         timerTask = Task { [weak self] in
             guard let self else { return }
             var elapsed: Double = 0
@@ -208,6 +217,7 @@ private final class FlashSession {
                 await MainActor.run {
                     guard self.phase == .question else { return }
                     self.timeRemaining = max(0, Self.roundDuration - elapsed)
+                    SoundManager.shared.pulseTension(fraction: self.timeRemaining / Self.roundDuration)
                 }
                 if elapsed >= Self.roundDuration {
                     await MainActor.run { self.timeout() }
@@ -216,9 +226,26 @@ private final class FlashSession {
         }
     }
 
+    /// Rivals "vote" on a staggered schedule during the answer window so the
+    /// live "X/Y ont voté" counter climbs for real instead of jumping once.
+    private func simulateRivalVotes() {
+        answeredCount = 1
+        for _ in rivals.indices {
+            let delay = Double.random(in: 0.3...(Self.roundDuration * 0.85))
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                await MainActor.run {
+                    guard let self, self.phase == .question else { return }
+                    self.answeredCount = min(self.answeredCount + 1, self.rivals.count + 1)
+                }
+            }
+        }
+    }
+
     private func timeout() {
         guard phase == .question, playerAnswer == nil else { return }
         playerAnswer = ""
+        SoundManager.shared.playWrong()
         settleRivals()
         advanceSoon()
     }
@@ -239,7 +266,7 @@ private final class FlashSession {
             disciplineId: questionDiscipline[question.id] ?? "",
             correct: correct
         )
-        if correct { Haptics.success() } else { Haptics.error() }
+        if correct { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
         settleRivals()
         advanceSoon()
     }
@@ -264,6 +291,7 @@ private final class FlashSession {
             let rivalHits = lastRivalAnswers.filter { $0 == option }.count
             return mine + rivalHits
         }
+        answeredCount = rivals.count + 1
         if (currentIndex + 1) % 2 == 0 {
             let ranked = liveLeaderboard
             for (index, entry) in ranked.enumerated() { previousRanks[entry.id] = index + 1 }
@@ -275,7 +303,7 @@ private final class FlashSession {
         Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(650))
             await MainActor.run { withAnimation(.spring(duration: 0.4)) { self?.showScoreboard = true } }
-            try? await Task.sleep(for: .seconds(2.6))
+            try? await Task.sleep(for: .seconds(4.4))
             await MainActor.run { self?.showScoreboard = false }
         }
     }
@@ -294,6 +322,7 @@ private final class FlashSession {
     private func finish() {
         timerTask?.cancel()
         revealTask?.cancel()
+        SoundManager.shared.stopAmbience()
         var entries = rivals.map { rival in
             FinalEntry(name: rival.name, emoji: rival.emoji, score: rival.score, isYou: false)
         }
@@ -405,12 +434,7 @@ private struct FlashCountdownBody: View {
             Text("La partie commence")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.quizInkMuted)
-            Text("\(session.countdown)")
-                .font(.system(size: 90, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.duelAccent)
-                .contentTransition(.numericText())
-                .id(session.countdown)
-                .transition(.scale.combined(with: .opacity))
+            CountdownDigits(value: session.countdown)
         }
     }
 }
@@ -440,10 +464,7 @@ private struct FlashQuestionBody: View {
                     QuizTimerRing(remaining: session.timeRemaining, total: FlashSession.roundDuration, size: 46)
                 }
                 if isRevealing, session.lastGain > 0 {
-                    Text("+\(session.lastGain)")
-                        .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.gold)
-                        .transition(.scale.combined(with: .opacity))
+                    AnimatedPointsBadge(points: session.lastGain)
                 }
             }
 
@@ -455,11 +476,13 @@ private struct FlashQuestionBody: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if isPreview {
-                    QuestionRevealBeat()
+                    QuestionRevealBeat(duration: FlashSession.readingBeat)
                 } else {
                     VStack(spacing: 14) {
                         if isRevealing {
                             QuestionVoteBars(options: session.currentOptions, counts: session.voteCounts, correctAnswer: question.answer)
+                        } else {
+                            LiveVoteCounter(answered: session.answeredCount, total: session.rivals.count + 1)
                         }
                         VStack(spacing: 10) {
                             ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
