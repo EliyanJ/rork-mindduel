@@ -58,19 +58,19 @@ struct HomeView: View {
             }
             .presentationDetents([.medium])
         }
-        .sheet(isPresented: $isMenuPresented) {
+        .fullScreenCover(isPresented: $isMenuPresented) {
             if let lesson = visibleLesson,
                let discipline = model.discipline(withId: lesson.disciplineId) {
                 LessonsMenuView(
                     discipline: discipline,
                     lessons: model.lessons(inDiscipline: discipline.id),
                     currentLessonId: model.currentLesson?.id,
-                    focusedLessonId: focusedLessonId
+                    focusedLessonId: focusedLessonId,
+                    lessonProgress: { model.lessonRingCounts($0) }
                 ) { picked in
                     focusedLessonId = picked.id
                     isMenuPresented = false
                 }
-                .presentationDetents([.medium])
             }
         }
         .onChange(of: model.currentLesson?.id ?? "") { _, _ in
@@ -292,61 +292,85 @@ struct HomeView: View {
     }
 }
 
-/// Everything bundled inside one theme that unlocks from the hamburger: the
-/// sub-themes of this discipline, with progress and lock state on each row.
+/// Dedicated full page opened from the sticky banner's hamburger: the
+/// current theme's period as a header (back arrow + name, completion donut
+/// top-right), then every lesson of that theme as a big illustrated card,
+/// stacked one below the other.
 private struct LessonsMenuView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
     let discipline: Discipline
     let lessons: [PathLesson]
     let currentLessonId: String?
     let focusedLessonId: String?
+    let lessonProgress: (PathLesson) -> (done: Int, total: Int)
     let onPick: (PathLesson) -> Void
 
-    @Environment(\.dismiss) private var dismiss
+    private var overallProgress: Double {
+        let counts = lessons.reduce(into: (done: 0, total: 0)) { partial, lesson in
+            let count = lessonProgress(lesson)
+            partial.done += count.done
+            partial.total += count.total
+        }
+        return counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(discipline.name)
-                        .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    Text("Toutes les leçons de ce thème")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                Spacer()
-                Button {
-                    Haptics.tap()
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 22)
-            .padding(.bottom, 14)
-
+            header
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 16) {
                     ForEach(lessons) { lesson in
-                        row(for: lesson)
+                        card(for: lesson)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .padding(.bottom, 32)
             }
         }
         .background(Theme.canvas.ignoresSafeArea())
     }
 
+    private var header: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Button {
+                Haptics.tap()
+                dismiss()
+            } label: {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 20, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 40, height: 40)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("PÉRIODE ACTUELLE :")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(Theme.inkMuted)
+                Text(discipline.name.uppercased())
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            CircularProgressGauge(progress: overallProgress, color: discipline.color)
+                .padding(.top, 2)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 18)
+    }
+
     @ViewBuilder
-    private func row(for lesson: PathLesson) -> some View {
+    private func card(for lesson: PathLesson) -> some View {
         let color = discipline.color
-        let counts = model.lessonRingCounts(lesson)
+        let counts = lessonProgress(lesson)
+        let progress = counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
         let done = model.isLessonDone(lesson)
         let unlocked = model.isLessonUnlocked(lesson)
         let isCurrent = lesson.id == currentLessonId
@@ -360,52 +384,79 @@ private struct LessonsMenuView: View {
             Haptics.tap()
             onPick(lesson)
         } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(done ? color : (unlocked ? color.opacity(0.14) : Theme.lockedFill.opacity(0.7)))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: done ? "checkmark" : (unlocked ? "play.fill" : "lock.fill"))
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(done ? .white : (unlocked ? color : Theme.inkMuted))
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(lesson.title)
-                        .font(.system(.headline, design: .rounded, weight: .bold))
-                        .foregroundStyle(unlocked ? Theme.ink : Theme.inkMuted)
-                        .lineLimit(2)
-                    Text("\(counts.done)/\(counts.total) épreuves")
-                        .font(.system(.caption, design: .rounded, weight: .semibold))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                Spacer(minLength: 6)
-                if isCurrent {
-                    Text("EN COURS")
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
-                        .tracking(0.6)
+            ZStack(alignment: .bottomLeading) {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: unlocked
+                                ? [color.mix(with: .white, by: 0.15), color.mix(with: .black, by: 0.12)]
+                                : [Theme.lockedFill, Theme.lockedFill.mix(with: .black, by: 0.08)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(lesson.title.uppercased())
+                        .font(.system(size: 21, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(color))
-                } else {
-                    Image(systemName: isFocused ? "eye.fill" : "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                    Text("\(counts.done)/\(counts.total) épreuves")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .padding(18)
+
+                VStack {
+                    HStack {
+                        Spacer()
+                        statusBadge(done: done, unlocked: unlocked, isCurrent: isCurrent, progress: progress, color: color)
+                            .padding(12)
+                    }
+                    Spacer()
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Theme.card)
-            )
+            .frame(height: 132)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isFocused ? color : Theme.line, lineWidth: isFocused ? 2 : 1)
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(isFocused ? Color.white : Color.clear, lineWidth: 3)
             )
+            .shadow(color: .black.opacity(unlocked ? 0.14 : 0.05), radius: 10, y: 6)
         }
         .buttonStyle(.plain)
         .disabled(!unlocked)
+    }
+
+    @ViewBuilder
+    private func statusBadge(done: Bool, unlocked: Bool, isCurrent: Bool, progress: Double, color: Color) -> some View {
+        if isCurrent {
+            Text("EN COURS")
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .tracking(0.6)
+                .foregroundStyle(color)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(.white))
+        } else if done {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(.white, Theme.success)
+        } else if !unlocked {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(.white.opacity(0.25)))
+        } else {
+            Text("\(Int((progress * 100).rounded()))%")
+                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .foregroundStyle(color)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(.white))
+        }
     }
 }
 

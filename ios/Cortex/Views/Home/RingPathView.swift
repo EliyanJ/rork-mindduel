@@ -181,7 +181,7 @@ struct RingNodeView: View {
     private var tile: some View {
         ZStack {
             if state == .available {
-                RoundedRectangle(cornerRadius: tileCorner + 9)
+                Circle()
                     .stroke(ringAccent.opacity(0.35), lineWidth: 3.5)
                     .frame(width: tileWidth + 14, height: tileSize + 14)
                     .scaleEffect(isPulsing ? 1.05 : 0.94)
@@ -189,23 +189,29 @@ struct RingNodeView: View {
             ZStack {
                 Image(systemName: iconName)
                     .font(.system(size: isRecap ? 34 : 27, weight: .bold))
-                    .foregroundStyle(isLocked ? Theme.inkMuted : .white)
+                    .foregroundStyle(iconColor)
             }
             .frame(width: tileWidth, height: tileSize)
             .background(
-                RoundedRectangle(cornerRadius: tileCorner)
+                Circle()
                     .fill(fillColor.mix(with: .black, by: 0.24))
                     .offset(y: 5)
             )
             .background(
-                RoundedRectangle(cornerRadius: tileCorner)
+                Circle()
                     .fill(fillColor)
             )
         }
         .frame(height: tileSize + 16)
     }
 
-    private var tileCorner: CGFloat { isRecap ? 26 : 22 }
+    /// The checkmark reads as a clear success cue in green once a ring is
+    /// mastered; every other icon stays white/muted on its coloured disc.
+    private var iconColor: Color {
+        if isLocked { return Theme.inkMuted }
+        if state == .mastered { return Theme.success }
+        return .white
+    }
 
     @ViewBuilder
     private var caption: some View {
