@@ -70,7 +70,17 @@ export const PARTY_CAPACITY = 20;
 const PARTY_FILL_MS = 15_000;
 /** A finalized-but-never-connected lobby is abandoned after this long. */
 const PARTY_STALE_TICKET_MS = 120_000;
-export type PartyMode = "team10" | "solo";
+export type PartyMode = "team10" | "solo" | "duo";
+
+/** Seats to fill for each party format before bots top up the rest. */
+function partyCapacity(mode: PartyMode): number {
+  return mode === "duo" ? 4 : PARTY_CAPACITY;
+}
+
+/** Team formats (score cumulated per side) vs. individual-ranking formats. */
+function isTeamMode(mode: PartyMode): boolean {
+  return mode === "team10" || mode === "duo";
+}
 
 /** Shared secret guarding every admin route. */
 const ADMIN_PASSWORD = "minduel-admin";
@@ -668,7 +678,7 @@ export class Hub extends DurableObject {
       if (path === "/api/hub/party/queue/join" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { mode?: string };
         this.ensureProfile(userId, userName);
-        return this.partyQueueJoin(userId, body.mode === "team10" ? "team10" : "solo");
+        return this.partyQueueJoin(userId, body.mode === "team10" ? "team10" : body.mode === "duo" ? "duo" : "solo");
       }
 
       if (path === "/api/hub/party/queue/poll" && request.method === "GET") {
@@ -1461,7 +1471,7 @@ export class Hub extends DurableObject {
       status: "waiting",
       lobbyId: row.lobby_id,
       mode: row.mode,
-      capacity: PARTY_CAPACITY,
+      capacity: partyCapacity(row.mode as PartyMode),
       players: members,
       waitingSince: lobby?.created_at ?? row.queued_at,
     });
@@ -1509,7 +1519,7 @@ export class Hub extends DurableObject {
       const count = this.ctx.storage.sql
         .exec<{ n: number }>("SELECT COUNT(*) AS n FROM party_queue WHERE lobby_id = ?", lobby.lobby_id)
         .toArray()[0]?.n ?? 0;
-      if (count < PARTY_CAPACITY) return lobby.lobby_id;
+      if (count < partyCapacity(mode)) return lobby.lobby_id;
     }
     const lobbyId = crypto.randomUUID();
     this.ctx.storage.sql.exec(
@@ -1532,7 +1542,8 @@ export class Hub extends DurableObject {
       .toArray();
     if (realRows.length === 0) return;
     const age = Date.now() - lobby.created_at;
-    if (realRows.length < PARTY_CAPACITY && age < PARTY_FILL_MS) return;
+    const capacity = partyCapacity(lobby.mode as PartyMode);
+    if (realRows.length < capacity && age < PARTY_FILL_MS) return;
 
     const realPlayers: PartyPlayer[] = realRows
       .map((r) => this.getProfile(r.user_id))
@@ -1542,11 +1553,11 @@ export class Hub extends DurableObject {
 
     const usedNames = new Set(realPlayers.map((p) => p.name.trim().toLowerCase()));
     const avgElo = Math.round(realPlayers.reduce((s, p) => s + p.elo, 0) / realPlayers.length);
-    const botsNeeded = Math.max(0, PARTY_CAPACITY - realPlayers.length);
+    const botsNeeded = Math.max(0, capacity - realPlayers.length);
     const bots = generateBotRoster(botsNeeded, avgElo, usedNames, lobbyId);
 
     const allPlayers = shuffled([...realPlayers, ...bots]);
-    if (lobby.mode === "team10") balanceTeams(allPlayers);
+    if (isTeamMode(lobby.mode as PartyMode)) balanceTeams(allPlayers);
 
     const seed = randomSeed();
     const base = {
@@ -1615,7 +1626,7 @@ export class Hub extends DurableObject {
     const pointsChanges: Record<string, number> = {};
     const reputationChanges: Record<string, number> = {};
 
-    if (payload.mode === "team10") {
+    if (payload.mode === "team10" || payload.mode === "duo") {
       let sumA = 0;
       let sumB = 0;
       for (const r of results) {

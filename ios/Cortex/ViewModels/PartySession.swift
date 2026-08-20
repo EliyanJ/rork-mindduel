@@ -407,7 +407,7 @@ final class PartySession {
         store.registerRankedDuelPlayed()
         online.applyPartyResult(pointsDelta: pointsDelta, reputationDelta: reputationDelta)
         phase = .finished
-        let won = mode == .team10 ? (winningTeam != nil && winningTeam == you?.team) : myRank <= 3
+        let won = mode.isTeam ? (winningTeam != nil && winningTeam == you?.team) : myRank <= 3
         if won { Haptics.success() }
     }
 

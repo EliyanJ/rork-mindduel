@@ -9,7 +9,11 @@ import { DurableObject } from "cloudflare:workers";
 
 type Env = { DO: Fetcher };
 
-type PartyMode = "team10" | "solo";
+type PartyMode = "team10" | "solo" | "duo";
+
+function isTeamMode(mode: PartyMode): boolean {
+  return mode === "team10" || mode === "duo";
+}
 
 type PlayerInfo = {
   id: string;
@@ -107,7 +111,7 @@ export class PartyRoom extends DurableObject<Env> {
       if (!ticket.partyId || !ticket.seed || !ticket.players?.length) return false;
       const state: PartyState = {
         partyId: ticket.partyId,
-        mode: ticket.mode === "team10" ? "team10" : "solo",
+        mode: ticket.mode === "team10" ? "team10" : ticket.mode === "duo" ? "duo" : "solo",
         seed: ticket.seed,
         rounds: ticket.rounds ?? 3,
         questionsPerRound: ticket.questionsPerRound ?? 20,
@@ -311,7 +315,7 @@ export class PartyRoom extends DurableObject<Env> {
     this.persist();
 
     let teamScores: { A: number; B: number } | undefined;
-    if (state.mode === "team10") {
+    if (isTeamMode(state.mode)) {
       teamScores = { A: 0, B: 0 };
       for (const p of state.players) {
         if (p.team === "A") teamScores.A += state.scores[p.id] ?? 0;
@@ -387,7 +391,7 @@ export class PartyRoom extends DurableObject<Env> {
     this.broadcast({
       type: "finish",
       scores: state.scores,
-      teamScores: state.mode === "team10" ? this.finalTeamScores(state) : undefined,
+      teamScores: isTeamMode(state.mode) ? this.finalTeamScores(state) : undefined,
       pointsChanges,
       reputationChanges,
     });

@@ -1,9 +1,15 @@
 import Foundation
 
-/// The two party formats: 10-vs-10 team score, or 1-vs-19 individual ranking.
-nonisolated enum PartyMode: String, Codable {
+/// The party formats: 10-vs-10 team score, 1-vs-19 individual ranking, or
+/// 2-vs-2 team score (a smaller, faster team format).
+nonisolated enum PartyMode: String, Codable, Identifiable {
     case team10
     case solo
+    case duo
+
+    /// Team formats cumulate a side's score; `solo` ranks everyone individually.
+    var isTeam: Bool { self == .team10 || self == .duo }
+    public var id: String { rawValue }
 }
 
 /// One seat in a party game, real or bot. `isBot` and `team` are carried in

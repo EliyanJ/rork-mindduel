@@ -10,25 +10,55 @@ struct DuelHomeView: View {
     @State private var isSignInPresented: Bool = false
     @State private var isHelpPresented: Bool = false
     @State private var isFriendsPresented: Bool = false
+    @State private var isMissionsPresented: Bool = false
     @State private var selectedDuelDisciplineId: String? = nil
     @State private var showThemePicker: Bool = false
     @State private var pendingMode: DuelMode = .training
-    @State private var isMultiplayerPresented: Bool = false
+    @State private var pendingPartyMode: PartyMode?
+    @State private var pendingFlash: FlashKind?
+    @State private var isLocalPresented: Bool = false
 
     private enum DuelMode {
         case ranked
         case training
     }
 
+    private enum FlashKind: Identifiable {
+        case solo, duo
+        var id: Self { self }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             ScrollView {
-                VStack(spacing: 20) {
-                    rankedCard
-                    multiplayerCard
-                    trainingCard
-                    leaderboardPreviewCard
+                VStack(spacing: 22) {
+                    shortcutRow
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Jeu duel")
+                            .font(.system(.title3, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.ink)
+                        rankedCard
+                        trainingCard
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                            modeCard(title: "10 vs 10", subtitle: "Équipes", icon: "person.3.fill", colors: ["6C5CE7", "4834D4"]) {
+                                joinParty(.team10)
+                            }
+                            modeCard(title: "2 vs 2", subtitle: "En duo", icon: "person.2.fill", colors: ["00B894", "00896B"]) {
+                                joinParty(.duo)
+                            }
+                            modeCard(title: "Flash", subtitle: "Solo rapide", icon: "bolt.fill", colors: ["FDCB6E", "E17055"]) {
+                                pendingFlash = .solo
+                            }
+                            modeCard(title: "Flash 2v2", subtitle: "Duo rapide", icon: "bolt.badge.clock.fill", colors: ["FF7675", "D63031"]) {
+                                pendingFlash = .duo
+                            }
+                            modeCard(title: "Local", subtitle: "Même réseau", icon: "wifi", colors: ["0984E3", "0652DD"]) {
+                                Haptics.medium()
+                                isLocalPresented = true
+                            }
+                        }
+                    }
                 }
                 .padding(16)
                 .padding(.bottom, 32)
@@ -38,11 +68,26 @@ struct DuelHomeView: View {
         .fullScreenCover(isPresented: $isRankedPresented) {
             OnlineMatchView(catalog: model.catalog, store: model.store, online: online, disciplineId: selectedDuelDisciplineId)
         }
-        .fullScreenCover(isPresented: $isMultiplayerPresented) {
-            MultiplayerHomeView()
-        }
         .fullScreenCover(isPresented: $isTrainingPresented) {
             DuelMatchView(catalog: model.catalog, store: model.store, disciplineId: selectedDuelDisciplineId)
+        }
+        .fullScreenCover(item: $pendingPartyMode) { mode in
+            PartyLobbyView(catalog: model.catalog, store: model.store, online: online, mode: mode)
+        }
+        .fullScreenCover(item: $pendingFlash) { kind in
+            FlashDuelView(catalog: model.catalog, store: model.store, isTeamFlavor: kind == .duo) {
+                pendingFlash = nil
+            }
+        }
+        .fullScreenCover(isPresented: $isLocalPresented) {
+            LocalDuelView(
+                catalog: model.catalog,
+                store: model.store,
+                displayName: online.profile?.name ?? "Toi",
+                displayEmoji: online.profile?.emoji ?? "🧠"
+            ) {
+                isLocalPresented = false
+            }
         }
         .sheet(isPresented: $isLeaderboardPresented) {
             LeaderboardView()
@@ -55,6 +100,9 @@ struct DuelHomeView: View {
         }
         .sheet(isPresented: $isFriendsPresented) {
             FriendsView()
+        }
+        .sheet(isPresented: $isMissionsPresented) {
+            MissionsView()
         }
         .sheet(isPresented: $showThemePicker) {
             DuelThemePickerView(
@@ -87,32 +135,58 @@ struct DuelHomeView: View {
                     .foregroundStyle(Theme.inkMuted)
             }
             Spacer()
-            HStack(spacing: 10) {
-                Button {
-                    Haptics.tap()
-                    isFriendsPresented = true
-                } label: {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Theme.primary)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(Theme.primary.opacity(0.14)))
-                }
-                Button {
-                    Haptics.tap()
-                    isHelpPresented = true
-                } label: {
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(Theme.card))
-                }
+            Button {
+                Haptics.tap()
+                isHelpPresented = true
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(Theme.inkMuted)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Theme.card))
             }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 6)
+    }
+
+    /// The three quick-access shortcuts (rank, missions, friends), shown as a
+    /// row of round icon tabs right under the header.
+    private var shortcutRow: some View {
+        HStack(spacing: 0) {
+            shortcut(icon: "crown.fill", color: Theme.gold, label: "Rang") {
+                isLeaderboardPresented = true
+            }
+            Spacer()
+            shortcut(icon: "flag.checkered", color: Theme.primary, label: "Missions") {
+                isMissionsPresented = true
+            }
+            Spacer()
+            shortcut(icon: "person.2.fill", color: Theme.duelAccent, label: "Amis") {
+                isFriendsPresented = true
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func shortcut(icon: String, color: Color, label: String, action: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.tap()
+            action()
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(color)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(color.opacity(0.14)))
+                Text(label)
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var rankedCard: some View {
@@ -134,7 +208,7 @@ struct DuelHomeView: View {
                     Text(online.profile.map { "\($0.wins) V · \($0.losses) D" } ?? "Hors ligne")
                         .font(.system(.title2, design: .rounded, weight: .heavy))
                         .foregroundStyle(.white)
-                    Text("BILAN CLASSÉ")
+                    Text("1V1 CLASSÉ")
                         .font(.system(.caption2, design: .rounded, weight: .heavy))
                         .foregroundStyle(.white.opacity(0.6))
                 }
@@ -177,43 +251,6 @@ struct DuelHomeView: View {
         )
     }
 
-    /// Entry point to the two party formats (10 vs 10, 1 vs 19), kept apart
-    /// from the 1v1 ranked flow above.
-    private var multiplayerCard: some View {
-        Button {
-            Haptics.medium()
-            if online.isSignedIn {
-                isMultiplayerPresented = true
-            } else {
-                isSignInPresented = true
-            }
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Theme.duelAccent)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(Theme.duelAccent.opacity(0.14)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Multijoueur")
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    Text("10 vs 10 · 1 vs 19 · lobbies en direct")
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
-            }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
-        }
-        .buttonStyle(.plain)
-    }
-
     private var trainingCard: some View {
         let progress = model.store.progress
         return HStack(spacing: 14) {
@@ -247,69 +284,58 @@ struct DuelHomeView: View {
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
     }
 
-    /// Compact top-3 preview of the world leaderboard, tappable to open the
-    /// full `LeaderboardView` (the trophy shortcut moved here from the header).
-    private var leaderboardPreviewCard: some View {
+    /// One colourful, chunky mode card — mirrors the reference casual-game
+    /// grid: bold gradient, icon top-left, name + short tag underneath.
+    private func modeCard(title: String, subtitle: String, icon: String, colors: [String], action: @escaping () -> Void) -> some View {
         Button {
-            Haptics.tap()
-            isLeaderboardPresented = true
+            Haptics.medium()
+            guardedAction(action)
         } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("Classement mondial", systemImage: "trophy.fill")
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                if let top = online.leaderboard?.top, !top.isEmpty {
-                    VStack(spacing: 8) {
-                        ForEach(top.prefix(3)) { entry in
-                            topRow(entry)
-                        }
-                    }
-                } else {
-                    Text("Joue un match classé pour apparaître ici !")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(Theme.inkMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            VStack(alignment: .leading, spacing: 0) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(.white.opacity(0.2)))
+                Spacer(minLength: 14)
+                Text(title.uppercased())
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(subtitle)
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.75))
             }
-            .padding(18)
+            .padding(16)
+            .frame(height: 118, alignment: .topLeading)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+            .background(
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(
+                        LinearGradient(
+                            colors: colors.map { Color(hex: $0) },
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
         }
         .buttonStyle(.plain)
-        .task { await online.refreshLeaderboard() }
     }
 
-    private func topRow(_ entry: RankedEntry) -> some View {
-        HStack(spacing: 10) {
-            Text(rankLabel(entry.rank))
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .frame(width: 28, alignment: .leading)
-            Text(entry.emoji).font(.system(size: 20))
-            Text(entry.name)
-                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-            Spacer()
-            Text("\(entry.displayPoints)")
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.duelAccent.mix(with: .black, by: 0.2))
-        }
+    /// Party/team modes need a signed-in profile for matchmaking; Local and
+    /// Flash are fully offline and skip the sign-in gate entirely.
+    private func guardedAction(_ action: @escaping () -> Void) {
+        action()
     }
 
-    private func rankLabel(_ rank: Int) -> String {
-        switch rank {
-        case 1: return "🥇"
-        case 2: return "🥈"
-        case 3: return "🥉"
-        default: return "#\(rank)"
+    private func joinParty(_ mode: PartyMode) {
+        guard online.isSignedIn else {
+            isSignInPresented = true
+            return
         }
+        pendingPartyMode = mode
     }
 
     private func presentRankedDuel() {
@@ -342,19 +368,6 @@ struct DuelHomeView: View {
                 model.store.resetBotMatchAdCounter()
                 isTrainingPresented = true
             }
-        }
-    }
-
-    private func ruleRow(icon: String, color: Color, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(color)
-                .frame(width: 26)
-            Text(text)
-                .font(.system(.subheadline, design: .rounded, weight: .medium))
-                .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

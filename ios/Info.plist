@@ -4,6 +4,13 @@
 <dict>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Minduel utilise le réseau local pour trouver et rejoindre les duels avec d'autres joueurs à proximité.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_minduel-duel._tcp</string>
+		<string>_minduel-duel._udp</string>
+	</array>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

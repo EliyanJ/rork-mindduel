@@ -78,12 +78,12 @@ struct PartyMatchView: View {
                     .font(.system(.title3, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.duelAccent)
                     .contentTransition(.numericText())
-                Text(mode == .team10 ? "Équipe \(session.you?.team ?? "—")" : "#\(session.myRank) / 20")
+                Text(mode.isTeam ? "Équipe \(session.you?.team ?? "—")" : "#\(session.myRank) / 20")
                     .font(.system(.caption2, design: .rounded, weight: .heavy))
                     .foregroundStyle(.white.opacity(0.5))
             }
             Spacer()
-            if mode == .team10, let teamScores = session.teamScores {
+            if mode.isTeam, let teamScores = session.teamScores {
                 HStack(spacing: 16) {
                     teamPill(label: "A", score: teamScores.a, isMine: session.you?.team == "A")
                     teamPill(label: "B", score: teamScores.b, isMine: session.you?.team == "B")

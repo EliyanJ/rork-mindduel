@@ -11,7 +11,7 @@ struct PartyResultsView: View {
         ScrollView {
             VStack(spacing: 22) {
                 header
-                if mode == .team10 {
+                if mode.isTeam {
                     teamScoreBoard
                     contributionList
                 } else {
@@ -34,7 +34,7 @@ struct PartyResultsView: View {
     }
 
     private var didWin: Bool {
-        mode == .team10
+        mode.isTeam
             ? (session.winningTeam != nil && session.winningTeam == session.you?.team)
             : session.finalEntries.first { $0.isYou }.map { $0.rank <= 3 } ?? false
     }
@@ -43,7 +43,7 @@ struct PartyResultsView: View {
         VStack(spacing: 8) {
             Text(didWin ? "🏆" : "🎉")
                 .font(.system(size: 64))
-            Text(mode == .team10 ? (session.winningTeam == nil ? "Égalité !" : (didWin ? "Équipe victorieuse !" : "Équipe adverse gagnante")) : "Partie terminée")
+            Text(mode.isTeam ? (session.winningTeam == nil ? "Égalité !" : (didWin ? "Équipe victorieuse !" : "Équipe adverse gagnante")) : "Partie terminée")
                 .font(.system(.largeTitle, design: .rounded, weight: .heavy))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)

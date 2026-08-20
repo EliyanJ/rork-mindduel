@@ -71,7 +71,7 @@ struct PartyLobbyView: View {
             Spacer(minLength: 8)
 
             VStack(spacing: 6) {
-                Text(mode == .team10 ? "10 vs 10" : "1 vs 19")
+                Text(mode == .team10 ? "10 vs 10" : (mode == .duo ? "2 vs 2" : "1 vs 19"))
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                 Text("Recherche de joueurs…")
