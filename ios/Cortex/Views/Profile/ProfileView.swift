@@ -4,22 +4,21 @@ struct ProfileView: View {
     @Environment(AppModel.self) private var model
     @Environment(OnlineModel.self) private var online
     @State private var isSignInPresented: Bool = false
-    @State private var didCopyCode: Bool = false
     @State private var isSettingsPresented: Bool = false
     @State private var isFriendsPresented: Bool = false
+    @State private var isQRPresented: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             ScrollView {
                 VStack(spacing: 20) {
-                    accountCard
-                    if online.isSignedIn {
-                        friendsShortcutCard
+                    friendsRow
+                    if !online.isSignedIn {
+                        signedOutCard
                     }
+                    recapCard
                     streakCard
-                    statsGrid
-                    masteryCard
                 }
                 .padding(16)
                 .padding(.bottom, 32)
@@ -35,6 +34,9 @@ struct ProfileView: View {
         .sheet(isPresented: $isFriendsPresented) {
             FriendsView()
         }
+        .sheet(isPresented: $isQRPresented) {
+            FriendQRView()
+        }
         .task {
             if online.isSignedIn {
                 if online.profile == nil {
@@ -44,6 +46,8 @@ struct ProfileView: View {
             }
         }
     }
+
+    // MARK: - Header
 
     private var header: some View {
         HStack(spacing: 14) {
@@ -58,9 +62,15 @@ struct ProfileView: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Text(online.profile.map { "\($0.displayPoints) points classés" } ?? "Niveau local \(model.store.progress.elo)")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
+                if let profile = online.profile {
+                    Text("@\(handle(from: profile.friendCode))")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                } else {
+                    Text("Joueur hors-ligne")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                }
             }
             Spacer()
             Button {
@@ -80,23 +90,60 @@ struct ProfileView: View {
         .padding(.bottom, 6)
     }
 
-    @ViewBuilder
-    private var accountCard: some View {
-        if let profile = online.profile {
-            signedInCard(profile)
-        } else if online.isSignedIn {
-            HStack(spacing: 12) {
-                ProgressView().tint(Theme.primary)
-                Text("Synchronisation du profil…")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
+    private func handle(from code: String) -> String {
+        code.replacingOccurrences(of: "#", with: "").lowercased()
+    }
+
+    // MARK: - Friends row
+
+    private var friendsRow: some View {
+        HStack(spacing: 10) {
+            Button {
+                Haptics.tap()
+                if online.isSignedIn {
+                    isFriendsPresented = true
+                } else {
+                    isSignInPresented = true
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 14, weight: .heavy))
+                    Text("AJOUTER DES AMIS")
+                        .font(.system(.caption, design: .rounded, weight: .heavy))
+                        .tracking(0.3)
+                    if !online.incomingRequests.isEmpty {
+                        Text("\(online.incomingRequests.count)")
+                            .font(.system(.caption2, design: .rounded, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(Theme.danger))
+                    }
+                }
+                .foregroundStyle(Theme.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1.5))
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
-        } else {
-            signedOutCard
+            .buttonStyle(.plain)
+
+            Button {
+                Haptics.tap()
+                if online.isSignedIn {
+                    isQRPresented = true
+                } else {
+                    isSignInPresented = true
+                }
+            } label: {
+                Image(systemName: "qrcode")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 48, height: 48)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1.5))
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -131,56 +178,32 @@ struct ProfileView: View {
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
     }
 
-    private func signedInCard(_ profile: PlayerProfile) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("Compte en ligne", systemImage: "checkmark.seal.fill")
-                    .font(.system(.headline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.success)
-                Spacer()
-                Button("Déconnexion") {
-                    Task { await online.signOut() }
-                }
+    // MARK: - Récap
+
+    /// Compact summary: streak, ranked standing and win/loss record. Rubis,
+    /// énergie and total XP live only in the Parcours/Thèmes tabs now.
+    private var recapCard: some View {
+        let progress = model.store.progress
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("RÉCAP")
                 .font(.system(.caption, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.danger)
-            }
-            HStack(spacing: 20) {
-                statColumn(value: "\(profile.displayPoints)", label: "POINTS CLASSÉS", color: Theme.duelAccent.mix(with: .black, by: 0.2))
-                statColumn(value: "\(profile.wins)", label: "VICTOIRES", color: Theme.success)
-                statColumn(value: "\(profile.losses)", label: "DÉFAITES", color: Theme.danger)
-            }
-            Button {
-                UIPasteboard.general.string = profile.friendCode
-                didCopyCode = true
-                Haptics.success()
-                Task {
-                    try? await Task.sleep(for: .seconds(2))
-                    didCopyCode = false
-                }
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("TON CODE AMI")
-                            .font(.system(.caption2, design: .rounded, weight: .heavy))
-                            .foregroundStyle(Theme.inkMuted)
-                        Text(profile.friendCode)
-                            .font(.system(.title3, design: .rounded, weight: .heavy))
-                            .foregroundStyle(Theme.ink)
-                            .kerning(2)
-                    }
-                    Spacer()
-                    Label(didCopyCode ? "Copié !" : "Copier", systemImage: didCopyCode ? "checkmark" : "doc.on.doc")
-                        .font(.system(.caption, design: .rounded, weight: .heavy))
-                        .foregroundStyle(didCopyCode ? Theme.success : Theme.primary)
-                }
-                .padding(14)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Theme.background))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            Text("Partage ce code pour que tes amis t'ajoutent.")
-                .font(.system(.caption, design: .rounded, weight: .medium))
+                .tracking(0.6)
                 .foregroundStyle(Theme.inkMuted)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                recapItem(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)", label: "Jours de suite")
+                recapItem(
+                    icon: "chart.line.uptrend.xyaxis",
+                    color: Theme.success,
+                    value: online.profile.map { "\($0.displayPoints)" } ?? "\(progress.elo)",
+                    label: online.profile != nil ? "Points classés" : "Niveau local"
+                )
+                recapItem(icon: "crown.fill", color: Theme.gold, value: "\(model.store.masteredChaptersCount)", label: "Leçons maîtrisées")
+                if let profile = online.profile {
+                    recapItem(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(profile.wins)V · \(profile.losses)D", label: "Duels")
+                } else {
+                    recapItem(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(progress.duelsWon)", label: "Duels gagnés")
+                }
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,57 +211,28 @@ struct ProfileView: View {
         .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
     }
 
-    /// Compact entry point to the full-screen `FriendsView` (moved out of
-    /// the profile so the Duel screen can also open it — see DuelHomeView).
-    private var friendsShortcutCard: some View {
-        Button {
-            Haptics.tap()
-            isFriendsPresented = true
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Theme.primary)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(Theme.primary.opacity(0.12)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Amis")
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    Text(online.friends.isEmpty ? "Ajoute des amis avec leur code" : "\(online.friends.count) ami\(online.friends.count > 1 ? "s" : "")")
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                Spacer()
-                if !online.incomingRequests.isEmpty {
-                    Text("\(online.incomingRequests.count)")
-                        .font(.system(.caption2, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .frame(width: 22, height: 22)
-                        .background(Circle().fill(Theme.danger))
-                }
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
+    private func recapItem(icon: String, color: Color, value: String, label: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(color)
+                .frame(width: 26)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(label)
+                    .font(.system(.caption2, design: .rounded, weight: .bold))
                     .foregroundStyle(Theme.inkMuted)
+                    .lineLimit(1)
             }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func statColumn(value: String, label: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundStyle(color)
-            Text(label)
-                .font(.system(.caption2, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.inkMuted)
-        }
-        .frame(maxWidth: .infinity)
-    }
+    // MARK: - Streak
 
     private var streakCard: some View {
         let streak = model.store.currentStreak
@@ -294,76 +288,5 @@ struct ProfileView: View {
         formatter.locale = Locale(identifier: "fr_FR")
         formatter.dateFormat = "EEEEE"
         return formatter.string(from: date).uppercased()
-    }
-
-    private var statsGrid: some View {
-        let progress = model.store.progress
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            statCard(icon: "text.book.closed.fill", color: Theme.gold, value: "\(progress.xp)", label: "XP total")
-            statCard(icon: "diamond.fill", color: Theme.livres, value: "\(progress.livresBalance)", label: "Rubis")
-            statCard(icon: "heart.fill", color: Theme.danger, value: "\(model.store.energy)/\(ProgressStore.energyMax)", label: "Énergie")
-            statCard(icon: "crown.fill", color: Theme.primary, value: "\(model.store.masteredChaptersCount)", label: "Étapes maîtrisées")
-            statCard(icon: "trophy.fill", color: Theme.duelAccent.mix(with: .black, by: 0.15), value: "\(progress.duelsWon)", label: "Duels gagnés")
-            statCard(icon: "chart.line.uptrend.xyaxis", color: Theme.success, value: online.profile.map { "\($0.displayPoints)" } ?? "\(progress.elo)", label: online.profile != nil ? "Points classés" : "Niveau local")
-            if let profile = online.profile {
-                statCard(icon: "heart.fill", color: Theme.gold, value: "\(profile.displayReputation)", label: "Réputation")
-            }
-        }
-    }
-
-    private func statCard(icon: String, color: Color, value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(color)
-            Text(value)
-                .font(.system(.title2, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.ink)
-            Text(label)
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(Theme.inkMuted)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 1.5))
-    }
-
-    private var masteryCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Progression par thème")
-                .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.ink)
-            ForEach(model.catalog.disciplines) { discipline in
-                let progress = model.themeRingProgress(disciplineId: discipline.id)
-                let ratio = progress.total > 0 ? Double(progress.done) / Double(progress.total) : 0
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label(discipline.name, systemImage: discipline.icon)
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(discipline.color)
-                        Spacer()
-                        Text("\(progress.done)/\(progress.total) ronds")
-                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                            .foregroundStyle(Theme.ink)
-                    }
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Theme.line.opacity(0.6))
-                            if ratio > 0 {
-                                Capsule()
-                                    .fill(discipline.color)
-                                    .frame(width: max(10, geo.size.width * ratio))
-                            }
-                        }
-                    }
-                    .frame(height: 10)
-                }
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
     }
 }
