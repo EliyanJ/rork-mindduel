@@ -224,10 +224,6 @@ struct RingNodeView: View {
         }
         if let cooldownDate {
             CooldownLabel(date: cooldownDate)
-        } else if let record, record.bestScore > 0 {
-            Text("\(Int(record.bestScore * 100)) %")
-                .font(.system(.caption2, design: .rounded, weight: .heavy))
-                .foregroundStyle(record.bestScore >= ProgressStore.ringMasteryScore ? Theme.gold.mix(with: .black, by: 0.2) : Theme.inkMuted)
         } else if !isLocked, !isRecap {
             Text(ring.tier.label)
                 .font(.system(.caption2, design: .rounded, weight: .bold))

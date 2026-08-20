@@ -39,7 +39,6 @@ struct DuelHomeView: View {
                             .font(.system(.title3, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
                         rankedCard
-                        trainingCard
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                             modeCard(title: "10 vs 10", subtitle: "Équipes", icon: "person.3.fill", colors: ["6C5CE7", "4834D4"]) {
                                 joinParty(.team10)
@@ -56,6 +55,10 @@ struct DuelHomeView: View {
                             modeCard(title: "Local", subtitle: "Même réseau", icon: "wifi", colors: ["0984E3", "0652DD"]) {
                                 Haptics.medium()
                                 isLocalPresented = true
+                            }
+                            modeCard(title: "Entraînement", subtitle: "Contre un bot", icon: "figure.strengthtraining.traditional", colors: ["FF9F43", "E58E26"]) {
+                                Haptics.medium()
+                                presentTraining()
                             }
                         }
                     }
@@ -90,7 +93,7 @@ struct DuelHomeView: View {
             }
         }
         .sheet(isPresented: $isLeaderboardPresented) {
-            LeaderboardView()
+            RankView()
         }
         .sheet(isPresented: $isSignInPresented) {
             SignInSheet()
@@ -249,39 +252,6 @@ struct DuelHomeView: View {
                     )
                 )
         )
-    }
-
-    private var trainingCard: some View {
-        let progress = model.store.progress
-        return HStack(spacing: 14) {
-            Image(systemName: "figure.strengthtraining.traditional")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(Theme.primary)
-                .frame(width: 48, height: 48)
-                .background(Circle().fill(Theme.primary.opacity(0.12)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Entraînement")
-                    .font(.system(.headline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.ink)
-                Text("Duel contre un bot · ELO local \(progress.elo)")
-                    .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
-            }
-            Spacer()
-            Button {
-                Haptics.medium()
-                presentTraining()
-            } label: {
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 16, weight: .heavy))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Theme.primary))
-            }
-        }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
     }
 
     /// One colourful, chunky mode card — mirrors the reference casual-game
