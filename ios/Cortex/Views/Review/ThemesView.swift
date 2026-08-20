@@ -117,7 +117,7 @@ struct ThemesView: View {
         VStack(spacing: 14) {
             Link(destination: URL(string: "mailto:hello@minduel.app?subject=Id%C3%A9e%20de%20pack")!) {
                 HStack {
-                    Text("Nous soumettre une idée de packs")
+                    Text("Nous soumettre une idée de thèmes")
                         .font(.system(.subheadline, design: .rounded, weight: .heavy))
                         .foregroundStyle(Color(hex: "5B4BC4"))
                     Spacer()
