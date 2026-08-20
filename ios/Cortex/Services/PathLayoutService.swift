@@ -2,14 +2,34 @@ import Foundation
 
 /// Loads the learning-path ordering published from the admin "Parcours" tool.
 ///
-/// Mirrors `ContentService`: the remote layout wins so a reorder shows up
-/// without an app update, and any failure falls back to the built-in
-/// `PathDefaults` so the path is never empty or broken.
+/// Boot is instant on the built-in `PathDefaults`; the remote layout is fetched
+/// in the background and merged in — a reorder shows up without an app update.
 enum PathLayoutService {
     private static let remoteURL = "\(Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL)/api/path-layout"
 
+    /// Synchronous default used at launch: never blocks on the network.
     static func loadLayout() -> PathLayout {
-        guard let remote = loadRemoteLayout() else { return PathDefaults.layout }
+        PathDefaults.layout
+    }
+
+    /// Fetches the published layout, fully merged with the built-in defaults.
+    /// Returns `nil` when nothing has been published or the fetch fails.
+    static func fetchRemoteLayout() async -> PathLayout? {
+        guard !Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL.isEmpty else { return nil }
+        guard let url = URL(string: remoteURL) else { return nil }
+
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 6
+
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else { return nil }
+        if let body = String(data: data, encoding: .utf8), body.contains("\"published\":false") {
+            return nil
+        }
+        guard let remote = try? JSONDecoder().decode(PathLayout.self, from: data) else { return nil }
+        print("[PathLayoutService] Organisation du parcours chargée depuis le backend")
         return merged(remote)
     }
 
@@ -26,34 +46,5 @@ enum PathLayoutService {
             ringLayout: remote.ringLayout,
             disciplineKind: remote.disciplineKind
         )
-    }
-
-    private static func loadRemoteLayout() -> PathLayout? {
-        guard !Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL.isEmpty else { return nil }
-        guard let url = URL(string: remoteURL) else { return nil }
-
-        var result: PathLayout?
-        let semaphore = DispatchSemaphore(value: 0)
-
-        var request = URLRequest(url: url)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-
-        URLSession.shared.dataTask(with: request) { data, response, _ in
-            defer { semaphore.signal() }
-            guard let data,
-                  let http = response as? HTTPURLResponse,
-                  http.statusCode == 200 else { return }
-            if let body = String(data: data, encoding: .utf8),
-               body.contains("\"published\":false") {
-                return
-            }
-            result = try? JSONDecoder().decode(PathLayout.self, from: data)
-        }.resume()
-
-        _ = semaphore.wait(timeout: .now() + 4)
-        if result != nil {
-            print("[PathLayoutService] Organisation du parcours chargée depuis le backend")
-        }
-        return result
     }
 }

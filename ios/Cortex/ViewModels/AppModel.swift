@@ -16,46 +16,78 @@ enum RingLock: Equatable {
     case cooldown(until: Date)
 }
 
+/// A lesson of the journey: one sub-theme (a chapter, e.g. "L'Antiquité")
+/// together with its 15-question rings, in playing order.
+struct PathLesson: Identifiable, Hashable {
+    let chapterId: String
+    let disciplineId: String
+    let title: String
+    let rings: [PathRing]
+
+    var id: String { chapterId }
+}
+
 @Observable
 final class AppModel {
-    let catalog: ContentCatalog
+    private(set) var catalog: ContentCatalog
     let store: ProgressStore
     /// Published ordering of disciplines / chapters / rings.
-    let layout: PathLayout
+    private(set) var layout: PathLayout
     /// Disciplines in path order.
-    let orderedDisciplines: [Discipline]
+    private(set) var orderedDisciplines: [Discipline]
     /// disciplineId → its rings, in path order.
-    private let ringsByDiscipline: [String: [PathRing]]
-    /// Currently selected theme; nil means the default mixed path.
-    var selectedDisciplineId: String?
-    /// Discipline ids the player picked at onboarding. Drives the rotation of
-    /// the mixed path — favourites come round more often.
-    var preferredDisciplineIds: [String] = [] {
-        didSet {
-            guard oldValue != preferredDisciplineIds else { return }
-            rebuildMixedRings()
-        }
-    }
-
-    private var mixedRings: [PathRing] = []
-    private let questionIndex: [String: (question: Question, disciplineId: String)]
+    private var ringsByDiscipline: [String: [PathRing]]
+    /// The full journey through the themes, one lesson (sub-theme) at a time.
+    private(set) var journeyRings: [PathRing] = []
+    private(set) var lessons: [PathLesson] = []
+    /// Discipline ids the player picked at onboarding for the old mixed path.
+    /// Kept for API compatibility; the journey is now sequential.
+    var preferredDisciplineIds: [String] = []
+    /// Raw bytes of the bundled catalogue, kept to detect whether a backend
+    /// refresh actually changed anything worth rebuilding for.
+    private let bundledData: Data?
 
     init() {
+        // Boot on the bundled catalogue — never block the first frame on the
+        // network. `refreshFromBackend()` swaps in fresh content afterwards.
         let catalog = ContentService.loadCatalog()
         let layout = PathLayoutService.loadLayout()
         self.catalog = catalog
         self.layout = layout
         self.store = ProgressStore()
+        self.bundledData = ContentService.bundledData()
+        self.orderedDisciplines = []
+        self.ringsByDiscipline = [:]
+        rebuild(catalog: catalog, layout: layout)
+    }
 
-        var index: [String: (question: Question, disciplineId: String)] = [:]
-        for discipline in catalog.disciplines {
-            for chapter in discipline.chapters {
-                for question in chapter.allQuestions {
-                    index[question.id] = (question, discipline.id)
-                }
-            }
+    /// Pulls the latest catalogue and published path layout from the backend,
+    /// then rebuilds the path if anything changed. Ring identity is derived
+    /// from chapter ids, so player progress survives a rebuild.
+    func refreshFromBackend() async {
+        async let remoteCatalog = ContentService.fetchRemoteCatalog()
+        async let remoteLayout = PathLayoutService.fetchRemoteLayout()
+        let layoutResult = await remoteLayout
+        let catalogResult = await remoteCatalog
+
+        var changed = false
+        var newLayout = layout
+        var newCatalog = catalog
+        if let layoutResult, layoutResult != layout {
+            newLayout = layoutResult
+            changed = true
         }
-        self.questionIndex = index
+        if let (fresh, data) = catalogResult, data != bundledData {
+            newCatalog = fresh
+            changed = true
+        }
+        guard changed else { return }
+        rebuild(catalog: newCatalog, layout: newLayout)
+    }
+
+    private func rebuild(catalog: ContentCatalog, layout: PathLayout) {
+        self.catalog = catalog
+        self.layout = layout
 
         let disciplines = PathLayout.apply(
             order: layout.disciplineOrder,
@@ -80,18 +112,22 @@ final class AppModel {
             }
         }
         self.ringsByDiscipline = rings
-        rebuildMixedRings()
+        rebuildJourney()
     }
 
-    // MARK: - Paths
+    // MARK: - Journey
 
-    /// Rings of the active path (mixed by default, themed when a discipline is selected).
+    /// Rings of the active path (the full journey by default, themed when a
+    /// discipline is selected).
     var rings: [PathRing] {
         if let id = selectedDisciplineId, let themed = ringsByDiscipline[id] {
             return themed
         }
-        return mixedRings
+        return journeyRings
     }
+
+    /// Currently selected theme; nil means the default journey across themes.
+    var selectedDisciplineId: String?
 
     func rings(for disciplineId: String) -> [PathRing] {
         ringsByDiscipline[disciplineId] ?? []
@@ -102,15 +138,13 @@ final class AppModel {
         return discipline(withId: id)
     }
 
-    var isMixedPath: Bool { selectedDisciplineId == nil }
-
     /// General culture vs specific domain, published layout winning over the
     /// catalog so the classification is editable from the back-office.
     func kind(of discipline: Discipline) -> DisciplineKind {
         layout.kind(of: discipline)
     }
 
-    /// Themes that feed the mixed path.
+    /// Themes that feed the journey.
     var generalDisciplines: [Discipline] {
         orderedDisciplines.filter { kind(of: $0) == .generale }
     }
@@ -120,34 +154,74 @@ final class AppModel {
         orderedDisciplines.filter { kind(of: $0) == .specifique }
     }
 
-    /// Round-robin across disciplines so the mixed path alternates themes while
-    /// keeping each discipline's own rings in order. Preferred themes are
-    /// visited more than once per lap, so they come round more often without
-    /// ever excluding the others.
-    ///
-    /// Specific themes (football, ...) are deliberately left out: the mixed
-    /// path is the general-culture journey, and a specialised theme is only
-    /// played by choosing it from the theme menu.
-    private func rebuildMixedRings() {
-        let pool = generalDisciplines
-        var queues: [String: [PathRing]] = [:]
-        for discipline in pool {
-            queues[discipline.id] = ringsByDiscipline[discipline.id] ?? []
-        }
-        let preferred = preferredDisciplineIds.filter { queues[$0]?.isEmpty == false }
-        // One lap = every general theme once, plus an extra visit for favourites.
-        var lap = pool.map(\.id)
-        lap.append(contentsOf: preferred)
-
+    /// The journey walks each theme to completion before moving to the next:
+    /// disciplines in path order, their chapters in path order. Specific
+    /// themes (football, ...) stay out — the journey is the general-culture
+    /// run; a specific theme is played by choosing it from the themes menu.
+    private func rebuildJourney() {
         var merged: [PathRing] = []
-        while queues.values.contains(where: { !$0.isEmpty }) {
-            for disciplineId in lap {
-                guard var queue = queues[disciplineId], !queue.isEmpty else { continue }
-                merged.append(queue.removeFirst())
-                queues[disciplineId] = queue
+        var lessons: [PathLesson] = []
+        for discipline in generalDisciplines {
+            for ring in ringsByDiscipline[discipline.id] ?? [] {
+                merged.append(ring)
+                if let last = lessons.last, last.chapterId == ring.chapterId {
+                    lessons[lessons.count - 1] = PathLesson(
+                        chapterId: last.chapterId,
+                        disciplineId: last.disciplineId,
+                        title: last.title,
+                        rings: last.rings + [ring]
+                    )
+                } else {
+                    lessons.append(
+                        PathLesson(
+                            chapterId: ring.chapterId,
+                            disciplineId: ring.disciplineId,
+                            title: ring.chapterTitle,
+                            rings: [ring]
+                        )
+                    )
+                }
             }
         }
-        mixedRings = merged
+        journeyRings = merged
+        self.lessons = lessons
+    }
+
+    /// The lesson the player should be working on: the first lesson with an
+    /// uncleared ring, or the very last one when the journey is done.
+    var currentLesson: PathLesson? {
+        lessons.first { !isLessonDone($0) } ?? lessons.last
+    }
+
+    /// Every ring of the lesson cleared.
+    func isLessonDone(_ lesson: PathLesson) -> Bool {
+        guard !lesson.rings.isEmpty else { return false }
+        return lesson.rings.allSatisfy { store.isRingPassed($0.id) }
+    }
+
+    /// A lesson is unlocked once its first ring is playable (previous
+    /// lesson's recap cleared) — or already partially played.
+    func isLessonUnlocked(_ lesson: PathLesson) -> Bool {
+        guard let first = lesson.rings.first else { return false }
+        return lock(for: first) == nil || store.isRingPassed(first.id)
+    }
+
+    /// Rings cleared vs. total inside one lesson, for the banner percentage.
+    func lessonRingCounts(_ lesson: PathLesson) -> (done: Int, total: Int) {
+        let total = lesson.rings.count
+        guard total > 0 else { return (0, 0) }
+        return (lesson.rings.filter { store.isRingPassed($0.id) }.count, total)
+    }
+
+    /// Lessons of one theme, in journey order — used by the lessons menu.
+    func lessons(inDiscipline id: String) -> [PathLesson] {
+        lessons.filter { $0.disciplineId == id }
+    }
+
+    /// 1-based position of a lesson within its theme ("LEÇON 2").
+    func lessonIndex(_ lesson: PathLesson) -> Int {
+        let group = lessons(inDiscipline: lesson.disciplineId)
+        return (group.firstIndex { $0.chapterId == lesson.chapterId } ?? 0) + 1
     }
 
     // MARK: - Ring state

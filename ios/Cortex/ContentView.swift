@@ -35,6 +35,12 @@ struct ContentView: View {
         .onChange(of: onboardingStore.preferences.topicIds) { _, newTopics in
             model.preferredDisciplineIds = newTopics
         }
+        // The first frame already shows the bundled catalogue; the freshest
+        // questions published from the admin panel arrive in the background
+        // and rebuild the path without ever blocking the launch.
+        .task {
+            await model.refreshFromBackend()
+        }
         // Reminders are rebuilt every time the app comes forward: that is what
         // lets today's remaining slots disappear once the player has practised.
         .onChange(of: scenePhase) { _, phase in

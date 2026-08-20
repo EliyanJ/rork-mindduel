@@ -1,41 +1,35 @@
 import SwiftUI
 
-/// The learning path as a vertical trail of rings ("ronds").
+/// The learning path of ONE lesson ("sous-thème"): its rings laid out as a
+/// winding vertical trail.
 ///
-/// Rings are grouped by sub-chapter on a themed path (each group gets a
-/// header), and flow continuously on the mixed path where consecutive rings
-/// belong to different disciplines.
+/// Each ring is a squircle tile with a "ROND n" badge, joined to the next by
+/// a hairline S-curve — lighter than the old braided cord so a 10-ring lesson
+/// stays airy while scrolling.
 struct RingPathView: View {
-    @Environment(AppModel.self) private var model
+    let rings: [PathRing]
+    let accent: Color
+    /// Looks up a ring's playability (locking rules live on the journey).
+    let stateOf: (PathRing) -> ChapterState
+    let lockOf: (PathRing) -> RingLock?
+    let recordOf: (PathRing) -> ChapterRecord?
+    var showsRecapLabel: Bool = true
     let onSelect: (PathRing) -> Void
 
     @State private var pathWidth: CGFloat = 360
 
     var body: some View {
         LazyVStack(spacing: 0) {
-            ForEach(Array(model.rings.enumerated()), id: \.element.id) { index, ring in
+            ForEach(Array(rings.enumerated()), id: \.element.id) { index, ring in
                 if index > 0 {
                     connector(before: ring, at: index)
                 }
-                if shouldShowHeader(at: index) {
-                    ChapterHeaderView(
-                        ring: ring,
-                        counts: model.chapterProgressCounts(
-                            chapterId: ring.chapterId,
-                            disciplineId: ring.disciplineId
-                        ),
-                        color: color(for: ring)
-                    )
-                    .padding(.bottom, 6)
-                }
                 RingNodeView(
                     ring: ring,
-                    state: model.state(of: ring),
-                    lock: model.lock(for: ring),
-                    color: color(for: ring),
-                    record: model.store.ringRecord(ring.id),
-                    discipline: model.discipline(withId: ring.disciplineId),
-                    showsDisciplineBadge: model.isMixedPath
+                    state: stateOf(ring),
+                    lock: lockOf(ring),
+                    color: ring.kind == .recap ? Theme.gold : accent,
+                    record: recordOf(ring)
                 ) {
                     onSelect(ring)
                 }
@@ -51,30 +45,15 @@ struct RingPathView: View {
         }
     }
 
-    /// On a themed path each sub-chapter opens with a header. The mixed path
-    /// alternates disciplines every ring, so headers there would be noise.
-    private func shouldShowHeader(at index: Int) -> Bool {
-        guard !model.isMixedPath else { return false }
-        guard index > 0 else { return true }
-        return model.rings[index - 1].chapterId != model.rings[index].chapterId
-    }
-
-    private func color(for ring: PathRing) -> Color {
-        model.discipline(withId: ring.disciplineId)?.color ?? Theme.primary
-    }
-
-    /// The thick, winding cord that joins two consecutive rings — replaces
-    /// the old plain dotted connector with a bold illustrated trail.
+    /// Hairline S-curve joining two consecutive tiles: a pale stroke of the
+    /// theme colour, no outline, no texture — intentionally discreet.
     @ViewBuilder
     private func connector(before ring: PathRing, at index: Int) -> some View {
-        let previous = model.rings[index - 1]
-        let isChapterBreak = !model.isMixedPath && previous.chapterId != ring.chapterId
+        let previous = rings[index - 1]
         let fromX = horizontalOffset(for: previous, width: pathWidth)
         let toX = horizontalOffset(for: ring, width: pathWidth)
-        let height = connectorHeight(for: ring, isChapterBreak: isChapterBreak)
-        TrailConnector(fromX: fromX, toX: toX, accent: color(for: ring))
-            .frame(height: height)
-            .opacity(isChapterBreak ? 0.45 : 0.8)
+        TrailConnector(fromX: fromX, toX: toX, accent: accent)
+            .frame(height: 96)
     }
 
     /// Deterministic pseudo-random horizontal wobble per ring, so the path
@@ -83,23 +62,15 @@ struct RingPathView: View {
     private func horizontalOffset(for ring: PathRing, width: CGFloat) -> CGFloat {
         guard ring.kind != .recap else { return 0 }
         var generator = RingWobbleGenerator(seed: ring.id)
-        let maxStep = min(width * 0.38, 120)
+        let maxStep = min(width * 0.30, 110)
         let magnitude = CGFloat.random(in: 0.35...1, using: &generator)
         let sign: CGFloat = Bool.random(using: &generator) ? 1 : -1
         return maxStep * magnitude * sign
     }
-
-    /// Varies the vertical distance between rings a little so the trail
-    /// doesn't feel mechanically regular.
-    private func connectorHeight(for ring: PathRing, isChapterBreak: Bool) -> CGFloat {
-        if isChapterBreak { return 62 }
-        var generator = RingWobbleGenerator(seed: ring.id + "-h")
-        return CGFloat.random(in: 84...128, using: &generator)
-    }
 }
 
 /// A tiny, stable pseudo-random source seeded from a string so the same ring
-/// always gets the same wobble and gap, even across view refreshes.
+/// always gets the same wobble, even across view refreshes.
 private struct RingWobbleGenerator: RandomNumberGenerator {
     private var state: UInt64
 
@@ -118,17 +89,8 @@ private struct RingWobbleGenerator: RandomNumberGenerator {
     }
 }
 
-/// A single point sampled along the trail curve, paired with the
-/// perpendicular angle to the curve's tangent there.
-private struct TrailStitch {
-    let point: CGPoint
-    let angle: CGFloat
-}
-
-/// Thin, flat cord joining two rings, drawn as a single S-curve between
-/// their (offset) centers. No shadow duplicate and no glossy outline —
-/// just a plain colored stroke with a row of small rounded stitches for a
-/// braided-cord texture.
+/// Fine cord joining two tiles: a single pale S-curve between their
+/// (offset) centers, in the spirit of the soft track on the reference path.
 private struct TrailConnector: View {
     let fromX: CGFloat
     let toX: CGFloat
@@ -136,25 +98,12 @@ private struct TrailConnector: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let rect = CGRect(origin: .zero, size: proxy.size)
-            let shape = TrailShape(fromX: fromX, toX: toX)
-            let stitches = shape.stitchMarks(in: rect, count: 9)
-            ZStack {
-                shape
-                    .stroke(accent, style: StrokeStyle(lineWidth: 15, lineCap: .round, lineJoin: .round))
-                Canvas { context, _ in
-                    for stitch in stitches {
-                        var tick = Path()
-                        let half: CGFloat = 4.5
-                        let dx = cos(stitch.angle) * half
-                        let dy = sin(stitch.angle) * half
-                        tick.move(to: CGPoint(x: stitch.point.x - dx, y: stitch.point.y - dy))
-                        tick.addLine(to: CGPoint(x: stitch.point.x + dx, y: stitch.point.y + dy))
-                        context.stroke(tick, with: .color(.white.opacity(0.35)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                    }
-                }
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            TrailShape(fromX: fromX, toX: toX)
+                .stroke(
+                    accent.mix(with: .white, by: 0.68),
+                    style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round)
+                )
+                .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 }
@@ -163,100 +112,35 @@ private struct TrailShape: Shape {
     let fromX: CGFloat
     let toX: CGFloat
 
-    private func controlPoints(in rect: CGRect) -> (start: CGPoint, control1: CGPoint, control2: CGPoint, end: CGPoint) {
+    func path(in rect: CGRect) -> Path {
         let start = CGPoint(x: rect.midX + fromX, y: rect.minY)
         let end = CGPoint(x: rect.midX + toX, y: rect.maxY)
         let midY = (rect.minY + rect.maxY) / 2
         let control1 = CGPoint(x: rect.midX + fromX, y: rect.minY + (midY - rect.minY) * 0.75)
         let control2 = CGPoint(x: rect.midX + toX, y: rect.maxY - (rect.maxY - midY) * 0.75)
-        return (start, control1, control2, end)
-    }
-
-    func path(in rect: CGRect) -> Path {
         var path = Path()
-        let p = controlPoints(in: rect)
-        path.move(to: p.start)
-        path.addCurve(to: p.end, control1: p.control1, control2: p.control2)
+        path.move(to: start)
+        path.addCurve(to: end, control1: control1, control2: control2)
         return path
     }
-
-    /// Samples evenly-spaced points along the cubic bezier, each paired with
-    /// the perpendicular angle to the curve's tangent there — used to draw
-    /// short cross-stitch ticks for the braided-cord texture.
-    func stitchMarks(in rect: CGRect, count: Int) -> [TrailStitch] {
-        let p = controlPoints(in: rect)
-        var marks: [TrailStitch] = []
-        let steps = max(count, 2)
-        for i in 1..<steps {
-            let t = CGFloat(i) / CGFloat(steps)
-            let mt = 1 - t
-            let point = CGPoint(
-                x: mt * mt * mt * p.start.x + 3 * mt * mt * t * p.control1.x + 3 * mt * t * t * p.control2.x + t * t * t * p.end.x,
-                y: mt * mt * mt * p.start.y + 3 * mt * mt * t * p.control1.y + 3 * mt * t * t * p.control2.y + t * t * t * p.end.y
-            )
-            let dx = 3 * mt * mt * (p.control1.x - p.start.x) + 6 * mt * t * (p.control2.x - p.control1.x) + 3 * t * t * (p.end.x - p.control2.x)
-            let dy = 3 * mt * mt * (p.control1.y - p.start.y) + 6 * mt * t * (p.control2.y - p.control1.y) + 3 * t * t * (p.end.y - p.control2.y)
-            let angle = atan2(dy, dx) + .pi / 2
-            marks.append(TrailStitch(point: point, angle: angle))
-        }
-        return marks
-    }
 }
 
-/// Sub-chapter banner shown above the first ring of each chapter.
-private struct ChapterHeaderView: View {
-    let ring: PathRing
-    let counts: (done: Int, total: Int)
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(ring.chapterTitle.uppercased())
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.ink)
-                .multilineTextAlignment(.center)
-            HStack(spacing: 6) {
-                ForEach(0..<counts.total, id: \.self) { index in
-                    Capsule()
-                        .fill(index < counts.done ? color : Theme.line)
-                        .frame(width: index < counts.done ? 18 : 12, height: 5)
-                }
-            }
-            Text("\(counts.done)/\(counts.total) ronds")
-                .font(.system(.caption2, design: .rounded, weight: .bold))
-                .foregroundStyle(Theme.inkMuted)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(color.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(color.opacity(0.18), lineWidth: 1.5)
-                )
-        )
-        .padding(.top, 8)
-    }
-}
-
-/// A single circle on the path. The recap ring is deliberately bigger, gold
-/// and crowned so it reads as a gate rather than another lesson.
+/// A single step on the path: a rounded-square tile with a small "ROND n"
+/// badge on top, stacked on a darker offset base for the 3D chunky look.
+/// The recap is deliberately wider, gold and crowned so it reads as a gate.
 struct RingNodeView: View {
     let ring: PathRing
     let state: ChapterState
     let lock: RingLock?
     let color: Color
     let record: ChapterRecord?
-    let discipline: Discipline?
-    var showsDisciplineBadge: Bool = false
     let action: () -> Void
 
     @State private var isPulsing: Bool = false
 
     private var isRecap: Bool { ring.kind == .recap }
-    private var diameter: CGFloat { isRecap ? 108 : 86 }
+    private var tileSize: CGFloat { isRecap ? 92 : 76 }
+    private var tileWidth: CGFloat { isRecap ? 112 : 76 }
     private var isLocked: Bool { state == .locked }
 
     var body: some View {
@@ -264,9 +148,10 @@ struct RingNodeView: View {
             Haptics.medium()
             action()
         } label: {
-            VStack(spacing: 8) {
-                circle
-                labels
+            VStack(spacing: 7) {
+                badge
+                tile
+                caption
             }
         }
         .buttonStyle(.plain)
@@ -280,67 +165,57 @@ struct RingNodeView: View {
         .accessibilityLabel(accessibilityText)
     }
 
-    private var circle: some View {
-        ZStack {
-            if state == .available {
-                Circle()
-                    .stroke(ringAccent.opacity(0.35), lineWidth: 4)
-                    .frame(width: diameter + 20, height: diameter + 20)
-                    .scaleEffect(isPulsing ? 1.05 : 0.94)
-            }
-            Circle()
-                .fill(fillColor.mix(with: .black, by: 0.25))
-                .frame(width: diameter, height: diameter)
-                .offset(y: 6)
-            Circle()
-                .fill(fillColor)
-                .frame(width: diameter, height: diameter)
-            if isRecap && !isLocked {
-                Circle()
-                    .stroke(.white.opacity(0.45), lineWidth: 3)
-                    .frame(width: diameter - 16, height: diameter - 16)
-            }
-            Image(systemName: iconName)
-                .font(.system(size: isRecap ? 44 : 32, weight: .bold))
-                .foregroundStyle(isLocked ? Theme.inkMuted : .white)
-
-            if let discipline, showsDisciplineBadge, !isRecap {
-                Group {
-                    if let illustratedIconName = discipline.illustratedIconName {
-                        Image(illustratedIconName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 26, height: 26)
-                            .clipShape(Circle())
-                    } else {
-                        Image(systemName: discipline.icon)
-                            .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(.white)
-                            .frame(width: 26, height: 26)
-                            .background(Circle().fill(discipline.color))
-                    }
-                }
-                .overlay(Circle().stroke(Theme.background, lineWidth: 2.5))
-                .offset(x: diameter / 2 - 6, y: -diameter / 2 + 6)
-            }
-        }
-        .frame(height: diameter + 20)
+    /// Small pill above the tile, like the "LEÇON 1" tag over a lesson card.
+    private var badge: some View {
+        Text(isRecap ? "RÉCAP" : "ROND \(ring.indexInChapter + 1)")
+            .font(.system(size: 10, weight: .heavy, design: .rounded))
+            .tracking(0.6)
+            .foregroundStyle(isLocked ? Theme.inkMuted : .white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                Capsule().fill(isLocked ? Theme.lockedFill : ringAccent)
+            )
     }
 
-    @ViewBuilder
-    private var labels: some View {
-        Text(isRecap ? "RÉCAP · \(ring.chapterTitle)" : ring.shortTitle)
-            .font(.system(isRecap ? .subheadline : .caption, design: .rounded, weight: .heavy))
-            .foregroundStyle(isLocked ? Theme.inkMuted : Theme.ink)
-            .multilineTextAlignment(.center)
-            .frame(width: 170)
-
-        if showsDisciplineBadge, let discipline, !isRecap {
-            Text(discipline.name)
-                .font(.system(.caption2, design: .rounded, weight: .bold))
-                .foregroundStyle(isLocked ? Theme.inkMuted : discipline.color)
+    private var tile: some View {
+        ZStack {
+            if state == .available {
+                RoundedRectangle(cornerRadius: tileCorner + 9)
+                    .stroke(ringAccent.opacity(0.35), lineWidth: 3.5)
+                    .frame(width: tileWidth + 14, height: tileSize + 14)
+                    .scaleEffect(isPulsing ? 1.05 : 0.94)
+            }
+            ZStack {
+                Image(systemName: iconName)
+                    .font(.system(size: isRecap ? 34 : 27, weight: .bold))
+                    .foregroundStyle(isLocked ? Theme.inkMuted : .white)
+            }
+            .frame(width: tileWidth, height: tileSize)
+            .background(
+                RoundedRectangle(cornerRadius: tileCorner)
+                    .fill(fillColor.mix(with: .black, by: 0.24))
+                    .offset(y: 5)
+            )
+            .background(
+                RoundedRectangle(cornerRadius: tileCorner)
+                    .fill(fillColor)
+            )
         }
+        .frame(height: tileSize + 16)
+    }
 
+    private var tileCorner: CGFloat { isRecap ? 26 : 22 }
+
+    @ViewBuilder
+    private var caption: some View {
+        if isRecap {
+            Text(ring.chapterTitle)
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(isLocked ? Theme.inkMuted : Theme.ink)
+                .multilineTextAlignment(.center)
+                .frame(width: 190)
+        }
         if let cooldownDate {
             CooldownLabel(date: cooldownDate)
         } else if let record, record.bestScore > 0 {
@@ -349,11 +224,8 @@ struct RingNodeView: View {
                 .foregroundStyle(record.bestScore >= ProgressStore.ringMasteryScore ? Theme.gold.mix(with: .black, by: 0.2) : Theme.inkMuted)
         } else if !isLocked, !isRecap {
             Text(ring.tier.label)
-                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                .foregroundStyle(ringAccent)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Capsule().fill(ringAccent.opacity(0.14)))
+                .font(.system(.caption2, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.inkMuted)
         }
     }
 
