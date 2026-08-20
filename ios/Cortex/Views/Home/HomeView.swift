@@ -347,7 +347,7 @@ private struct LessonsMenuView: View {
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("PÉRIODE ACTUELLE :")
+                Text("THÈME ACTUEL :")
                     .font(.system(size: 12, weight: .heavy, design: .rounded))
                     .tracking(0.6)
                     .foregroundStyle(Theme.inkMuted)
