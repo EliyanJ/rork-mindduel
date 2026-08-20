@@ -8,6 +8,8 @@ struct PartyMatchView: View {
     let mode: PartyMode
     let onExit: () -> Void
 
+    @State private var isEmotePickerPresented = false
+
     private var isReveal: Bool { session.phase == .reveal }
 
     var body: some View {
@@ -33,16 +35,23 @@ struct PartyMatchView: View {
             if session.showLeaderboard {
                 QuizLeaderboardOverlay(
                     entries: session.leaderboardEntries,
-                    title: "Classement",
-                    subtitle: "Top 5 · Question \(session.currentQuestionInRound + 1)/\(session.ticket?.questionsPerRound ?? 20)",
+                    title: "Top 5",
+                    roundLabel: "Question \(session.currentQuestionInRound + 1)/\(session.ticket?.questionsPerRound ?? 20)",
+                    themeLabel: session.themeName,
                     autoDismissAfter: nil,
                     onDismiss: nil
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.spring(duration: 0.35), value: session.surge)
-        .animation(.spring(duration: 0.35), value: session.showLeaderboard)
+        .overlay(alignment: .trailing) {
+            FloatingEmoteOverlay(items: session.floatingEmotes)
+                .padding(.trailing, 12)
+                .padding(.bottom, 140)
+                .allowsHitTesting(false)
+        }
+        .animation(.spring(duration: 0.6), value: session.surge)
+        .animation(.spring(duration: 0.6), value: session.showLeaderboard)
     }
 
     private var questionBody: some View {
@@ -95,7 +104,16 @@ struct PartyMatchView: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.quizBackground)
-        .animation(.spring(duration: 0.4), value: session.isPreviewing)
+        .animation(.spring(duration: 0.7), value: session.isPreviewing)
+        .overlay(alignment: .trailing) {
+            if session.playerAnswer != nil, !isReveal {
+                EmoteTriggerButton { isEmotePickerPresented = true }
+                    .padding(.trailing, 6)
+            }
+        }
+        .sheet(isPresented: $isEmotePickerPresented) {
+            EmotePickerSheet { emote in session.sendEmote(emote) }
+        }
     }
 
     private var scoreHeader: some View {
@@ -122,7 +140,12 @@ struct PartyMatchView: View {
                     teamPill(label: "B", score: teamScores.b, isMine: session.you?.team == "B")
                 }
             } else if isReveal, session.lastPlayerPoints > 0 {
-                AnimatedPointsBadge(points: session.lastPlayerPoints)
+                VStack(alignment: .trailing, spacing: 4) {
+                    AnimatedPointsBadge(points: session.lastPlayerPoints)
+                    if session.wasFastestCorrect {
+                        FastestAnswerBadge()
+                    }
+                }
             }
         }
     }

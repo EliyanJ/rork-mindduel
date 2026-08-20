@@ -3,10 +3,14 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(AppModel.self) private var model
     @Environment(OnlineModel.self) private var online
+    @Environment(AvatarStore.self) private var avatarStore
+    @State private var onboardingStore = OnboardingStore()
     @State private var isSignInPresented: Bool = false
     @State private var isSettingsPresented: Bool = false
     @State private var isFriendsPresented: Bool = false
     @State private var isQRPresented: Bool = false
+    @State private var isAvatarEditorPresented: Bool = false
+    @State private var isRenamePresented: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,6 +41,27 @@ struct ProfileView: View {
         .sheet(isPresented: $isQRPresented) {
             FriendQRView()
         }
+        .sheet(isPresented: $isAvatarEditorPresented) {
+            AvatarEditorView(store: avatarStore) { isAvatarEditorPresented = false }
+        }
+        .sheet(isPresented: $isRenamePresented) {
+            RenameNicknameSheet(
+                currentName: online.profile?.name ?? onboardingStore.preferences.nickname,
+                changesUsed: onboardingStore.preferences.nicknameChangeCount,
+                store: model.store,
+                onSave: { newName in
+                    var prefs = onboardingStore.preferences
+                    prefs.nickname = newName
+                    prefs.nicknameChangeCount += 1
+                    onboardingStore.save(prefs)
+                    if online.isSignedIn {
+                        Task { await online.updateProfile(name: newName, emoji: nil) }
+                    }
+                    isRenamePresented = false
+                },
+                onCancel: { isRenamePresented = false }
+            )
+        }
         .task {
             if online.isSignedIn {
                 if online.profile == nil {
@@ -51,17 +76,36 @@ struct ProfileView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            Text(online.profile?.emoji ?? "🧠")
-                .font(.system(size: 34))
-                .frame(width: 62, height: 62)
-                .background(Circle().fill(Theme.primary.opacity(0.12)))
-                .overlay(Circle().stroke(Theme.primary.opacity(0.3), lineWidth: 2))
+            Button {
+                Haptics.tap()
+                isAvatarEditorPresented = true
+            } label: {
+                AvatarView(config: avatarStore.config, size: 62)
+                    .overlay(alignment: .bottomTrailing) {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.primary)
+                            .background(Circle().fill(.white))
+                    }
+            }
+            .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 2) {
-                Text(online.profile?.name ?? "Ton profil")
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                Button {
+                    Haptics.tap()
+                    isRenamePresented = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(displayName)
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Theme.inkMuted)
+                    }
+                }
+                .buttonStyle(.plain)
                 if let profile = online.profile {
                     Text("@\(handle(from: profile.friendCode))")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
@@ -92,6 +136,12 @@ struct ProfileView: View {
 
     private func handle(from code: String) -> String {
         code.replacingOccurrences(of: "#", with: "").lowercased()
+    }
+
+    private var displayName: String {
+        if let name = online.profile?.name, !name.isEmpty { return name }
+        if !onboardingStore.preferences.nickname.isEmpty { return onboardingStore.preferences.nickname }
+        return "Ton profil"
     }
 
     // MARK: - Friends row

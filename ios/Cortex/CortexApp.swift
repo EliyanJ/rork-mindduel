@@ -12,6 +12,7 @@ struct CortexApp: App {
     @State private var authManager: AuthManager
     @State private var onlineModel: OnlineModel
     @State private var storeViewModel = StoreViewModel()
+    @State private var avatarStore = AvatarStore()
 
     init() {
         let auth = AuthManager()
@@ -34,6 +35,7 @@ struct CortexApp: App {
                 .environment(authManager)
                 .environment(onlineModel)
                 .environment(storeViewModel)
+                .environment(avatarStore)
         }
     }
 }

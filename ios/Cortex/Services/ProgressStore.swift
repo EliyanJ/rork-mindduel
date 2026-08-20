@@ -19,6 +19,10 @@ final class ProgressStore {
     static let recapRubisReward = 10
     static let rankedDuelAdInterval = 2
     static let botMatchAdInterval = 3
+    /// Free nickname changes before rubis are required (the very first pick
+    /// during onboarding doesn't count against this).
+    static let freeNicknameChanges = 3
+    static let nicknameChangeCost = 50
 
     // MARK: - Energy (hearts) tuning
     static let energyMax = 5
@@ -135,6 +139,16 @@ final class ProgressStore {
         guard amount > 0 else { return }
         progress.livresBalance += amount
         save()
+    }
+
+    /// Generic rubis spend used by cosmetic/utility purchases (nickname
+    /// renames, etc). Returns false without side effects when too poor.
+    @discardableResult
+    func spendLivres(_ amount: Int) -> Bool {
+        guard amount >= 0, progress.livresBalance >= amount else { return false }
+        progress.livresBalance -= amount
+        save()
+        return true
     }
 
     var dailyUsage: DailyUsage {

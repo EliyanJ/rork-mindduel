@@ -76,8 +76,10 @@ final class PartySession {
     private(set) var voteCounts: [Int] = []
     private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
     private(set) var answeredCount: Int = 0
+    private(set) var wasFastestCorrect: Bool = false
+    private(set) var floatingEmotes: [FloatingEmote] = []
 
-    static let readingBeat: Double = 5
+    static let readingBeat: Double = 8
 
     private var previousBoardRanks: [String: Int] = [:]
     private var scoresAtRoundStart: [String: Int] = [:]
@@ -110,6 +112,9 @@ final class PartySession {
     }
 
     var you: PartyPlayer? { ticket?.you }
+    /// Party games mix every discipline, so the leaderboard header always
+    /// shows the same friendly label instead of a per-round theme.
+    var themeName: String { "Tous thèmes" }
     var currentQuestion: Question? {
         questions.indices.contains(currentGlobalIndex) ? questions[currentGlobalIndex] : nil
     }
@@ -243,6 +248,11 @@ final class PartySession {
         case "cancelled":
             phase = .cancelled("La partie a été annulée")
             socket?.cancel(with: .goingAway, reason: nil)
+        case "emote":
+            if let emoteRaw = raw["emote"] as? String, let emote = QuizEmote(rawValue: emoteRaw), let senderId = raw["from"] as? String {
+                let senderName = ticket?.players.first { $0.id == senderId }?.name ?? "Joueur"
+                pushFloatingEmote(FloatingEmote(senderName: senderName, emote: emote))
+            }
         default:
             break
         }
@@ -377,8 +387,32 @@ final class PartySession {
         voteProgressTask?.cancel()
         if let capacity = ticket?.players.count { answeredCount = capacity }
 
+        // The server only reports aggregate counts, not individual times, so
+        // "fastest" here means: correct, and among the fastest half of the
+        // field by elapsed time — a reasonable stand-in for a real rank.
+        if lastPlayerCorrect, let elapsed = playerAnswerTime {
+            wasFastestCorrect = elapsed < roundDuration * 0.35
+        } else {
+            wasFastestCorrect = false
+        }
+
         updateLeaderboard(revealIndex: index)
         phase = .reveal
+    }
+
+    // MARK: - Emotes
+
+    func sendEmote(_ emote: QuizEmote) {
+        pushFloatingEmote(FloatingEmote(senderName: "Toi", emote: emote))
+        send(["type": "emote", "emote": emote.rawValue])
+    }
+
+    private func pushFloatingEmote(_ item: FloatingEmote) {
+        floatingEmotes.append(item)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.2))
+            self?.floatingEmotes.removeAll { $0.id == item.id }
+        }
     }
 
     private func distributedVoteCounts(correctCount: Int, totalAnswered: Int, question: Question) -> [Int] {
@@ -449,11 +483,13 @@ final class PartySession {
                 previousBoardRanks[entry.id] = index + 1
             }
             topBoard = newTop
-            withAnimation(.spring(duration: 0.4)) { showLeaderboard = true }
+            SoundManager.shared.startLeaderboardMusic()
+            withAnimation(.spring(duration: 0.7)) { showLeaderboard = true }
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(4.6))
+                try? await Task.sleep(for: .seconds(7.5))
                 guard let self, self.showLeaderboard else { return }
-                withAnimation(.spring(duration: 0.35)) { self.showLeaderboard = false }
+                withAnimation(.spring(duration: 0.5)) { self.showLeaderboard = false }
+                SoundManager.shared.stopLeaderboardMusic()
             }
         }
     }
@@ -468,6 +504,7 @@ final class PartySession {
         surgeTask?.cancel()
         voteProgressTask?.cancel()
         SoundManager.shared.stopAmbience()
+        SoundManager.shared.stopLeaderboardMusic()
         AnswerTelemetry.shared.flush()
 
         if let serverScores = raw["scores"] as? [String: Int] {

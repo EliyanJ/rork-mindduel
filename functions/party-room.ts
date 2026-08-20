@@ -259,10 +259,24 @@ export class PartyRoom extends DurableObject<Env> {
     const attachment = ws.deserializeAttachment() as Attachment | null;
     if (!attachment) return;
 
-    let msg: { type?: string; index?: number; correct?: boolean; timeMs?: number };
+    let msg: { type?: string; index?: number; correct?: boolean; timeMs?: number; emote?: string };
     try {
       msg = JSON.parse(raw);
     } catch {
+      return;
+    }
+    if (msg.type === "emote" && typeof msg.emote === "string") {
+      const data = JSON.stringify({ type: "emote", emote: msg.emote.slice(0, 8), from: attachment.userId });
+      for (const peer of this.ctx.getWebSockets()) {
+        const meta = peer.deserializeAttachment() as Attachment | null;
+        if (meta && meta.userId !== attachment.userId) {
+          try {
+            peer.send(data);
+          } catch {
+            // socket mid-close
+          }
+        }
+      }
       return;
     }
     if (msg.type === "answer" && typeof msg.index === "number") {

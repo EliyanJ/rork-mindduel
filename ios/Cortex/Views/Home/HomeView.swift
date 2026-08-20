@@ -8,6 +8,7 @@ struct HomeView: View {
     @State private var cooldownRing: PathRing?
     @State private var isEnergyOutPresented = false
     @State private var isMenuPresented = false
+    @State private var isPathScrolledToBottom = false
     /// A lesson the player picked from the menu to replay; nil tracks the
     /// current lesson of the journey.
     @State private var focusedLessonId: String?
@@ -157,6 +158,9 @@ struct HomeView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 8) {
+                    Color.clear
+                        .frame(height: 1)
+                        .id("pathTop")
                     Text("\(lesson.title) · \(lesson.rings.count) épreuves")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(Theme.inkMuted)
@@ -189,15 +193,24 @@ struct HomeView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y >= geometry.contentSize.height - geometry.containerSize.height - 40
+            } action: { _, isAtBottom in
+                isPathScrolledToBottom = isAtBottom
+            }
             .overlay(alignment: .bottomTrailing) {
                 if lesson.rings.count > 4 {
                     Button {
                         Haptics.tap()
                         withAnimation(.easeInOut(duration: 0.35)) {
-                            proxy.scrollTo("pathBottom", anchor: .bottom)
+                            if isPathScrolledToBottom {
+                                proxy.scrollTo("pathTop", anchor: .top)
+                            } else {
+                                proxy.scrollTo("pathBottom", anchor: .bottom)
+                            }
                         }
                     } label: {
-                        Image(systemName: "arrow.down")
+                        Image(systemName: isPathScrolledToBottom ? "arrow.up" : "arrow.down")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(Theme.ink)
                             .frame(width: 52, height: 52)

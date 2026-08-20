@@ -32,13 +32,23 @@ struct FlashDuelView: View {
                 QuizLeaderboardOverlay(
                     entries: session.liveLeaderboard,
                     title: "Tableau des scores",
+                    roundLabel: "Question \(session.currentIndex + 1)/\(FlashSession.questionCount)",
+                    themeLabel: session.themeName,
                     autoDismissAfter: nil,
                     onDismiss: nil
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.spring(duration: 0.35), value: session?.showScoreboard ?? false)
+        .overlay(alignment: .trailing) {
+            if let session {
+                FloatingEmoteOverlay(items: session.floatingEmotes)
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 140)
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.spring(duration: 0.6), value: session?.showScoreboard ?? false)
     }
 
     @ViewBuilder
@@ -102,8 +112,10 @@ private final class FlashSession {
     private(set) var showScoreboard: Bool = false
     private(set) var voteCounts: [Int] = []
     private(set) var answeredCount: Int = 0
+    private(set) var wasFastestCorrect: Bool = false
+    private(set) var floatingEmotes: [FloatingEmote] = []
 
-    static let readingBeat: Double = 5
+    static let readingBeat: Double = 8
 
     private let store: ProgressStore
     private let questionDiscipline: [String: String]
@@ -112,10 +124,12 @@ private final class FlashSession {
     private var roundStartedAt: Date?
     private var previousRanks: [String: Int] = [:]
     private var lastRivalAnswers: [String] = []
+    private var lastRivalSpeedFractions: [Double] = []
 
     var currentQuestion: Question? {
         questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
     }
+    let themeName = "Tous thèmes"
 
     /// You + every rival, ranked \u2014 fed to the periodic scoreboard.
     var liveLeaderboard: [QuizLeaderboardEntry] {
@@ -170,7 +184,7 @@ private final class FlashSession {
             for value in stride(from: 3, through: 1, by: -1) {
                 await MainActor.run { self.countdown = value }
                 Haptics.tap()
-                try? await Task.sleep(for: .seconds(1))
+                try? await Task.sleep(for: .seconds(1.1))
             }
             await MainActor.run { self.startQuestion(0) }
         }
@@ -276,6 +290,7 @@ private final class FlashSession {
     private func settleRivals() {
         guard let question = currentQuestion else { return }
         lastRivalAnswers = []
+        lastRivalSpeedFractions = []
         for index in rivals.indices {
             let correct = Double.random(in: 0...1) < (0.3 + rivals[index].skill * 0.35)
             let speedFraction = Double.random(in: 0.2...1)
@@ -285,6 +300,7 @@ private final class FlashSession {
                 ? question.answer
                 : (currentOptions.first { $0.comparisonKey != question.answer.comparisonKey } ?? question.answer)
             lastRivalAnswers.append(pick)
+            if correct { lastRivalSpeedFractions.append(speedFraction) }
         }
         voteCounts = currentOptions.map { option in
             let mine = (playerAnswer == option) ? 1 : 0
@@ -292,6 +308,17 @@ private final class FlashSession {
             return mine + rivalHits
         }
         answeredCount = rivals.count + 1
+        // Flash is solo-vs-simulated-rivals: "fastest" means faster than every
+        // rival's simulated answer time this round, converted back from their
+        // random speed fraction into elapsed seconds for a fair comparison.
+        if lastGain > 0, let elapsed = roundStartedAt.map({ Date().timeIntervalSince($0) }) {
+            wasFastestCorrect = lastRivalSpeedFractions.allSatisfy { rivalFraction in
+                let rivalElapsed = (1 - rivalFraction) * Self.roundDuration
+                return elapsed <= rivalElapsed
+            }
+        } else {
+            wasFastestCorrect = false
+        }
         if (currentIndex + 1) % 2 == 0 {
             let ranked = liveLeaderboard
             for (index, entry) in ranked.enumerated() { previousRanks[entry.id] = index + 1 }
@@ -301,10 +328,41 @@ private final class FlashSession {
 
     private func revealScoreboardSoon() {
         Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(650))
-            await MainActor.run { withAnimation(.spring(duration: 0.4)) { self?.showScoreboard = true } }
-            try? await Task.sleep(for: .seconds(4.4))
-            await MainActor.run { self?.showScoreboard = false }
+            try? await Task.sleep(for: .milliseconds(1200))
+            await MainActor.run {
+                SoundManager.shared.startLeaderboardMusic()
+                withAnimation(.spring(duration: 0.7)) { self?.showScoreboard = true }
+            }
+            try? await Task.sleep(for: .seconds(7.5))
+            await MainActor.run {
+                self?.showScoreboard = false
+                SoundManager.shared.stopLeaderboardMusic()
+            }
+        }
+    }
+
+    // MARK: - Emotes
+
+    /// No real network peers in Flash mode, so a couple of rivals "emote
+    /// back" shortly after the player sends one — the same trick used for
+    /// their simulated votes and scores.
+    func sendEmote(_ emote: QuizEmote) {
+        pushFloatingEmote(FloatingEmote(senderName: "Toi", emote: emote))
+        for rival in rivals.shuffled().prefix(Int.random(in: 0...2)) {
+            Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(.random(in: 300...900)))
+                guard let self else { return }
+                let reply = QuizEmote.allCases.randomElement() ?? emote
+                await MainActor.run { self.pushFloatingEmote(FloatingEmote(senderName: rival.name, emote: reply)) }
+            }
+        }
+    }
+
+    private func pushFloatingEmote(_ item: FloatingEmote) {
+        floatingEmotes.append(item)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.2))
+            self?.floatingEmotes.removeAll { $0.id == item.id }
         }
     }
 
@@ -323,6 +381,7 @@ private final class FlashSession {
         timerTask?.cancel()
         revealTask?.cancel()
         SoundManager.shared.stopAmbience()
+        SoundManager.shared.stopLeaderboardMusic()
         var entries = rivals.map { rival in
             FinalEntry(name: rival.name, emoji: rival.emoji, score: rival.score, isYou: false)
         }
@@ -443,6 +502,7 @@ private struct FlashCountdownBody: View {
 
 private struct FlashQuestionBody: View {
     let session: FlashSession
+    @State private var isEmotePickerPresented = false
 
     private var isRevealing: Bool { session.playerAnswer != nil }
     private var isPreview: Bool { session.phase == .preview }
@@ -464,7 +524,12 @@ private struct FlashQuestionBody: View {
                     QuizTimerRing(remaining: session.timeRemaining, total: FlashSession.roundDuration, size: 46)
                 }
                 if isRevealing, session.lastGain > 0 {
-                    AnimatedPointsBadge(points: session.lastGain)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        AnimatedPointsBadge(points: session.lastGain)
+                        if session.wasFastestCorrect {
+                            FastestAnswerBadge()
+                        }
+                    }
                 }
             }
 
@@ -508,7 +573,16 @@ private struct FlashQuestionBody: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.quizBackground)
         .animation(.easeOut(duration: 0.15), value: session.currentIndex)
-        .animation(.spring(duration: 0.4), value: isPreview)
+        .animation(.spring(duration: 0.7), value: isPreview)
+        .overlay(alignment: .trailing) {
+            if isRevealing, session.phase == .question {
+                EmoteTriggerButton { isEmotePickerPresented = true }
+                    .padding(.trailing, 6)
+            }
+        }
+        .sheet(isPresented: $isEmotePickerPresented) {
+            EmotePickerSheet { emote in session.sendEmote(emote) }
+        }
     }
 }
 

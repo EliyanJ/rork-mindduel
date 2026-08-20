@@ -27,14 +27,21 @@ struct DuelMatchView: View {
             if session.showScoreboard {
                 QuizLeaderboardOverlay(
                     entries: session.leaderboardEntries,
-                    subtitle: "Question \(session.currentIndex + 1)/\(session.questions.count)",
+                    roundLabel: "Question \(session.currentIndex + 1)/\(session.questions.count)",
+                    themeLabel: session.themeName,
                     autoDismissAfter: nil,
                     onDismiss: nil
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.spring(duration: 0.35), value: session.showScoreboard)
+        .overlay(alignment: .trailing) {
+            FloatingEmoteOverlay(items: session.floatingEmotes)
+                .padding(.trailing, 12)
+                .padding(.bottom, 140)
+                .allowsHitTesting(false)
+        }
+        .animation(.spring(duration: 0.6), value: session.showScoreboard)
         .task { session.start() }
         .onDisappear { session.cancel() }
     }
@@ -116,6 +123,7 @@ private struct MatchmakingStage: View {
 
 private struct DuelQuestionStage: View {
     let session: DuelSession
+    @State private var isEmotePickerPresented = false
 
     private var isReveal: Bool { session.phase == .reveal }
     private var isPreview: Bool { session.phase == .preview }
@@ -168,7 +176,16 @@ private struct DuelQuestionStage: View {
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.quizBackground)
-        .animation(.spring(duration: 0.4), value: isPreview)
+        .animation(.spring(duration: 0.7), value: isPreview)
+        .overlay(alignment: .trailing) {
+            if session.playerHasAnswered, !isReveal {
+                EmoteTriggerButton { isEmotePickerPresented = true }
+                    .padding(.trailing, 6)
+            }
+        }
+        .sheet(isPresented: $isEmotePickerPresented) {
+            EmotePickerSheet { emote in session.sendEmote(emote) }
+        }
     }
 
     private var scoreHeader: some View {
@@ -206,6 +223,9 @@ private struct DuelQuestionStage: View {
                 if alignment == .leading, isReveal, points > 0 {
                     AnimatedPointsBadge(points: points)
                 }
+            }
+            if alignment == .leading, isReveal, session.wasFastestCorrect {
+                FastestAnswerBadge()
             }
             Text("\(score)")
                 .font(.system(.title2, design: .rounded, weight: .heavy))

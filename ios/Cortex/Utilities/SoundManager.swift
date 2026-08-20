@@ -11,6 +11,7 @@ final class SoundManager {
 
     private var effectPlayers: [String: AVAudioPlayer] = [:]
     private var ambiencePlayer: AVAudioPlayer?
+    private var leaderboardPlayer: AVAudioPlayer?
     private var tickPlayer: AVAudioPlayer?
     private var lastTickAt: Date = .distantPast
 
@@ -69,6 +70,33 @@ final class SoundManager {
         ambiencePlayer?.volume = volume
     }
 
+    // MARK: - Leaderboard interstitial music
+
+    /// Ducks the lo-fi bed and plays a punchier, drum-forward loop for the
+    /// between-rounds leaderboard page, so that moment feels distinct.
+    func startLeaderboardMusic() {
+        guard !isMuted else { return }
+        setAmbienceVolume(0.05)
+        guard leaderboardPlayer == nil || leaderboardPlayer?.isPlaying == false else { return }
+        guard let url = Bundle.main.url(forResource: "leaderboard_drumroll", withExtension: "mp3") else { return }
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = -1
+            player.volume = 0.5
+            player.prepareToPlay()
+            player.play()
+            leaderboardPlayer = player
+        } catch {
+            // No leaderboard sting bundled — the lo-fi bed alone is fine.
+        }
+    }
+
+    func stopLeaderboardMusic() {
+        leaderboardPlayer?.stop()
+        leaderboardPlayer = nil
+        setAmbienceVolume(0.22)
+    }
+
     // MARK: - Tension tick tied to the round timer
 
     /// Call every timer tick with the remaining/total fraction (1 = just
@@ -83,13 +111,16 @@ final class SoundManager {
         lastTickAt = Date()
         guard let url = Bundle.main.url(forResource: "clock_tick", withExtension: "mp3") else { return }
         do {
-            let player = tickPlayer?.url == url ? tickPlayer : (try? AVAudioPlayer(contentsOf: url))
-            guard let player else { return }
-            player.volume = Float(0.15 + (1 - clamped) * 0.35)
-            player.currentTime = 0
+            // A fresh player per tick (instead of rewinding one shared
+            // instance) so fast, overlapping ticks near the end of the timer
+            // are all actually audible instead of clipping each other.
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.volume = Float(0.45 + (1 - clamped) * 0.45)
             player.prepareToPlay()
             player.play()
             tickPlayer = player
+        } catch {
+            // Missing/undecodable tick asset — fail silently.
         }
     }
 

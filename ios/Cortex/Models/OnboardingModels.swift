@@ -143,6 +143,10 @@ nonisolated struct OnboardingPreferences: Codable {
     var commitmentText: String?
     var signedAt: Date?
     var diagnostic: OnboardingDiagnostic?
+    /// How many times the player has renamed themselves from the profile
+    /// screen since onboarding. The very first pick during onboarding is
+    /// free and never counted here.
+    var nicknameChangeCount: Int = 0
 
     static let initial = OnboardingPreferences(
         nickname: "",
@@ -155,12 +159,13 @@ nonisolated struct OnboardingPreferences: Codable {
         quizScore: nil,
         commitmentText: nil,
         signedAt: nil,
-        diagnostic: nil
+        diagnostic: nil,
+        nicknameChangeCount: 0
     )
 
     private enum CodingKeys: String, CodingKey {
         case nickname, goal, topicIds, dailyGoal, perceivedLevel, preferredLearningTime
-        case screenTimeBracket, quizScore, commitmentText, signedAt, diagnostic
+        case screenTimeBracket, quizScore, commitmentText, signedAt, diagnostic, nicknameChangeCount
     }
 
     init(
@@ -174,7 +179,8 @@ nonisolated struct OnboardingPreferences: Codable {
         quizScore: Int?,
         commitmentText: String?,
         signedAt: Date?,
-        diagnostic: OnboardingDiagnostic? = nil
+        diagnostic: OnboardingDiagnostic? = nil,
+        nicknameChangeCount: Int = 0
     ) {
         self.nickname = nickname
         self.goal = goal
@@ -187,6 +193,7 @@ nonisolated struct OnboardingPreferences: Codable {
         self.commitmentText = commitmentText
         self.signedAt = signedAt
         self.diagnostic = diagnostic
+        self.nicknameChangeCount = nicknameChangeCount
     }
 
     init(from decoder: Decoder) throws {
@@ -202,6 +209,7 @@ nonisolated struct OnboardingPreferences: Codable {
         commitmentText = try c.decodeIfPresent(String.self, forKey: .commitmentText)
         signedAt = try c.decodeIfPresent(Date.self, forKey: .signedAt)
         diagnostic = try c.decodeIfPresent(OnboardingDiagnostic.self, forKey: .diagnostic)
+        nicknameChangeCount = try c.decodeIfPresent(Int.self, forKey: .nicknameChangeCount) ?? 0
     }
 
     func encode(to encoder: Encoder) throws {
@@ -217,5 +225,6 @@ nonisolated struct OnboardingPreferences: Codable {
         try c.encodeIfPresent(commitmentText, forKey: .commitmentText)
         try c.encodeIfPresent(signedAt, forKey: .signedAt)
         try c.encodeIfPresent(diagnostic, forKey: .diagnostic)
+        try c.encode(nicknameChangeCount, forKey: .nicknameChangeCount)
     }
 }

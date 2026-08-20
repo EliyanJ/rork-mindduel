@@ -6,6 +6,155 @@ import SwiftUI
 /// these into one place keeps every mode visually consistent on the same
 /// bright, airy palette instead of each screen reinventing its own look.
 
+// MARK: - Fastest-answer callout
+
+/// Small celebratory badge shown right at reveal when the local player was
+/// the fastest correct answer of the round — sits next to the points badge
+/// instead of replacing it.
+struct FastestAnswerBadge: View {
+    @State private var appeared = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "bolt.fill")
+                .font(.system(size: 12, weight: .heavy))
+            Text("Le plus rapide !")
+                .font(.system(.caption, design: .rounded, weight: .heavy))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Theme.duelAccent))
+        .shadow(color: Theme.duelAccent.opacity(0.35), radius: 8, y: 3)
+        .scaleEffect(appeared ? 1 : 0.4)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.6)) { appeared = true }
+        }
+    }
+}
+
+// MARK: - Emotes
+
+/// The fixed palette every emote picker offers — a mix of reactions that read
+/// clearly at a glance during a fast-paced quiz.
+enum QuizEmote: String, CaseIterable, Identifiable {
+    case laugh = "😂", fire = "🔥", clap = "👏", shocked = "😲"
+    case heart = "❤️", skull = "💀", cool = "😎", cry = "😭"
+    case thumbsUp = "👍", thumbsDown = "👎", think = "🤔", party = "🎉"
+    case wow = "🤩", angry = "😡", zzz = "😴", hundred = "💯"
+
+    var id: String { rawValue }
+}
+
+/// The round side-button that opens the emote picker once the player has
+/// locked in their answer.
+struct EmoteTriggerButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "face.smiling.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.duelAccent)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Theme.quizCanvas))
+                .overlay(Circle().stroke(Theme.duelAccent.opacity(0.35), lineWidth: 1.5))
+                .shadow(color: .black.opacity(0.08), radius: 6, y: 3)
+        }
+        .buttonStyle(.plain)
+        .transition(.scale.combined(with: .opacity))
+    }
+}
+
+/// The small grid of 16 reactions. Tapping one sends it and keeps the sheet
+/// open so spamming the same (or different) reaction is one tap away.
+struct EmotePickerSheet: View {
+    let onPick: (QuizEmote) -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Capsule().fill(Theme.quizLine).frame(width: 40, height: 5).padding(.top, 8)
+            Text("Envoie une raction")
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.quizInkMuted)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12) {
+                ForEach(QuizEmote.allCases) { emote in
+                    Button {
+                        Haptics.tap()
+                        onPick(emote)
+                    } label: {
+                        Text(emote.rawValue)
+                            .font(.system(size: 28))
+                            .frame(width: 56, height: 56)
+                            .background(Circle().fill(Theme.quizCanvas))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+        }
+        .presentationDetents([.height(300)])
+        .presentationDragIndicator(.hidden)
+        .presentationBackground(Theme.quizBackground)
+    }
+}
+
+/// One reaction floating up from the sender's name, self-dismissing after a
+/// couple seconds. A view model feeds a short-lived array of these; several
+/// can be on screen at once when players spam reactions.
+struct FloatingEmote: Identifiable, Equatable {
+    let id: UUID
+    let senderName: String
+    let emote: QuizEmote
+
+    init(senderName: String, emote: QuizEmote) {
+        self.id = UUID()
+        self.senderName = senderName
+        self.emote = emote
+    }
+}
+
+private struct FloatingEmoteBubble: View {
+    let item: FloatingEmote
+
+    @State private var risen = false
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(item.emote.rawValue).font(.system(size: 30))
+            Text(item.senderName)
+                .font(.system(.caption2, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.quizInk)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Theme.quizBackground.opacity(0.9)))
+        }
+        .offset(y: risen ? -26 : 6)
+        .opacity(risen ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { risen = true }
+        }
+    }
+}
+
+/// Stacks the currently-live floating emotes along one edge of the screen so
+/// several spammed reactions from different players don't collide.
+struct FloatingEmoteOverlay: View {
+    let items: [FloatingEmote]
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            ForEach(items) { item in
+                FloatingEmoteBubble(item: item)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.spring(duration: 0.4), value: items.map(\.id))
+    }
+}
+
 // MARK: - Answer shapes
 
 /// One shape+color per answer slot, cycling through the classic Kahoot set.
@@ -109,7 +258,7 @@ struct KahootOptionButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .animation(.easeOut(duration: 0.18), value: isReveal)
+        .animation(.easeOut(duration: 0.34), value: isReveal)
     }
 
     private var fill: Color {
@@ -235,7 +384,7 @@ struct LiveVoteCounter: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Capsule().fill(Theme.quizCanvas))
-        .animation(.spring(duration: 0.3), value: answered)
+        .animation(.spring(duration: 0.55), value: answered)
     }
 }
 
@@ -257,7 +406,7 @@ struct CountdownDigits: View {
                 insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 1.3)),
                 removal: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.6))
             ))
-            .animation(.spring(response: 0.42, dampingFraction: 0.68), value: value)
+            .animation(.spring(response: 0.7, dampingFraction: 0.68), value: value)
     }
 }
 
@@ -281,7 +430,7 @@ struct AnimatedPointsBadge: View {
             .opacity(didAppear ? 1 : 0)
             .onAppear {
                 didAppear = false
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.55)) {
                     didAppear = true
                 }
             }
@@ -331,7 +480,7 @@ struct QuestionVoteBars: View {
                         }
                 }
                 .frame(maxWidth: .infinity)
-                .animation(.spring(response: 0.5, dampingFraction: 0.72).delay(Double(index) * 0.08), value: grown)
+                .animation(.spring(response: 0.85, dampingFraction: 0.72).delay(Double(index) * 0.15), value: grown)
             }
         }
         .frame(height: 96, alignment: .bottom)
@@ -367,7 +516,11 @@ struct QuizLeaderboardOverlay: View {
     let entries: [QuizLeaderboardEntry]
     var title: String = "Classement"
     var subtitle: String? = nil
-    var autoDismissAfter: Double? = 2.4
+    /// "Question 6/15" style progress readout shown above the title.
+    var roundLabel: String? = nil
+    /// The current round's theme/discipline name, shown next to `roundLabel`.
+    var themeLabel: String? = nil
+    var autoDismissAfter: Double? = 4.0
     var onDismiss: (() -> Void)?
 
     private var ranked: [QuizLeaderboardEntry] {
@@ -395,24 +548,25 @@ struct QuizLeaderboardOverlay: View {
             ScrollView {
                 VStack(spacing: 10) {
                     ForEach(Array(ranked.enumerated()), id: \.element.id) { index, entry in
-                        row(entry: entry, rank: index + 1)
+                        LeaderboardRow(entry: entry, rank: index + 1, appearDelay: Double(index) * 0.07)
                     }
                 }
                 .padding(16)
-                .padding(.bottom, biggestRiser != nil ? 64 : 16)
+                .padding(.top, 46)
+                .padding(.bottom, 16)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
-        .overlay(alignment: .bottom) {
+        .overlay(alignment: .top) {
             if let biggestRiser {
                 riserToast(biggestRiser.entry, delta: biggestRiser.delta)
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 18)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.top, 210)
+                    .transition(.move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
             }
         }
-        .animation(.spring(duration: 0.4), value: biggestRiser?.entry.id)
+        .animation(.spring(duration: 0.7), value: biggestRiser?.entry.id)
         .task {
             guard let autoDismissAfter else { return }
             try? await Task.sleep(for: .seconds(autoDismissAfter))
@@ -422,6 +576,24 @@ struct QuizLeaderboardOverlay: View {
 
     private var header: some View {
         VStack(spacing: 12) {
+            if roundLabel != nil || themeLabel != nil {
+                HStack(spacing: 6) {
+                    if let roundLabel {
+                        Text(roundLabel)
+                            .font(.system(.caption, design: .rounded, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Theme.duelAccent))
+                    }
+                    if let themeLabel {
+                        Text(themeLabel)
+                            .font(.system(.caption, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.quizInkMuted)
+                            .lineLimit(1)
+                    }
+                }
+            }
             Text(title)
                 .font(.system(.title3, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.quizInk)
@@ -465,7 +637,36 @@ struct QuizLeaderboardOverlay: View {
             .background(Capsule().fill(Theme.primary))
     }
 
-    private func row(entry: QuizLeaderboardEntry, rank: Int) -> some View {
+    private func riserToast(_ entry: QuizLeaderboardEntry, delta: Int) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.up")
+                .font(.system(size: 14, weight: .heavy))
+            Text("\(entry.name) est monté de \(delta) place\(delta > 1 ? "s" : "") !")
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .lineLimit(1)
+        }
+        .foregroundStyle(Theme.quizInk)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(Capsule().fill(.white))
+        .overlay(Capsule().stroke(Theme.danger, lineWidth: 2))
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+    }
+}
+
+/// One leaderboard row, extracted as its own view so it can hold the small
+/// per-row entrance state (staggered fade + rise-in, plus a little bounce
+/// whenever its rank actually changes) that a plain function body can't.
+private struct LeaderboardRow: View {
+    let entry: QuizLeaderboardEntry
+    let rank: Int
+    let appearDelay: Double
+
+    @State private var appeared = false
+    @State private var bounced = false
+
+    var body: some View {
         HStack(spacing: 12) {
             Text(rankLabel(rank))
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
@@ -477,7 +678,7 @@ struct QuizLeaderboardOverlay: View {
                 .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
                 .lineLimit(1)
             Spacer()
-            rankArrow(entry: entry, rank: rank)
+            rankArrow
             Text("\(entry.score)")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.quizInkMuted)
@@ -495,11 +696,26 @@ struct QuizLeaderboardOverlay: View {
                 .shadow(color: .black.opacity(entry.isYou ? 0.1 : 0), radius: 8, y: 3)
         )
         .zIndex(entry.isYou ? 1 : 0)
+        .scaleEffect(appeared ? (bounced ? 1.03 : 1) : 0.9)
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 14)
         .id(entry.id)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.68).delay(appearDelay)) {
+                appeared = true
+            }
+            guard entry.previousRank != nil, entry.previousRank != rank else { return }
+            Task {
+                try? await Task.sleep(for: .seconds(appearDelay + 0.55))
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) { bounced = true }
+                try? await Task.sleep(for: .seconds(0.22))
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { bounced = false }
+            }
+        }
     }
 
     @ViewBuilder
-    private func rankArrow(entry: QuizLeaderboardEntry, rank: Int) -> some View {
+    private var rankArrow: some View {
         if let previous = entry.previousRank {
             let delta = previous - rank
             if delta > 0 {
@@ -512,22 +728,6 @@ struct QuizLeaderboardOverlay: View {
                     .foregroundStyle(Theme.danger)
             }
         }
-    }
-
-    private func riserToast(_ entry: QuizLeaderboardEntry, delta: Int) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "arrow.up")
-                .font(.system(size: 14, weight: .heavy))
-            Text("\(entry.name) est monté de \(delta) place\(delta > 1 ? "s" : "") !")
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .lineLimit(1)
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
-        .background(Capsule().fill(Theme.success))
-        .shadow(color: Theme.success.opacity(0.35), radius: 12, y: 4)
     }
 
     private func rankLabel(_ rank: Int) -> String {

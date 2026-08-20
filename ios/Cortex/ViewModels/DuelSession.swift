@@ -39,6 +39,7 @@ final class DuelSession {
 
     let questions: [Question]
     let opponent: Opponent
+    let themeName: String
     private let store: ProgressStore
     private let questionDiscipline: [String: String]
 
@@ -59,13 +60,16 @@ final class DuelSession {
     private(set) var voteCounts: [Int] = []
     private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
     private(set) var answeredCount: Int = 0
+    private(set) var wasFastestCorrect: Bool = false
+    private(set) var floatingEmotes: [FloatingEmote] = []
 
     static let totalVoters: Int = 2
-    static let readingBeat: Double = 5
+    static let readingBeat: Double = 8
 
     private var playerAnswerTime: Double?
     private var runTask: Task<Void, Never>?
     private var previousRanks: [String: Int] = [:]
+    private var emoteTask: Task<Void, Never>?
 
     init(catalog: ContentCatalog, store: ProgressStore, disciplineId: String? = nil) {
         self.store = store
@@ -88,6 +92,7 @@ final class DuelSession {
         ]
         let pick = candidates.randomElement() ?? ("Léa", "🦊")
         self.opponent = Opponent(name: pick.0, emoji: pick.1, elo: store.progress.elo + Int.random(in: -80...80))
+        self.themeName = disciplineId.flatMap { id in catalog.disciplines.first { $0.id == id }?.name } ?? "Tous thèmes"
     }
 
     var currentQuestion: Question? {
@@ -120,7 +125,7 @@ final class DuelSession {
             for count in [3, 2, 1] {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { phase = .countdown(count) }
                 Haptics.tap()
-                try await Task.sleep(for: .seconds(0.8))
+                try await Task.sleep(for: .seconds(1.0))
             }
             SoundManager.shared.startAmbience()
             for index in questions.indices {
@@ -178,6 +183,7 @@ final class DuelSession {
         let playerPoints = playerCorrect ? 100 + Int((1 - answerTime / Self.roundDuration) * 100) : 0
         let effectiveBotTime = min(botTime, Self.roundDuration)
         let botPoints = botCorrect ? 100 + Int((1 - effectiveBotTime / Self.roundDuration) * 100) : 0
+        wasFastestCorrect = playerCorrect && (playerAnswerTime ?? Self.roundDuration) < effectiveBotTime
 
         // Snapshot the rank order before this round's points land, so the
         // leaderboard page can show who just overtook whom.
@@ -223,22 +229,48 @@ final class DuelSession {
         ))
 
         phase = .reveal
-        try await Task.sleep(for: .seconds(2.2))
+        try await Task.sleep(for: .seconds(4.0))
 
         if (index + 1) % 2 == 0, index < questions.count - 1 {
             leaderboardEntries = [
                 QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "\u{1F9E0}", score: playerScore, isYou: true, previousRank: previousRanks["you"]),
                 QuizLeaderboardEntry(id: "bot", name: opponent.name, emoji: opponent.emoji, score: botScore, isYou: false, previousRank: previousRanks["bot"])
             ]
-            withAnimation(.spring(duration: 0.4)) { showScoreboard = true }
-            try await Task.sleep(for: .seconds(4.2))
+            SoundManager.shared.startLeaderboardMusic()
+            withAnimation(.spring(duration: 0.7)) { showScoreboard = true }
+            try await Task.sleep(for: .seconds(7.0))
             showScoreboard = false
+            SoundManager.shared.stopLeaderboardMusic()
+        }
+    }
+
+    // MARK: - Emotes
+
+    /// Sends the player's own reaction, then — for fun and to make the bot
+    /// feel alive — sometimes has it emote back a moment later.
+    func sendEmote(_ emote: QuizEmote) {
+        pushFloatingEmote(FloatingEmote(senderName: "Toi", emote: emote))
+        guard Double.random(in: 0...1) < 0.45 else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(.random(in: 400...1100)))
+            guard let self else { return }
+            let reply = QuizEmote.allCases.randomElement() ?? emote
+            self.pushFloatingEmote(FloatingEmote(senderName: self.opponent.name, emote: reply))
+        }
+    }
+
+    private func pushFloatingEmote(_ item: FloatingEmote) {
+        floatingEmotes.append(item)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.2))
+            self?.floatingEmotes.removeAll { $0.id == item.id }
         }
     }
 
     private func finish() {
         AnswerTelemetry.shared.flush()
         SoundManager.shared.stopAmbience()
+        SoundManager.shared.stopLeaderboardMusic()
         let won = playerScore > botScore
         let draw = playerScore == botScore
         eloChange = draw ? 4 : (won ? 18 : -12)

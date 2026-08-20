@@ -59,9 +59,11 @@ final class OnlineDuelSession {
     private(set) var lastOpponentAnswerText: String?
     private(set) var leaderboardEntries: [QuizLeaderboardEntry] = []
     private(set) var answeredCount: Int = 0
+    private(set) var wasFastestCorrect: Bool = false
+    private(set) var floatingEmotes: [FloatingEmote] = []
 
     static let totalVoters: Int = 2
-    static let readingBeat: Double = 5
+    static let readingBeat: Double = 8
 
     private var previousRanks: [String: Int] = [:]
     private var socket: URLSessionWebSocketTask?
@@ -93,6 +95,14 @@ final class OnlineDuelSession {
     var opponent: PlayerProfile? { ticket?.opponent }
     var you: PlayerProfile? { ticket?.you }
     var playerHasAnswered: Bool { playerAnswer != nil }
+
+    /// Human-readable theme readout for the leaderboard header — falls back
+    /// to a generic label for mixed/unset theme tickets.
+    var themeName: String {
+        guard let ids = ticket?.themes, ids != ["all"] else { return "Tous thèmes" }
+        let names = ids.compactMap { id in catalog.disciplines.first { $0.id == id }?.name }
+        return names.isEmpty ? "Tous thèmes" : names.joined(separator: " · ")
+    }
 
     var currentQuestion: Question? {
         questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
@@ -215,6 +225,10 @@ final class OnlineDuelSession {
         case "cancelled":
             phase = .cancelled("Ton adversaire a quitté avant le début")
             socket?.cancel(with: .goingAway, reason: nil)
+        case "emote":
+            if let raw = raw["emote"] as? String, let emote = QuizEmote(rawValue: raw) {
+                pushFloatingEmote(FloatingEmote(senderName: ticket?.opponent.name ?? "Adversaire", emote: emote))
+            }
         default:
             break
         }
@@ -301,6 +315,7 @@ final class OnlineDuelSession {
         let theirTimeMs = theirs?["timeMs"] as? Double ?? roundDuration * 1000
         lastPlayerAnswerText = mine?["answer"] as? String
         lastOpponentAnswerText = theirs?["answer"] as? String
+        wasFastestCorrect = myCorrect && (playerAnswerTime ?? roundDuration) * 1000 < theirTimeMs
 
         // Snapshot the rank order before this round's points land, so the
         // leaderboard page can show who just overtook whom.
@@ -349,16 +364,35 @@ final class OnlineDuelSession {
 
         if (index + 1) % 2 == 0 {
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(2.2))
+                try? await Task.sleep(for: .seconds(4.0))
                 guard let self, self.phase == .reveal else { return }
                 self.leaderboardEntries = [
                     QuizLeaderboardEntry(id: "you", name: "Toi", emoji: you.emoji, score: self.playerScore, isYou: true, previousRank: self.previousRanks["you"]),
                     QuizLeaderboardEntry(id: "opp", name: opp.name, emoji: opp.emoji, score: self.opponentScore, isYou: false, previousRank: self.previousRanks["opp"])
                 ]
-                withAnimation(.spring(duration: 0.4)) { self.showScoreboard = true }
-                try? await Task.sleep(for: .seconds(4.2))
+                SoundManager.shared.startLeaderboardMusic()
+                withAnimation(.spring(duration: 0.7)) { self.showScoreboard = true }
+                try? await Task.sleep(for: .seconds(7.0))
                 self.showScoreboard = false
+                SoundManager.shared.stopLeaderboardMusic()
             }
+        }
+    }
+
+    // MARK: - Emotes
+
+    /// Broadcasts the player's own reaction to the opponent over the match
+    /// socket, and displays anything the opponent sends back.
+    func sendEmote(_ emote: QuizEmote) {
+        pushFloatingEmote(FloatingEmote(senderName: "Toi", emote: emote))
+        send(["type": "emote", "emote": emote.rawValue])
+    }
+
+    private func pushFloatingEmote(_ item: FloatingEmote) {
+        floatingEmotes.append(item)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.2))
+            self?.floatingEmotes.removeAll { $0.id == item.id }
         }
     }
 
@@ -370,6 +404,7 @@ final class OnlineDuelSession {
         finishedHandled = true
         timerTask?.cancel()
         SoundManager.shared.stopAmbience()
+        SoundManager.shared.stopLeaderboardMusic()
         // A ranked duel is shorter than one telemetry batch, so without an
         // explicit flush the whole match's answers would sit in memory and be
         // lost when the app is closed.

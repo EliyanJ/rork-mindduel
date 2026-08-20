@@ -171,10 +171,20 @@ export class MatchRoom extends DurableObject<Env> {
     const attachment = ws.deserializeAttachment() as Attachment | null;
     if (!attachment) return;
 
-    let msg: { type?: string; index?: number; answer?: string; correct?: boolean; timeMs?: number };
+    let msg: { type?: string; index?: number; answer?: string; correct?: boolean; timeMs?: number; emote?: string };
     try {
       msg = JSON.parse(raw);
     } catch {
+      return;
+    }
+
+    if (msg.type === "emote" && typeof msg.emote === "string") {
+      for (const peer of this.ctx.getWebSockets()) {
+        const meta = peer.deserializeAttachment() as Attachment | null;
+        if (meta && meta.userId !== attachment.userId) {
+          trySend(peer, { type: "emote", emote: msg.emote.slice(0, 8) });
+        }
+      }
       return;
     }
 
