@@ -34,7 +34,15 @@ struct OnlineMatchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.duelBackground)
+        .background(Theme.quizBackground)
+        .sheet(isPresented: Binding(get: { session.showScoreboard }, set: { _ in })) {
+            QuizLeaderboardOverlay(entries: [
+                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: session.you?.emoji ?? "🧠", score: session.playerScore, isYou: true),
+                QuizLeaderboardEntry(id: "opp", name: session.opponent?.name ?? "Adversaire", emoji: session.opponent?.emoji ?? "🎯", score: session.opponentScore, isYou: false)
+            ])
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.visible)
+        }
         .task { session.start() }
         .onDisappear { session.cancel() }
     }
@@ -64,12 +72,12 @@ private struct OnlineSearchStage: View {
                 Text(isFound ? (session.opponent?.emoji ?? "🎯") : "🌍")
                     .font(.system(size: 56))
                     .frame(width: 110, height: 110)
-                    .background(Circle().fill(Theme.duelCard))
+                    .background(Circle().fill(Theme.quizCanvas))
             }
             VStack(spacing: 8) {
                 Text(isFound ? "Adversaire trouvé !" : "Recherche mondiale…")
                     .font(.system(.title3, design: .rounded, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                 if isFound, let opponent = session.opponent {
                     Text("\(opponent.name) · ELO \(opponent.elo)")
                         .font(.system(.body, design: .rounded, weight: .bold))
@@ -79,11 +87,11 @@ private struct OnlineSearchStage: View {
                     VStack(spacing: 4) {
                         Text("Matchmaking ELO avec de vrais joueurs")
                             .font(.system(.subheadline, design: .rounded, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(Theme.quizInkMuted)
                         if session.searchSeconds > 3 {
                             Text("En attente depuis \(session.searchSeconds) s")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.35))
+                                .foregroundStyle(Theme.quizInkMuted.opacity(0.7))
                                 .contentTransition(.numericText())
                         }
                     }
@@ -94,11 +102,13 @@ private struct OnlineSearchStage: View {
             if !isFound {
                 Button("Annuler", action: onCancel)
                     .font(.system(.body, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(Theme.quizInkMuted)
                     .padding(.bottom, 24)
             }
         }
         .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.quizBackground)
         .onAppear {
             withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) {
                 isPulsing = true
@@ -114,13 +124,15 @@ private struct OnlineCountdownStage: View {
         VStack(spacing: 16) {
             Text("Prêt ?")
                 .font(.system(.title3, design: .rounded, weight: .bold))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Theme.quizInkMuted)
             Text("\(count)")
                 .font(.system(size: 110, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.duelAccent)
                 .id(count)
                 .transition(.scale(scale: 0.4).combined(with: .opacity))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.quizBackground)
         .animation(.spring(duration: 0.35), value: count)
         .task {
             for value in [2, 1] {
@@ -142,14 +154,16 @@ private struct OnlineErrorStage: View {
                 .font(.system(size: 60))
             Text(message)
                 .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
                 .multilineTextAlignment(.center)
             Spacer()
             Button("Retour", action: onDone)
-                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                 .padding(.bottom, 24)
         }
         .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.quizBackground)
     }
 }
 
@@ -157,34 +171,51 @@ private struct OnlineQuestionStage: View {
     let session: OnlineDuelSession
 
     private var isReveal: Bool { session.phase == .reveal }
+    private var isPreview: Bool { session.isPreviewing }
 
     var body: some View {
         VStack(spacing: 16) {
             scoreHeader
-            timerBar
             if let question = session.currentQuestion {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Question \(session.currentIndex + 1)/\(session.questions.count)")
                         .font(.system(.caption, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Theme.quizInkMuted)
                     Text(question.prompt)
                         .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.quizInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(session.currentOptions, id: \.self) { option in
-                            optionRow(option, question: question)
+                if isPreview {
+                    QuestionRevealBeat()
+                } else {
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
+                                KahootOptionButton(
+                                    index: index,
+                                    text: option,
+                                    isCorrect: option.comparisonKey == question.answer.comparisonKey,
+                                    isPicked: option == session.playerAnswer,
+                                    isReveal: isReveal,
+                                    isDisabled: session.playerHasAnswered || isReveal
+                                ) {
+                                    session.answer(option)
+                                }
+                            }
                         }
                     }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
-                .scrollBounceBehavior(.basedOnSize)
             }
             statusBanner
         }
         .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Theme.quizBackground)
+        .animation(.spring(duration: 0.4), value: isPreview)
     }
 
     private var scoreHeader: some View {
@@ -197,9 +228,13 @@ private struct OnlineQuestionStage: View {
                 alignment: .leading
             )
             Spacer()
-            Text("VS")
-                .font(.system(.caption, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.35))
+            if !isPreview {
+                QuizTimerRing(remaining: session.timeRemaining, total: max(1, session.roundDuration))
+            } else {
+                Text("VS")
+                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.quizInkMuted)
+            }
             Spacer()
             playerBadge(
                 emoji: session.opponent?.emoji ?? "🎯",
@@ -220,7 +255,7 @@ private struct OnlineQuestionStage: View {
                 Text(emoji).font(.system(size: 26))
                 Text(name)
                     .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                     .lineLimit(1)
                 if alignment == .leading, isReveal, points > 0 {
                     pointsChip(points)
@@ -237,87 +272,11 @@ private struct OnlineQuestionStage: View {
     private func pointsChip(_ points: Int) -> some View {
         Text("+\(points)")
             .font(.system(.caption, design: .rounded, weight: .heavy))
-            .foregroundStyle(Theme.duelBackground)
+            .foregroundStyle(.white)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(Capsule().fill(Theme.gold))
             .transition(.scale.combined(with: .opacity))
-    }
-
-    private var timerBar: some View {
-        let fraction = session.timeRemaining / max(1, session.roundDuration)
-        return HStack(spacing: 10) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.duelLine)
-                    Capsule()
-                        .fill(fraction < 0.3 ? Theme.danger : Theme.duelAccent)
-                        .frame(width: max(0, geo.size.width * fraction))
-                }
-            }
-            .frame(height: 10)
-            Text("\(Int(session.timeRemaining.rounded(.up)))")
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.7))
-                .frame(width: 26)
-        }
-    }
-
-    private func optionRow(_ option: String, question: Question) -> some View {
-        Button {
-            session.answer(option)
-        } label: {
-            HStack {
-                Text(option)
-                    .font(.system(.body, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 8)
-                if isReveal, option.comparisonKey == question.answer.comparisonKey {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Theme.success)
-                }
-                if isReveal, option == session.playerAnswer, option.comparisonKey != question.answer.comparisonKey {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Theme.danger)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(RoundedRectangle(cornerRadius: 14).fill(rowFill(option, question: question)))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(rowBorder(option, question: question), lineWidth: 2))
-            .opacity(rowOpacity(option, question: question))
-        }
-        .buttonStyle(.plain)
-        .disabled(session.playerHasAnswered || isReveal)
-        .animation(.easeOut(duration: 0.15), value: session.playerAnswer)
-    }
-
-    private func rowFill(_ option: String, question: Question) -> Color {
-        if isReveal, option.comparisonKey == question.answer.comparisonKey {
-            return Theme.success.opacity(0.22)
-        }
-        if option == session.playerAnswer {
-            return isReveal ? Theme.danger.opacity(0.18) : Theme.duelAccent.opacity(0.16)
-        }
-        return Theme.duelCard
-    }
-
-    private func rowBorder(_ option: String, question: Question) -> Color {
-        if isReveal, option.comparisonKey == question.answer.comparisonKey {
-            return Theme.success
-        }
-        if option == session.playerAnswer {
-            return isReveal ? Theme.danger : Theme.duelAccent
-        }
-        return Theme.duelLine
-    }
-
-    private func rowOpacity(_ option: String, question: Question) -> Double {
-        guard isReveal else { return 1 }
-        let isCorrect = option.comparisonKey == question.answer.comparisonKey
-        let isPicked = option == session.playerAnswer
-        return (isCorrect || isPicked) ? 1 : 0.5
     }
 
     @ViewBuilder
@@ -325,24 +284,27 @@ private struct OnlineQuestionStage: View {
         let opponentName = session.opponent?.name ?? "Adversaire"
         let opponentEmoji = session.opponent?.emoji ?? "🎯"
         Group {
-            if isReveal {
+            if isPreview {
+                Text("La réponse va bientôt s'ouvrir…")
+                    .foregroundStyle(Theme.quizInkMuted)
+            } else if isReveal {
                 Text(session.lastPlayerPoints > 0 ? "+\(session.lastPlayerPoints) points ! 🔥" : "Raté… la bonne réponse est en vert")
-                    .foregroundStyle(session.lastPlayerPoints > 0 ? Theme.gold : .white.opacity(0.7))
+                    .foregroundStyle(session.lastPlayerPoints > 0 ? Theme.primary : Theme.quizInkMuted)
             } else if session.playerHasAnswered {
                 Text("Réponse verrouillée 🔒 En attente de \(opponentName)…")
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Theme.quizInkMuted)
             } else if session.opponentHasAnswered {
                 Text("\(opponentEmoji) \(opponentName) a répondu !")
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.primary)
             } else {
                 Text("\(opponentEmoji) \(opponentName) réfléchit…")
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(Theme.quizInkMuted)
             }
         }
         .font(.system(.subheadline, design: .rounded, weight: .bold))
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.duelCard))
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.quizCanvas))
         .animation(.easeOut(duration: 0.2), value: session.opponentHasAnswered)
         .animation(.easeOut(duration: 0.2), value: session.playerHasAnswered)
     }

@@ -38,8 +38,8 @@ struct DuelHomeView: View {
                         Text("Jeu duel")
                             .font(.system(.title3, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
-                        rankedCard
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                            rankedModeCard
                             modeCard(title: "10 vs 10", subtitle: "Équipes", icon: "person.3.fill", colors: ["6C5CE7", "4834D4"]) {
                                 joinParty(.team10)
                             }
@@ -56,7 +56,7 @@ struct DuelHomeView: View {
                                 Haptics.medium()
                                 isLocalPresented = true
                             }
-                            modeCard(title: "Entraînement", subtitle: "Contre un bot", icon: "figure.strengthtraining.traditional", colors: ["FF9F43", "E58E26"]) {
+                            modeCard(title: "Entraînement", subtitle: "Non classé", icon: "figure.strengthtraining.traditional", colors: ["FF9F43", "E58E26"]) {
                                 Haptics.medium()
                                 presentTraining()
                             }
@@ -192,66 +192,57 @@ struct DuelHomeView: View {
         .buttonStyle(.plain)
     }
 
-    private var rankedCard: some View {
-        VStack(spacing: 18) {
-            HStack(spacing: 24) {
-                VStack(spacing: 4) {
-                    Text(online.profile.map { "\($0.displayPoints)" } ?? "—")
-                        .font(.system(size: 40, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.duelAccent)
-                        .contentTransition(.numericText())
-                    Text("POINTS CLASSÉS")
-                        .font(.system(.caption2, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-                Rectangle()
-                    .fill(Theme.duelLine)
-                    .frame(width: 1.5, height: 52)
-                VStack(spacing: 4) {
-                    Text(online.profile.map { "\($0.wins) V · \($0.losses) D" } ?? "Hors ligne")
-                        .font(.system(.title2, design: .rounded, weight: .heavy))
+    /// 1v1 ranked slots into the mode grid like every other mode — it's not
+    /// special, it's just the mode where the queue finds a real opponent.
+    /// The points/record live here as the subtitle instead of a dedicated
+    /// full-width banner.
+    private var rankedModeCard: some View {
+        Button {
+            Haptics.medium()
+            if online.isSignedIn {
+                presentRankedDuel()
+            } else {
+                isSignInPresented = true
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Image(systemName: "globe")
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(.white)
-                    Text("1V1 CLASSÉ")
-                        .font(.system(.caption2, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(.white.opacity(0.2)))
+                    Spacer()
+                    if online.isSignedIn, let profile = online.profile {
+                        Text("\(profile.displayPoints)")
+                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .contentTransition(.numericText())
+                    }
                 }
-                Spacer(minLength: 0)
-                Image("MascotDuel")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 64)
-                    .accessibilityHidden(true)
+                Spacer(minLength: 14)
+                Text("1V1")
+                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(online.isSignedIn ? "Match classé" : "Se connecter")
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.75))
             }
-            Button {
-                Haptics.medium()
-                if online.isSignedIn {
-                    presentRankedDuel()
-                } else {
-                    isSignInPresented = true
-                }
-            } label: {
-                Label(
-                    online.isSignedIn ? "Match classé" : "Se connecter pour jouer",
-                    systemImage: online.isSignedIn ? "globe" : "person.crop.circle.badge.plus"
-                )
-            }
-            .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
-            Text("Vrais joueurs · matchmaking ELO · classement mondial")
-                .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(.white.opacity(0.45))
-        }
-        .padding(22)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
-                    LinearGradient(
-                        colors: [Theme.duelCard, Theme.duelBackground],
-                        startPoint: .top,
-                        endPoint: .bottom
+            .padding(16)
+            .frame(height: 118, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.duelAccent, Theme.duelAccent.mix(with: .black, by: 0.28)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-        )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     /// One colourful, chunky mode card — mirrors the reference casual-game

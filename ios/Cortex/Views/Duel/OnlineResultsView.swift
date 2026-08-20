@@ -15,11 +15,11 @@ struct OnlineResultsView: View {
                         .font(.system(size: 64))
                     Text(isDraw ? "Égalité !" : (isWin ? "Victoire !" : "Défaite"))
                         .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.quizInk)
                     if session.wonByForfeit {
                         Text("Ton adversaire a abandonné")
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.55))
+                            .foregroundStyle(Theme.quizInkMuted)
                     }
                 }
                 .padding(.top, 24)
@@ -33,12 +33,12 @@ struct OnlineResultsView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button("Terminer", action: onDone)
-                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Theme.duelBackground.opacity(0.95))
+                .background(Theme.quizBackground.opacity(0.95))
         }
-        .background(Theme.duelBackground)
+        .background(Theme.quizBackground)
     }
 
     private var scoreBoard: some View {
@@ -51,7 +51,7 @@ struct OnlineResultsView: View {
             )
             Text("—")
                 .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Theme.quizInkMuted)
             scoreColumn(
                 emoji: session.opponent?.emoji ?? "🎯",
                 name: session.opponent?.name ?? "Adversaire",
@@ -61,7 +61,7 @@ struct OnlineResultsView: View {
         }
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.duelCard))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.quizCanvas))
     }
 
     private func scoreColumn(emoji: String, name: String, score: Int, highlighted: Bool) -> some View {
@@ -69,11 +69,11 @@ struct OnlineResultsView: View {
             Text(emoji).font(.system(size: 32))
             Text(name)
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(Theme.quizInkMuted)
                 .lineLimit(1)
             Text("\(score)")
                 .font(.system(.title, design: .rounded, weight: .heavy))
-                .foregroundStyle(highlighted ? Theme.duelAccent : .white.opacity(0.55))
+                .foregroundStyle(highlighted ? Theme.duelAccent : Theme.quizInkMuted)
         }
         .frame(maxWidth: .infinity)
     }
@@ -105,7 +105,7 @@ struct OnlineResultsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Détail des questions")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
             ForEach(Array(session.results.enumerated()), id: \.element.id) { index, result in
                 roundRow(index: index, result: result)
             }
@@ -117,7 +117,7 @@ struct OnlineResultsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(index + 1). \(result.question.prompt)")
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 14) {
                 answerBadge(
@@ -138,12 +138,12 @@ struct OnlineResultsView: View {
                 .foregroundStyle(Theme.duelAccent)
             Text(result.question.explanation)
                 .font(.system(.caption, design: .rounded, weight: .medium))
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(Theme.quizInkMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.duelCard))
+        .background(RoundedRectangle(cornerRadius: 16).fill(Theme.quizCanvas))
     }
 
     private func answerBadge(label: String, correct: Bool, points: Int, time: Double?) -> some View {
@@ -153,16 +153,17 @@ struct OnlineResultsView: View {
                 .foregroundStyle(correct ? Theme.success : Theme.danger)
             Text("\(label) +\(points)")
                 .font(.system(.caption, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(Theme.quizInk)
                 .lineLimit(1)
             if let time {
                 Text(String(format: "%.1f s", time))
                     .font(.system(.caption2, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(Theme.quizInkMuted)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Capsule().fill(Theme.duelBackground))
+        .background(Capsule().fill(Theme.quizBackground))
+        .overlay(Capsule().stroke(Theme.quizLine, lineWidth: 1))
     }
 }

@@ -52,6 +52,8 @@ final class OnlineDuelSession {
     private(set) var newElo: Int?
     private(set) var wonByForfeit: Bool = false
     private(set) var searchSeconds: Int = 0
+    private(set) var isPreviewing: Bool = false
+    private(set) var showScoreboard: Bool = false
 
     private var socket: URLSessionWebSocketTask?
     private var queueTask: Task<Void, Never>?
@@ -220,6 +222,15 @@ final class OnlineDuelSession {
         timeRemaining = durationMs / 1000
         phase = .question
         runLocalTimer(total: durationMs / 1000)
+
+        // Cosmetic "read the question first" beat — the server's timer keeps
+        // running underneath, so this stays purely a client-side reveal delay.
+        isPreviewing = true
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.1))
+            guard let self, self.currentIndex == index else { return }
+            self.isPreviewing = false
+        }
     }
 
     private func runLocalTimer(total: Double) {
@@ -309,6 +320,16 @@ final class OnlineDuelSession {
         ))
         if myCorrect { Haptics.success() } else { Haptics.error() }
         phase = .reveal
+
+        if (index + 1) % 2 == 0 {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(1.6))
+                guard let self, self.phase == .reveal else { return }
+                self.showScoreboard = true
+                try? await Task.sleep(for: .seconds(2.2))
+                self.showScoreboard = false
+            }
+        }
     }
 
     private func handleFinish(_ raw: [String: Any]) {

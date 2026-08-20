@@ -27,11 +27,11 @@ struct LocalDuelView: View {
 
     var body: some View {
         ZStack {
-            Theme.duelBackground.ignoresSafeArea()
+            Theme.quizBackground.ignoresSafeArea()
             if let service {
                 content(service)
             } else {
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.duelAccent)
             }
         }
         .task {
@@ -104,9 +104,9 @@ private struct LocalLobbyBody: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Theme.quizInkMuted)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(.white.opacity(0.1)))
+                        .background(Circle().fill(Theme.quizCanvas))
                 }
                 Spacer()
             }
@@ -118,10 +118,10 @@ private struct LocalLobbyBody: View {
             VStack(spacing: 6) {
                 Text("Duel local")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                 Text("Recherche d'appareils sur le même réseau…")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Theme.quizInkMuted)
             }
 
             Text("\(service.connectedPeers.count + 1) connecté\(service.connectedPeers.count > 0 ? "s" : "")")
@@ -136,9 +136,9 @@ private struct LocalLobbyBody: View {
                 }
                 ForEach(0..<max(0, 7 - service.connectedPeers.count), id: \.self) { _ in
                     Circle()
-                        .fill(Theme.duelCard.opacity(0.4))
+                        .fill(Theme.quizCanvas)
                         .frame(width: 44, height: 44)
-                        .overlay(Circle().stroke(Theme.duelLine, lineWidth: 1))
+                        .overlay(Circle().stroke(Theme.quizLine, lineWidth: 1))
                 }
             }
             .padding(.horizontal, 24)
@@ -147,12 +147,12 @@ private struct LocalLobbyBody: View {
 
             VStack(spacing: 10) {
                 Button("Préparer", action: onPrepare)
-                    .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                    .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                     .disabled(service.connectedPeers.isEmpty)
                     .opacity(service.connectedPeers.isEmpty ? 0.5 : 1)
                 Text(service.connectedPeers.isEmpty ? "Ouvrez Minduel sur un autre appareil à proximité" : "Tout le monde jouera le même quiz en simultané")
                     .font(.system(.caption, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 32)
@@ -169,11 +169,11 @@ private struct LocalLobbyBody: View {
             Text(emoji)
                 .font(.system(size: 20))
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(Theme.duelCard))
+                .background(Circle().fill(Theme.quizCanvas))
                 .overlay(Circle().stroke(Theme.duelAccent.opacity(0.5), lineWidth: 1.5))
             Text(name)
                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(Theme.quizInkMuted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -194,6 +194,7 @@ private struct LocalQuizBody: View {
     @State private var score = 0
     @State private var lastGain = 0
     @State private var roundStartedAt: Date = .now
+    @State private var isPreviewing = true
 
     init(questions: [Question], roundDuration: Double, onFinished: @escaping (Int) -> Void) {
         self.questions = questions
@@ -214,36 +215,38 @@ private struct LocalQuizBody: View {
                     .foregroundStyle(Theme.duelAccent)
                     .contentTransition(.numericText())
                 Spacer()
+                if !isPreviewing {
+                    QuizTimerRing(remaining: timeRemaining, total: roundDuration, size: 46)
+                }
+                Spacer()
                 Text("Question \(currentIndex + 1)/\(questions.count)")
                     .font(.system(.caption2, design: .rounded, weight: .heavy))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(Theme.quizInkMuted)
             }
-            GeometryReader { geo in
-                let fraction = timeRemaining / roundDuration
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.duelLine)
-                    Capsule()
-                        .fill(fraction < 0.3 ? Theme.danger : Theme.duelAccent)
-                        .frame(width: max(0, geo.size.width * fraction))
-                }
-            }
-            .frame(height: 10)
 
             if let question {
                 Text(question.prompt)
                     .font(.system(.title3, design: .rounded, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(spacing: 10) {
-                    ForEach(currentOptions, id: \.self) { option in
-                        optionRow(option, question: question)
+                if isPreviewing {
+                    QuestionRevealBeat()
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(Array(currentOptions.enumerated()), id: \.element) { index, option in
+                            optionRow(index: index, option, question: question)
+                        }
                     }
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
             Spacer()
         }
         .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Theme.quizBackground)
+        .animation(.spring(duration: 0.4), value: isPreviewing)
         .task { setupQuestion() }
     }
 
@@ -255,9 +258,13 @@ private struct LocalQuizBody: View {
         currentOptions = question.type == .trueFalse ? ["Vrai", "Faux"] : (question.options ?? []).shuffled()
         playerAnswer = nil
         lastGain = 0
-        timeRemaining = roundDuration
-        roundStartedAt = .now
+        isPreviewing = true
         Task {
+            try? await Task.sleep(for: .seconds(1.1))
+            guard currentIndex == questions.firstIndex(where: { $0.id == question.id }) ?? currentIndex else { return }
+            timeRemaining = roundDuration
+            roundStartedAt = .now
+            isPreviewing = false
             var elapsed: Double = 0
             while elapsed < roundDuration && playerAnswer == nil {
                 try? await Task.sleep(for: .milliseconds(50))
@@ -268,29 +275,18 @@ private struct LocalQuizBody: View {
         }
     }
 
-    private func optionRow(_ option: String, question: Question) -> some View {
+    private func optionRow(index: Int, _ option: String, question: Question) -> some View {
         let isRevealing = playerAnswer != nil
-        let isCorrect = option.comparisonKey == question.answer.comparisonKey
-        let isPicked = option == playerAnswer
-        return Button {
+        return KahootOptionButton(
+            index: index,
+            text: option,
+            isCorrect: option.comparisonKey == question.answer.comparisonKey,
+            isPicked: option == playerAnswer,
+            isReveal: isRevealing,
+            isDisabled: isRevealing
+        ) {
             answer(option, question: question)
-        } label: {
-            HStack {
-                Text(option)
-                    .font(.system(.body, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
-                Spacer(minLength: 8)
-                if isRevealing, isCorrect {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(RoundedRectangle(cornerRadius: 14).fill(isRevealing && isCorrect ? Theme.success.opacity(0.22) : (isPicked ? Theme.duelAccent.opacity(0.16) : Theme.duelCard)))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isRevealing && isCorrect ? Theme.success : (isPicked ? Theme.duelAccent : Theme.duelLine), lineWidth: 2))
         }
-        .buttonStyle(.plain)
-        .disabled(isRevealing)
     }
 
     private func answer(_ option: String, question: Question) {
@@ -320,14 +316,16 @@ private struct LocalWaitingBody: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            ProgressView().tint(.white)
+            ProgressView().tint(Theme.duelAccent)
             Text("Ton score : \(myScore) pts")
                 .font(.system(.title3, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.duelAccent)
             Text("En attente des autres joueurs…")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Theme.quizInkMuted)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.quizBackground)
     }
 }
 
@@ -348,7 +346,7 @@ private struct LocalResultsBody: View {
                         .font(.system(size: 64))
                     Text("Partie terminée")
                         .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.quizInk)
                 }
                 .padding(.top, 24)
 
@@ -357,19 +355,19 @@ private struct LocalResultsBody: View {
                         HStack(spacing: 12) {
                             Text("#\(index + 1)")
                                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                                .foregroundStyle(index == 0 ? Theme.gold : .white.opacity(0.5))
+                                .foregroundStyle(index == 0 ? Theme.gold.mix(with: .black, by: 0.2) : Theme.quizInkMuted)
                                 .frame(width: 34, alignment: .leading)
                             Text(displayName(entry.name))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(entry.name == myName ? Theme.duelAccent : .white.opacity(0.85))
+                                .foregroundStyle(entry.name == myName ? Theme.primary : Theme.quizInk)
                             Spacer()
                             Text("\(entry.score) pts")
                                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(Theme.quizInkMuted)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(entry.name == myName ? Theme.duelAccent.opacity(0.12) : Theme.duelCard))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(entry.name == myName ? Theme.primary.opacity(0.08) : Theme.quizCanvas))
                     }
                 }
             }
@@ -377,12 +375,12 @@ private struct LocalResultsBody: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button("Terminer", action: onDone)
-                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Theme.duelBackground.opacity(0.95))
+                .background(Theme.quizBackground.opacity(0.95))
         }
-        .background(Theme.duelBackground)
+        .background(Theme.quizBackground)
     }
 
     private func displayName(_ raw: String) -> String {

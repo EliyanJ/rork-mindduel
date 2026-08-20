@@ -25,12 +25,12 @@ struct PartyResultsView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button("Terminer", action: onDone)
-                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Theme.duelBackground.opacity(0.95))
+                .background(Theme.quizBackground.opacity(0.95))
         }
-        .background(Theme.duelBackground)
+        .background(Theme.quizBackground)
     }
 
     private var didWin: Bool {
@@ -45,7 +45,7 @@ struct PartyResultsView: View {
                 .font(.system(size: 64))
             Text(mode.isTeam ? (session.winningTeam == nil ? "Égalité !" : (didWin ? "Équipe victorieuse !" : "Équipe adverse gagnante")) : "Partie terminée")
                 .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 24)
@@ -58,12 +58,12 @@ struct PartyResultsView: View {
             teamColumn(label: "Équipe A", score: session.teamScores?.a ?? 0, isMine: session.you?.team == "A", isWinner: session.winningTeam == "A")
             Text("VS")
                 .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(Theme.quizInkMuted)
             teamColumn(label: "Équipe B", score: session.teamScores?.b ?? 0, isMine: session.you?.team == "B", isWinner: session.winningTeam == "B")
         }
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.duelCard))
+        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.quizCanvas))
     }
 
     private func teamColumn(label: String, score: Int, isMine: Bool, isWinner: Bool) -> some View {
@@ -71,14 +71,14 @@ struct PartyResultsView: View {
             if isWinner {
                 Text("GAGNANTE")
                     .font(.system(.caption2, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.gold.mix(with: .black, by: 0.15))
             }
             Text(label)
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(isMine ? Theme.duelAccent : .white.opacity(0.75))
+                .foregroundStyle(isMine ? Theme.duelAccent : Theme.quizInkMuted)
             Text("\(score)")
                 .font(.system(.title, design: .rounded, weight: .heavy))
-                .foregroundStyle(isWinner ? Theme.duelAccent : .white.opacity(0.55))
+                .foregroundStyle(isWinner ? Theme.duelAccent : Theme.quizInkMuted)
         }
         .frame(maxWidth: .infinity)
     }
@@ -87,7 +87,7 @@ struct PartyResultsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Contribution de chacun")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
             ForEach(session.finalEntries) { entry in
                 contributionRow(entry)
             }
@@ -101,16 +101,16 @@ struct PartyResultsView: View {
                 .font(.system(size: 14))
             Text(entry.name)
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(entry.isYou ? Theme.duelAccent : .white.opacity(0.85))
+                .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
                 .lineLimit(1)
             Spacer()
             Text("\(entry.score) pts")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Theme.quizInkMuted)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.duelCard))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.quizCanvas))
     }
 
     // MARK: 1 vs 19
@@ -130,11 +130,11 @@ struct PartyResultsView: View {
             Text(entry.emoji).font(.system(size: 28))
             Text(entry.name)
                 .font(.system(.caption, design: .rounded, weight: .bold))
-                .foregroundStyle(entry.isYou ? Theme.duelAccent : .white.opacity(0.85))
+                .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
                 .lineLimit(1)
             Text("\(entry.score)")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
             RoundedRectangle(cornerRadius: 10)
                 .fill(podiumColor(entry.rank))
                 .frame(height: height)
@@ -164,26 +164,26 @@ struct PartyResultsView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("Classement complet")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
             ForEach(rest) { entry in
                 HStack(spacing: 12) {
                     Text("#\(entry.rank)")
                         .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Theme.quizInkMuted)
                         .frame(width: 34, alignment: .leading)
                     Text(entry.emoji).font(.system(size: 18))
                     Text(entry.name)
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(entry.isYou ? Theme.duelAccent : .white.opacity(0.85))
+                        .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
                         .lineLimit(1)
                     Spacer()
                     Text("\(entry.score) pts")
                         .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Theme.quizInkMuted)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(RoundedRectangle(cornerRadius: 12).fill(entry.isYou ? Theme.duelAccent.opacity(0.1) : Theme.duelCard))
+                .background(RoundedRectangle(cornerRadius: 12).fill(entry.isYou ? Theme.primary.opacity(0.08) : Theme.quizCanvas))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

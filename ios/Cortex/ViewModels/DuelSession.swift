@@ -9,6 +9,7 @@ final class DuelSession {
         case matchmaking
         case found
         case countdown(Int)
+        case preview
         case question
         case reveal
         case finished
@@ -52,6 +53,7 @@ final class DuelSession {
     private(set) var lastBotPoints: Int = 0
     private(set) var results: [RoundResult] = []
     private(set) var eloChange: Int = 0
+    private(set) var showScoreboard: Bool = false
 
     private var playerAnswerTime: Double?
     private var runTask: Task<Void, Never>?
@@ -126,6 +128,12 @@ final class DuelSession {
         playerAnswer = nil
         playerAnswerTime = nil
         botHasAnswered = false
+
+        // A short "read the question first" beat, Kahoot-style, before the
+        // answers unlock and the round timer starts ticking.
+        phase = .preview
+        try await Task.sleep(for: .seconds(1.3))
+
         timeRemaining = Self.roundDuration
         let botTime = Double.random(in: 2.5...12.5)
         let botCorrect = Double.random(in: 0...1) < 0.6
@@ -184,7 +192,13 @@ final class DuelSession {
         ))
 
         phase = .reveal
-        try await Task.sleep(for: .seconds(2.4))
+        try await Task.sleep(for: .seconds(1.6))
+
+        if (index + 1) % 2 == 0, index < questions.count - 1 {
+            showScoreboard = true
+            try await Task.sleep(for: .seconds(2.2))
+            showScoreboard = false
+        }
     }
 
     private func finish() {

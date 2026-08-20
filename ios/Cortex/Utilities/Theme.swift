@@ -38,6 +38,23 @@ enum Theme {
     static let duelCard = Color(hex: "1E2A47")
     static let duelLine = Color(hex: "31406B")
     static let duelAccent = Color(hex: "22D3C5")
+
+    /// Airy, white game-screen palette (lobbies, live quiz, results) — swaps
+    /// out the old dark-navy "duel" surface for the same clean, bright feel
+    /// as the rest of the app.
+    static let quizBackground = Color.white
+    static let quizCard = Color.white
+    static let quizCanvas = Color(hex: "F6F5FA")
+    static let quizLine = Color(hex: "ECECEC")
+    static let quizInk = Color(hex: "3B2E28")
+    static let quizInkMuted = Color(hex: "9B8A7C")
+
+    /// Kahoot-style answer palette: one bold color + shape per option so a
+    /// choice is identifiable at a glance, not just by its text.
+    static let kahootRed = Color(hex: "E8384F")
+    static let kahootBlue = Color(hex: "1368CE")
+    static let kahootYellow = Color(hex: "E8AA00")
+    static let kahootGreen = Color(hex: "26890C")
 }
 
 extension Discipline {

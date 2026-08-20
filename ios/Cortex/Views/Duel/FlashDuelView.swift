@@ -16,16 +16,26 @@ struct FlashDuelView: View {
 
     var body: some View {
         ZStack {
-            Theme.duelBackground.ignoresSafeArea()
+            Theme.quizBackground.ignoresSafeArea()
             if let session {
                 content(session)
             } else {
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.duelAccent)
             }
         }
         .task {
             let s = FlashSession(catalog: catalog, store: store, capacity: capacity)
             session = s
+        }
+        .sheet(isPresented: Binding(get: { session?.showScoreboard ?? false }, set: { _ in })) {
+            if let session {
+                QuizLeaderboardOverlay(
+                    entries: session.liveLeaderboard,
+                    title: "Tableau des scores"
+                )
+                .presentationDetents([.height(360)])
+                .presentationDragIndicator(.visible)
+            }
         }
     }
 
@@ -36,7 +46,7 @@ struct FlashDuelView: View {
             FlashLobbyBody(session: session, isTeamFlavor: isTeamFlavor, onExit: onExit)
         case .countdown:
             FlashCountdownBody(session: session)
-        case .question:
+        case .preview, .question:
             FlashQuestionBody(session: session)
         case .finished:
             FlashResultsBody(session: session, isTeamFlavor: isTeamFlavor, onDone: onExit)
@@ -51,6 +61,7 @@ private final class FlashSession {
     enum Phase: Equatable {
         case filling
         case countdown
+        case preview
         case question
         case finished
     }
@@ -59,6 +70,8 @@ private final class FlashSession {
         let id = UUID()
         let name: String
         let emoji: String
+        let skill: Double
+        var score: Int = 0
     }
 
     struct FinalEntry: Identifiable {
@@ -84,6 +97,7 @@ private final class FlashSession {
     private(set) var score = 0
     private(set) var lastGain = 0
     private(set) var finalEntries: [FinalEntry] = []
+    private(set) var showScoreboard: Bool = false
 
     private let store: ProgressStore
     private let questionDiscipline: [String: String]
@@ -93,6 +107,13 @@ private final class FlashSession {
 
     var currentQuestion: Question? {
         questions.indices.contains(currentIndex) ? questions[currentIndex] : nil
+    }
+
+    /// You + every rival, ranked \u2014 fed to the periodic scoreboard.
+    var liveLeaderboard: [QuizLeaderboardEntry] {
+        var entries = rivals.map { QuizLeaderboardEntry(id: $0.id.uuidString, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: false) }
+        entries.append(QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "🧠", score: score, isYou: true))
+        return entries
     }
 
     init(catalog: ContentCatalog, store: ProgressStore, capacity: Int) {
@@ -123,7 +144,7 @@ private final class FlashSession {
             for _ in 0..<(capacity - 1) {
                 try? await Task.sleep(for: .milliseconds(.random(in: 220...420)))
                 await MainActor.run {
-                    self.rivals.append(Rival(name: Self.randomName(), emoji: Self.randomEmoji()))
+                    self.rivals.append(Rival(name: Self.randomName(), emoji: Self.randomEmoji(), skill: Double.random(in: 0.5...1.3)))
                 }
             }
         }
@@ -154,10 +175,21 @@ private final class FlashSession {
         currentOptions = question.type == .trueFalse ? ["Vrai", "Faux"] : (question.options ?? []).shuffled()
         playerAnswer = nil
         lastGain = 0
-        timeRemaining = Self.roundDuration
-        roundStartedAt = .now
-        phase = .question
-        runTimer()
+        roundStartedAt = nil
+
+        // Kahoot-style beat: show the question alone for a moment before the
+        // answers unlock and the round timer starts.
+        phase = .preview
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.1))
+            await MainActor.run {
+                guard let self, self.currentIndex == index else { return }
+                self.timeRemaining = Self.roundDuration
+                self.roundStartedAt = .now
+                self.phase = .question
+                self.runTimer()
+            }
+        }
     }
 
     private func runTimer() {
@@ -182,6 +214,7 @@ private final class FlashSession {
     private func timeout() {
         guard phase == .question, playerAnswer == nil else { return }
         playerAnswer = ""
+        settleRivals()
         advanceSoon()
     }
 
@@ -202,7 +235,31 @@ private final class FlashSession {
             correct: correct
         )
         if correct { Haptics.success() } else { Haptics.error() }
+        settleRivals()
         advanceSoon()
+    }
+
+    /// Rivals gain a plausible amount every round too, so the interim
+    /// scoreboard shown every 2 questions reflects a real, live race.
+    private func settleRivals() {
+        for index in rivals.indices {
+            let correct = Double.random(in: 0...1) < (0.3 + rivals[index].skill * 0.35)
+            let speedFraction = Double.random(in: 0.2...1)
+            let gain = correct ? 100 + Int((speedFraction * 100).rounded()) : 0
+            rivals[index].score += gain
+        }
+        if (currentIndex + 1) % 2 == 0 {
+            revealScoreboardSoon()
+        }
+    }
+
+    private func revealScoreboardSoon() {
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(650))
+            await MainActor.run { self?.showScoreboard = true }
+            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run { self?.showScoreboard = false }
+        }
     }
 
     private func advanceSoon() {
@@ -220,21 +277,13 @@ private final class FlashSession {
         timerTask?.cancel()
         revealTask?.cancel()
         var entries = rivals.map { rival in
-            FinalEntry(name: rival.name, emoji: rival.emoji, score: simulatedRivalScore(), isYou: false)
+            FinalEntry(name: rival.name, emoji: rival.emoji, score: rival.score, isYou: false)
         }
         entries.append(FinalEntry(name: "Toi", emoji: "🧠", score: score, isYou: true))
         finalEntries = entries.sorted { $0.score > $1.score }
         phase = .finished
         store.registerRankedDuelPlayed()
         if finalEntries.first?.isYou == true { Haptics.success() }
-    }
-
-    /// Rivals score somewhere around the player's own performance, so the
-    /// result always feels close and earned rather than arbitrary.
-    private func simulatedRivalScore() -> Int {
-        let base = max(score, 400)
-        let jitter = Double.random(in: 0.55...1.25)
-        return max(0, Int(Double(base) * jitter))
     }
 
     private static func randomName() -> String {
@@ -263,9 +312,9 @@ private struct FlashLobbyBody: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Theme.quizInkMuted)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(.white.opacity(0.1)))
+                        .background(Circle().fill(Theme.quizCanvas))
                 }
                 Spacer()
             }
@@ -277,10 +326,10 @@ private struct FlashLobbyBody: View {
             VStack(spacing: 6) {
                 Text(isTeamFlavor ? "Flash 2 vs 2" : "Flash")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                 Text("Réponds le plus vite possible !")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Theme.quizInkMuted)
             }
 
             Text("\(session.rivals.count + 1) / \(session.capacity)")
@@ -305,7 +354,7 @@ private struct FlashLobbyBody: View {
             Button("Préparer") {
                 session.prepare()
             }
-            .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+            .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
             .padding(.horizontal, 32)
             .padding(.bottom, 24)
             .disabled(session.rivals.count < session.capacity - 1)
@@ -319,11 +368,11 @@ private struct FlashLobbyBody: View {
             Text(emoji)
                 .font(.system(size: 20))
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(filled ? Theme.duelCard : Theme.duelCard.opacity(0.4)))
-                .overlay(Circle().stroke(filled ? Theme.duelAccent.opacity(0.5) : Theme.duelLine, lineWidth: filled ? 1.5 : 1))
+                .background(Circle().fill(filled ? Theme.quizCanvas : Theme.quizCanvas.opacity(0.5)))
+                .overlay(Circle().stroke(filled ? Theme.duelAccent.opacity(0.5) : Theme.quizLine, lineWidth: filled ? 1.5 : 1))
             Text(name)
                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(Theme.quizInkMuted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -337,7 +386,7 @@ private struct FlashCountdownBody: View {
         VStack(spacing: 12) {
             Text("La partie commence")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(Theme.quizInkMuted)
             Text("\(session.countdown)")
                 .font(.system(size: 90, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.duelAccent)
@@ -354,6 +403,7 @@ private struct FlashQuestionBody: View {
     let session: FlashSession
 
     private var isRevealing: Bool { session.playerAnswer != nil }
+    private var isPreview: Bool { session.phase == .preview }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -365,9 +415,12 @@ private struct FlashQuestionBody: View {
                         .contentTransition(.numericText())
                     Text("Question \(session.currentIndex + 1)/\(FlashSession.questionCount)")
                         .font(.system(.caption2, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(Theme.quizInkMuted)
                 }
                 Spacer()
+                if !isPreview {
+                    QuizTimerRing(remaining: session.timeRemaining, total: FlashSession.roundDuration, size: 46)
+                }
                 if isRevealing, session.lastGain > 0 {
                     Text("+\(session.lastGain)")
                         .font(.system(.title3, design: .rounded, weight: .heavy))
@@ -376,68 +429,40 @@ private struct FlashQuestionBody: View {
                 }
             }
 
-            GeometryReader { geo in
-                let fraction = session.timeRemaining / FlashSession.roundDuration
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.duelLine)
-                    Capsule()
-                        .fill(fraction < 0.3 ? Theme.danger : Theme.duelAccent)
-                        .frame(width: max(0, geo.size.width * fraction))
-                }
-            }
-            .frame(height: 10)
-
             if let question = session.currentQuestion {
                 Text(question.prompt)
                     .font(.system(.title3, design: .rounded, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(spacing: 10) {
-                    ForEach(session.currentOptions, id: \.self) { option in
-                        optionRow(option, question: question)
+                if isPreview {
+                    QuestionRevealBeat()
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(Array(session.currentOptions.enumerated()), id: \.element) { index, option in
+                            KahootOptionButton(
+                                index: index,
+                                text: option,
+                                isCorrect: option.comparisonKey == question.answer.comparisonKey,
+                                isPicked: option == session.playerAnswer,
+                                isReveal: isRevealing,
+                                isDisabled: isRevealing
+                            ) {
+                                session.answer(option)
+                            }
+                        }
                     }
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
             Spacer()
         }
         .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Theme.quizBackground)
         .animation(.easeOut(duration: 0.15), value: session.currentIndex)
-    }
-
-    private func optionRow(_ option: String, question: Question) -> some View {
-        let isCorrect = option.comparisonKey == question.answer.comparisonKey
-        let isPicked = option == session.playerAnswer
-        return Button {
-            session.answer(option)
-        } label: {
-            HStack {
-                Text(option)
-                    .font(.system(.body, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 8)
-                if isRevealing, isCorrect {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
-                }
-                if isRevealing, isPicked, !isCorrect {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.danger)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(isRevealing && isCorrect ? Theme.success.opacity(0.22) : (isPicked ? Theme.duelAccent.opacity(0.16) : Theme.duelCard))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isRevealing && isCorrect ? Theme.success : (isPicked ? Theme.duelAccent : Theme.duelLine), lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(isRevealing)
+        .animation(.spring(duration: 0.4), value: isPreview)
     }
 }
 
@@ -460,7 +485,7 @@ private struct FlashResultsBody: View {
                         .font(.system(size: 64))
                     Text(myRank == 1 ? "Tu es le plus rapide !" : "Partie terminée")
                         .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.quizInk)
                         .multilineTextAlignment(.center)
                     Text("\(session.score) points marqués")
                         .font(.system(.headline, design: .rounded, weight: .bold))
@@ -471,26 +496,26 @@ private struct FlashResultsBody: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Classement")
                         .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.quizInk)
                     ForEach(Array(session.finalEntries.enumerated()), id: \.element.id) { index, entry in
                         HStack(spacing: 12) {
                             Text(rankLabel(index + 1))
                                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                                 .frame(width: 34, alignment: .leading)
-                                .foregroundStyle(index < 3 ? Theme.gold : .white.opacity(0.5))
+                                .foregroundStyle(index < 3 ? Theme.gold.mix(with: .black, by: 0.2) : Theme.quizInkMuted)
                             Text(entry.emoji).font(.system(size: 20))
                             Text(entry.name)
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(entry.isYou ? Theme.duelAccent : .white.opacity(0.85))
+                                .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
                                 .lineLimit(1)
                             Spacer()
                             Text("\(entry.score) pts")
                                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(Theme.quizInkMuted)
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(entry.isYou ? Theme.duelAccent.opacity(0.12) : Theme.duelCard))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(entry.isYou ? Theme.primary.opacity(0.08) : Theme.quizCanvas))
                     }
                 }
             }
@@ -499,12 +524,12 @@ private struct FlashResultsBody: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button("Terminer", action: onDone)
-                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(Theme.duelBackground.opacity(0.95))
+                .background(Theme.quizBackground.opacity(0.95))
         }
-        .background(Theme.duelBackground)
+        .background(Theme.quizBackground)
     }
 
     private func rankLabel(_ rank: Int) -> String {

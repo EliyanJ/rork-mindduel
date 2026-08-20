@@ -68,6 +68,7 @@ final class PartySession {
     private(set) var showLeaderboard: Bool = false
     private(set) var surge: Surge?
     private(set) var finalEntries: [FinalEntry] = []
+    private(set) var isPreviewing: Bool = false
     private(set) var pointsDelta: Int = 0
     private(set) var reputationDelta: Int = 0
     private(set) var winningTeam: String?
@@ -249,6 +250,15 @@ final class PartySession {
         showLeaderboard = false
         phase = .question
         runLocalTimer(total: durationMs / 1000)
+
+        // Cosmetic "read the question first" beat — the server's timer keeps
+        // running underneath, so this stays purely a client-side reveal delay.
+        isPreviewing = true
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.1))
+            guard let self, self.currentGlobalIndex == index else { return }
+            self.isPreviewing = false
+        }
     }
 
     private func runLocalTimer(total: Double) {

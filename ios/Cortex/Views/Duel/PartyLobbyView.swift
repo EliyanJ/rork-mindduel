@@ -17,11 +17,11 @@ struct PartyLobbyView: View {
 
     var body: some View {
         ZStack {
-            Theme.duelBackground.ignoresSafeArea()
+            Theme.quizBackground.ignoresSafeArea()
             if let session {
                 content(session)
             } else {
-                ProgressView().tint(.white)
+                ProgressView().tint(Theme.duelAccent)
             }
         }
         .task {
@@ -59,9 +59,9 @@ struct PartyLobbyView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Theme.quizInkMuted)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(.white.opacity(0.1)))
+                        .background(Circle().fill(Theme.quizCanvas))
                 }
                 Spacer()
             }
@@ -73,10 +73,10 @@ struct PartyLobbyView: View {
             VStack(spacing: 6) {
                 Text(mode == .team10 ? "10 vs 10" : (mode == .duo ? "2 vs 2" : "1 vs 19"))
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.quizInk)
                 Text("Recherche de joueurs…")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(Theme.quizInkMuted)
             }
 
             Text("\(players.count) / \(capacity)")
@@ -91,19 +91,19 @@ struct PartyLobbyView: View {
                             Text(players[index].emoji)
                                 .font(.system(size: 20))
                                 .frame(width: 44, height: 44)
-                                .background(Circle().fill(Theme.duelCard))
+                                .background(Circle().fill(Theme.quizCanvas))
                                 .overlay(Circle().stroke(Theme.duelAccent.opacity(0.5), lineWidth: 1.5))
                             Text(players[index].name)
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(Theme.quizInkMuted)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
                     } else {
                         Circle()
-                            .fill(Theme.duelCard.opacity(0.4))
+                            .fill(Theme.quizCanvas)
                             .frame(width: 44, height: 44)
-                            .overlay(Circle().stroke(Theme.duelLine, lineWidth: 1, antialiased: true))
+                            .overlay(Circle().stroke(Theme.quizLine, lineWidth: 1, antialiased: true))
                     }
                 }
             }
@@ -113,7 +113,7 @@ struct PartyLobbyView: View {
 
             Text("Les places vides seront comblées automatiquement")
                 .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
                 .padding(.bottom, 24)
         }
         .onChange(of: session.phase) { _, phase in
@@ -125,7 +125,7 @@ struct PartyLobbyView: View {
         VStack(spacing: 12) {
             Text("La partie commence")
                 .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(Theme.quizInkMuted)
             Text("\(countdown)")
                 .font(.system(size: 90, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.duelAccent)
@@ -155,17 +155,17 @@ struct PartyLobbyView: View {
                 .foregroundStyle(color)
             Text(title)
                 .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.quizInk)
             Text(message)
                 .font(.system(.subheadline, design: .rounded, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(Theme.quizInkMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             Button("Retour") {
                 Haptics.tap()
                 dismiss()
             }
-            .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+            .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
             .padding(.horizontal, 60)
             .padding(.top, 8)
         }

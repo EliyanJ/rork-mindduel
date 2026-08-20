@@ -59,13 +59,17 @@ struct RingPathView: View {
     /// Deterministic pseudo-random horizontal wobble per ring, so the path
     /// reads as hand-drawn and playful rather than a repeating zig-zag.
     /// Stable across renders since it's seeded from the ring's own id.
+    /// The very first rings stay close to the screen's center — the wobble
+    /// ramps up gradually so the entrance of a lesson never feels lopsided.
     private func horizontalOffset(for ring: PathRing, width: CGFloat) -> CGFloat {
         guard ring.kind != .recap else { return 0 }
         var generator = RingWobbleGenerator(seed: ring.id)
-        let maxStep = min(width * 0.30, 110)
+        let maxStep = min(width * 0.26, 92)
         let magnitude = CGFloat.random(in: 0.35...1, using: &generator)
         let sign: CGFloat = Bool.random(using: &generator) ? 1 : -1
-        return maxStep * magnitude * sign
+        let rampIndex = ring.indexInChapter
+        let ramp: CGFloat = rampIndex == 0 ? 0.18 : (rampIndex == 1 ? 0.55 : 1)
+        return maxStep * magnitude * sign * ramp
     }
 }
 
@@ -139,8 +143,8 @@ struct RingNodeView: View {
     @State private var isPulsing: Bool = false
 
     private var isRecap: Bool { ring.kind == .recap }
-    private var tileSize: CGFloat { isRecap ? 92 : 76 }
-    private var tileWidth: CGFloat { isRecap ? 112 : 76 }
+    private var tileSize: CGFloat { isRecap ? 106 : 90 }
+    private var tileWidth: CGFloat { isRecap ? 128 : 90 }
     private var isLocked: Bool { state == .locked }
 
     var body: some View {
@@ -238,11 +242,16 @@ struct RingNodeView: View {
 
     private var ringAccent: Color { isRecap ? Theme.gold : color }
 
+    /// Lighter, brighter tint than the raw chapter accent — the whole path
+    /// reads as pastel and inviting rather than saturated and heavy.
     private var fillColor: Color {
         if isLocked { return Theme.lockedFill }
         switch state {
-        case .mastered: return Theme.gold
-        case .available, .completed: return isRecap ? Theme.gold.mix(with: Theme.primary, by: 0.25) : color
+        case .mastered: return Theme.gold.mix(with: .white, by: 0.12)
+        case .available, .completed:
+            return isRecap
+                ? Theme.gold.mix(with: Theme.primary, by: 0.25).mix(with: .white, by: 0.1)
+                : color.mix(with: .white, by: 0.16)
         case .locked: return Theme.lockedFill
         }
     }
