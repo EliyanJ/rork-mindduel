@@ -7,28 +7,31 @@ struct HomeView: View {
     @State private var lockedRingPending: PathRing?
     @State private var cooldownRing: PathRing?
     @State private var isEnergyOutPresented = false
+    @State private var isMenuPresented = false
+    /// A lesson the player picked from the menu to replay; nil tracks the
+    /// current lesson of the journey.
+    @State private var focusedLessonId: String?
+
+    /// Lesson currently on display: the menu pick when it still exists,
+    /// otherwise the journey's next lesson.
+    private var visibleLesson: PathLesson? {
+        if let focusedLessonId {
+            guard let picked = model.lessons.first(where: { $0.id == focusedLessonId }) else {
+                return model.currentLesson
+            }
+            return picked
+        }
+        return model.currentLesson
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             statsHeader
-            ScrollView {
-                VStack(spacing: 28) {
-                    dailyLessonCard
-                    RingPathView { ring in
-                        startRing(ring)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 48)
-                .background(alignment: .top) {
-                    GeometryReader { proxy in
-                        AlternatingBackgroundPattern(
-                            width: proxy.size.width,
-                            tileCount: estimatedBackgroundTileCount(width: proxy.size.width)
-                        )
-                    }
-                }
+            if let lesson = visibleLesson {
+                lessonBanner(lesson)
+                lessonPath(lesson)
+            } else {
+                journeyDonePlaceholder
             }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -55,7 +58,28 @@ struct HomeView: View {
             }
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $isMenuPresented) {
+            if let lesson = visibleLesson,
+               let discipline = model.discipline(withId: lesson.disciplineId) {
+                LessonsMenuView(
+                    discipline: discipline,
+                    lessons: model.lessons(inDiscipline: discipline.id),
+                    currentLessonId: model.currentLesson?.id,
+                    focusedLessonId: focusedLessonId
+                ) { picked in
+                    focusedLessonId = picked.id
+                    isMenuPresented = false
+                }
+                .presentationDetents([.medium])
+            }
+        }
+        .onChange(of: model.currentLesson?.id ?? "") { _, _ in
+            // The journey moved on — stop showing an older, menu-picked lesson.
+            focusedLessonId = nil
+        }
     }
+
+    // MARK: - Headers
 
     private var statsHeader: some View {
         HStack(spacing: 8) {
@@ -72,65 +96,151 @@ struct HomeView: View {
         .padding(.bottom, 6)
     }
 
-    @ViewBuilder
-    private var dailyLessonCard: some View {
-        let ring = model.nextRing
-        let ringDiscipline = ring.flatMap { model.discipline(withId: $0.disciplineId) }
-        let color = ring?.kind == .recap ? Theme.gold : (ringDiscipline?.color ?? Theme.primary)
-        VStack(alignment: .leading, spacing: 12) {
-            Label(ring?.kind == .recap ? "RÉCAP À DÉBLOQUER" : "LEÇON DU JOUR", systemImage: ring?.kind == .recap ? "crown.fill" : "sun.max.fill")
-                .font(.system(.caption, design: .rounded, weight: .heavy))
-                .opacity(0.9)
-            Text(ring?.chapterTitle ?? "Bientôt disponible")
-                .font(.system(.title2, design: .rounded, weight: .heavy))
-            Text(dailyCardSubtitle(for: ring))
-                .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                .opacity(0.85)
-            if model.isMixedPath {
+    /// The sticky band that stays on top of the scroll: current theme and
+    /// chapter, its completion percentage, and the hamburger that lists every
+    /// sub-theme of this theme.
+    private func lessonBanner(_ lesson: PathLesson) -> some View {
+        let discipline = model.discipline(withId: lesson.disciplineId)
+        let color = discipline?.color ?? Theme.primary
+        let counts = model.lessonRingCounts(lesson)
+        let progress = counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
+        let isReplaying = focusedLessonId != nil && visibleLesson?.id == focusedLessonId
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(discipline?.name.uppercased() ?? "") · CHAPITRE \(model.lessonIndex(lesson))")
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .tracking(0.8)
+                    .foregroundStyle(color)
                 HStack(spacing: 6) {
-                    Image(systemName: "shuffle")
-                        .font(.system(size: 12, weight: .bold))
-                    Text("Parcours mélangé")
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    Text(lesson.title)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                    if isReplaying {
+                        Text("RELECTURE")
+                            .font(.system(size: 9, weight: .heavy, design: .rounded))
+                            .tracking(0.6)
+                            .foregroundStyle(Theme.inkMuted)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Theme.lockedFill.opacity(0.6)))
+                    }
                 }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(.white.opacity(0.22)))
             }
-            Button("Commencer") {
-                if let ring {
-                    startRing(ring)
-                }
+            Spacer(minLength: 6)
+            CircularProgressGauge(progress: progress, color: color)
+            Button {
+                Haptics.tap()
+                isMenuPresented = true
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 46, height: 46)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1.5))
             }
-            .buttonStyle(ChunkyButtonStyle(color: .white, textColor: color))
-            .padding(.top, 4)
-            .disabled(ring == nil)
+            .buttonStyle(.plain)
         }
-        .foregroundStyle(.white)
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
-                    LinearGradient(
-                        colors: [color, color.mix(with: .black, by: 0.22)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Theme.card)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.line).frame(height: 1)
+        }
     }
 
-    private func dailyCardSubtitle(for ring: PathRing?) -> String {
-        guard let ring else { return "Reviens bientôt pour de nouvelles questions" }
-        let count = model.playableItems(for: ring).count
-        let theme = model.discipline(withId: ring.disciplineId)?.name ?? ""
-        if ring.kind == .recap {
-            return "\(count) questions · tes erreurs + les plus dures"
+    // MARK: - Path body
+
+    private func lessonPath(_ lesson: PathLesson) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 8) {
+                    Text("\(lesson.title) · \(lesson.rings.count) épreuves")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 6)
+
+                    RingPathView(
+                        rings: lesson.rings,
+                        accent: model.discipline(withId: lesson.disciplineId)?.color ?? Theme.primary,
+                        stateOf: { model.state(of: $0) },
+                        lockOf: { model.lock(for: $0) },
+                        recordOf: { model.store.ringRecord($0.id) }
+                    ) { ring in
+                        startRing(ring)
+                    }
+                    Color.clear
+                        .frame(height: 1)
+                        .id("pathBottom")
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
+                .padding(.bottom, 110)
+                .background(alignment: .top) {
+                    GeometryReader { geometry in
+                        AlternatingBackgroundPattern(
+                            width: geometry.size.width,
+                            tileCount: backgroundTileCount(width: geometry.size.width, ringCount: lesson.rings.count)
+                        )
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+            .overlay(alignment: .bottomTrailing) {
+                if lesson.rings.count > 4 {
+                    Button {
+                        Haptics.tap()
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            proxy.scrollTo("pathBottom", anchor: .bottom)
+                        }
+                    } label: {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Theme.ink)
+                            .frame(width: 52, height: 52)
+                            .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 1.5))
+                            .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 14)
+                }
+            }
         }
-        return "\(ring.shortTitle) · \(count) questions · \(theme)"
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    private var journeyDonePlaceholder: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            Text("Parcours terminé — reviens bientôt pour de nouveaux chapitres.")
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.inkMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Spacer()
+        }
+    }
+
+    /// Estimates how many stacked background tiles are needed for one lesson's
+    /// path, from its ring count rather than from a live-measured height — the
+    /// lazy stack would otherwise grow the background as it mounts.
+    private func backgroundTileCount(width: CGFloat, ringCount: Int) -> Int {
+        let tileAspectRatio: CGFloat = 887.0 / 1774.0
+        let tileHeight = width / tileAspectRatio
+        guard tileHeight > 0 else { return 1 }
+        let perRingPitch: CGFloat = 170
+        let headerAllowance: CGFloat = 220
+        let estimatedContentHeight = CGFloat(ringCount) * perRingPitch + headerAllowance
+        let minHeight = max(estimatedContentHeight, UIScreen.main.bounds.height * 1.2)
+        return max(1, Int((minHeight / tileHeight).rounded(.up)))
+    }
+
+    // MARK: - Launching
 
     /// Launches a ring, after checking it isn't gated by the daily quota or by
     /// a failed recap's cool-down.
@@ -167,23 +277,6 @@ struct HomeView: View {
         )
     }
 
-    /// Estimates how many stacked background tiles are needed to cover the
-    /// whole scrollable path, from the ring count alone rather than from a
-    /// live-measured content height. Measuring the lazily-loaded stack's
-    /// actual height made the background grow (and visibly jump) further as
-    /// the user scrolled and more rings mounted; deriving it directly from
-    /// the (already known) total ring count keeps it stable from the start.
-    private func estimatedBackgroundTileCount(width: CGFloat) -> Int {
-        let tileAspectRatio: CGFloat = 887.0 / 1774.0
-        let tileHeight = width / tileAspectRatio
-        guard tileHeight > 0 else { return 1 }
-        let perRingPitch: CGFloat = 190
-        let headerAllowance: CGFloat = 260
-        let estimatedContentHeight = CGFloat(model.rings.count) * perRingPitch + headerAllowance
-        let minHeight = max(estimatedContentHeight, UIScreen.main.bounds.height * 1.6)
-        return max(1, Int((minHeight / tileHeight).rounded(.up)))
-    }
-
     /// Replays the same ring immediately. Only reachable for normal rings —
     /// a failed recap goes through the cool-down flow instead.
     private func handleLessonRetry(_ retryLaunch: LessonLaunch) {
@@ -196,6 +289,123 @@ struct HomeView: View {
             chapterIdRaw: retryLaunch.chapterIdRaw,
             ringKind: retryLaunch.ringKind
         )
+    }
+}
+
+/// Everything bundled inside one theme that unlocks from the hamburger: the
+/// sub-themes of this discipline, with progress and lock state on each row.
+private struct LessonsMenuView: View {
+    @Environment(AppModel.self) private var model
+    let discipline: Discipline
+    let lessons: [PathLesson]
+    let currentLessonId: String?
+    let focusedLessonId: String?
+    let onPick: (PathLesson) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(discipline.name)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Text("Toutes les leçons de ce thème")
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+                Spacer()
+                Button {
+                    Haptics.tap()
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 22)
+            .padding(.bottom, 14)
+
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(lessons) { lesson in
+                        row(for: lesson)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+            }
+        }
+        .background(Theme.canvas.ignoresSafeArea())
+    }
+
+    @ViewBuilder
+    private func row(for lesson: PathLesson) -> some View {
+        let color = discipline.color
+        let counts = model.lessonRingCounts(lesson)
+        let done = model.isLessonDone(lesson)
+        let unlocked = model.isLessonUnlocked(lesson)
+        let isCurrent = lesson.id == currentLessonId
+        let isFocused = lesson.id == focusedLessonId
+
+        Button {
+            guard unlocked else {
+                Haptics.error()
+                return
+            }
+            Haptics.tap()
+            onPick(lesson)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(done ? color : (unlocked ? color.opacity(0.14) : Theme.lockedFill.opacity(0.7)))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: done ? "checkmark" : (unlocked ? "play.fill" : "lock.fill"))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(done ? .white : (unlocked ? color : Theme.inkMuted))
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(lesson.title)
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                        .foregroundStyle(unlocked ? Theme.ink : Theme.inkMuted)
+                        .lineLimit(2)
+                    Text("\(counts.done)/\(counts.total) épreuves")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+                Spacer(minLength: 6)
+                if isCurrent {
+                    Text("EN COURS")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .tracking(0.6)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(color))
+                } else {
+                    Image(systemName: isFocused ? "eye.fill" : "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Theme.inkMuted)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.card)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isFocused ? color : Theme.line, lineWidth: isFocused ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!unlocked)
     }
 }
 
@@ -216,9 +426,32 @@ struct MinduelWordmark: View {
     }
 }
 
+/// Small progress donut used in the sticky lesson banner.
+private struct CircularProgressGauge: View {
+    let progress: Double
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(color.opacity(0.18), lineWidth: 5)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(Int((progress * 100).rounded()))%")
+                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+        }
+        .frame(width: 46, height: 46)
+    }
+}
+
 /// Stacks the two decorative background illustrations one after another,
 /// alternating down the whole scrollable path so it never abruptly stops
-/// even on long mixed-discipline paths.
+/// even on long lessons.
 private struct AlternatingBackgroundPattern: View {
     let width: CGFloat
     let tileCount: Int
