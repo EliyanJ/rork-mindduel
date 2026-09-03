@@ -10,7 +10,6 @@ struct HomeView: View {
     @State private var isMenuPresented = false
     @State private var isPathScrolledToBottom = false
     @State private var factIntro: FactIntro?
-    @State private var lastFactIdByDiscipline: [String: String] = [:]
     /// A lesson the player picked from the menu to replay; nil tracks the
     /// current lesson of the journey.
     @State private var focusedLessonId: String?
@@ -46,10 +45,10 @@ struct HomeView: View {
         .fullScreenCover(item: $factIntro) { intro in
             FunFactIntroView(
                 discipline: intro.discipline,
-                fact: intro.fact,
+                cards: intro.cards,
                 onStart: {
                     factIntro = nil
-                    launchRing(intro.ring)
+                    launchRing(intro.ring, items: intro.items)
                 },
                 onClose: { factIntro = nil }
             )
@@ -290,25 +289,24 @@ struct HomeView: View {
             lockedRingPending = ring
             return
         }
+        let items = model.playableItems(for: ring)
+        guard !items.isEmpty else { return }
         guard let discipline = model.discipline(withId: ring.disciplineId) else {
-            launchRing(ring)
+            launchRing(ring, items: items)
             return
         }
-        let previousFactId = lastFactIdByDiscipline[ring.disciplineId]
-        guard let fact = FunFactLibrary.randomFact(for: ring.disciplineId, avoiding: previousFactId) else {
-            launchRing(ring)
+        let cards = StudyGuide.cards(for: items.map(\.question))
+        guard !cards.isEmpty else {
+            launchRing(ring, items: items)
             return
         }
-        lastFactIdByDiscipline[ring.disciplineId] = fact.id
         Haptics.tap()
-        factIntro = FactIntro(ring: ring, discipline: discipline, fact: fact)
+        factIntro = FactIntro(ring: ring, discipline: discipline, cards: cards, items: items)
     }
 
     /// Actually starts a ring's lesson, once past every gate (and past the
-    /// fun-fact teaser, if it was shown).
-    private func launchRing(_ ring: PathRing) {
-        let items = model.playableItems(for: ring)
-        guard !items.isEmpty else { return }
+    /// revision sheet, if it was shown).
+    private func launchRing(_ ring: PathRing, items: [LessonItem]) {
         Haptics.medium()
         lessonLaunch = LessonLaunch(
             title: ring.lessonTitle,
@@ -335,12 +333,13 @@ struct HomeView: View {
     }
 }
 
-/// Identifies the pre-quiz fun-fact teaser for a given ring launch.
+/// Identifies the pre-quiz revision sheet for a given ring launch.
 private struct FactIntro: Identifiable {
     var id: String { ring.id }
     let ring: PathRing
     let discipline: Discipline
-    let fact: FunFact
+    let cards: [StudyCard]
+    let items: [LessonItem]
 }
 
 /// Dedicated full page opened from the sticky banner's hamburger: the
