@@ -50,10 +50,32 @@ final class PartySession {
     private let store: ProgressStore
     private let online: OnlineModel
 
+    /// How this session's queue entry was created — auto-matchmaking against
+    /// a fixed format, hosting a free-form custom room, or joining a
+    /// friend's custom room by its share code.
+    enum Origin: Identifiable {
+        case matchmaking(PartyMode)
+        case customHost(allies: Int, opponents: Int)
+        case customJoin(roomCode: String)
+
+        var id: String {
+            switch self {
+            case .matchmaking(let mode): return "match-\(mode.raw)"
+            case .customHost(let allies, let opponents): return "host-\(allies)-\(opponents)-\(UUID().uuidString)"
+            case .customJoin(let code): return "join-\(code)"
+            }
+        }
+    }
+
     private(set) var phase: Phase = .queued
     private(set) var mode: PartyMode = .solo
     private(set) var lobby: PartyLobbyState?
     private(set) var ticket: PartyTicket?
+    /// The code to share with friends, once a custom room is created.
+    private(set) var roomCode: String?
+    /// Whether this device created the custom room and can force-start it.
+    private(set) var isHost: Bool = false
+    private(set) var startError: String?
     private(set) var questions: [Question] = []
     private(set) var roundDuration: Double = 10
     private(set) var totalQuestions: Int = 60
@@ -95,11 +117,18 @@ final class PartySession {
     private var leftBeforeStart = false
     private let questionDiscipline: [String: String]
 
-    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, mode: PartyMode) {
+    private let origin: Origin
+
+    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, origin: Origin) {
         self.catalog = catalog
         self.store = store
         self.online = online
-        self.mode = mode
+        self.origin = origin
+        switch origin {
+        case .matchmaking(let mode): self.mode = mode
+        case .customHost(let allies, let opponents): self.mode = .custom(allies: allies, opponents: opponents)
+        case .customJoin: self.mode = .solo
+        }
         var map: [String: String] = [:]
         for discipline in catalog.disciplines {
             for chapter in discipline.chapters {
@@ -161,14 +190,26 @@ final class PartySession {
         }
         let service = MultiplayerService(token: token)
         do {
-            var status = try await service.joinPartyQueue(mode: mode)
+            var status: PartyQueueStatus
+            switch origin {
+            case .matchmaking(let mode):
+                status = try await service.joinPartyQueue(mode: mode)
+            case .customHost(let allies, let opponents):
+                status = try await service.createCustomParty(allies: allies, opponents: opponents)
+            case .customJoin(let roomCode):
+                status = try await service.joinCustomParty(roomCode: roomCode)
+            }
             while true {
                 try Task.checkCancellation()
                 switch status {
                 case .matched(let ticket):
+                    mode = ticket.mode
                     await beginGame(ticket: ticket, service: service)
                     return
                 case .waiting(let state):
+                    mode = state.mode
+                    roomCode = state.roomCode
+                    isHost = state.isHost ?? false
                     lobby = state
                 case .idle:
                     break
@@ -180,6 +221,20 @@ final class PartySession {
             // user cancelled
         } catch {
             phase = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Host taps "Démarrer": skips the rest of the auto-fill wait and fills
+    /// any empty seats with bots right away.
+    func forceStart() {
+        guard isHost, let lobbyId = lobby?.lobbyId else { return }
+        Task { [online] in
+            guard let token = await online.auth.validAccessToken() else { return }
+            do {
+                try await MultiplayerService(token: token).startCustomParty(lobbyId: lobbyId)
+            } catch {
+                await MainActor.run { self.startError = error.localizedDescription }
+            }
         }
     }
 

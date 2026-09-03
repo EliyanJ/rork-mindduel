@@ -9,10 +9,12 @@ import { DurableObject } from "cloudflare:workers";
 
 type Env = { DO: Fetcher };
 
-type PartyMode = "team10" | "solo" | "duo";
+// "team10" (10v10), "solo" (1v19), "oneVsTen" (1v10), or a free-form
+// `custom:<allies>:<opponents>` room.
+type PartyMode = string;
 
 function isTeamMode(mode: PartyMode): boolean {
-  return mode === "team10" || mode === "duo";
+  return mode === "team10" || mode === "oneVsTen" || mode.startsWith("custom:");
 }
 
 type PlayerInfo = {
@@ -111,7 +113,7 @@ export class PartyRoom extends DurableObject<Env> {
       if (!ticket.partyId || !ticket.seed || !ticket.players?.length) return false;
       const state: PartyState = {
         partyId: ticket.partyId,
-        mode: ticket.mode === "team10" ? "team10" : ticket.mode === "duo" ? "duo" : "solo",
+        mode: ticket.mode ?? "solo",
         seed: ticket.seed,
         rounds: ticket.rounds ?? 3,
         questionsPerRound: ticket.questionsPerRound ?? 20,

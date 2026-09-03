@@ -8,7 +8,7 @@ struct PartyLobbyView: View {
     let catalog: ContentCatalog
     let store: ProgressStore
     let online: OnlineModel
-    let mode: PartyMode
+    let origin: PartySession.Origin
 
     @State private var session: PartySession?
     @State private var countdown: Int = 3
@@ -25,7 +25,7 @@ struct PartyLobbyView: View {
             }
         }
         .task {
-            let s = PartySession(catalog: catalog, store: store, online: online, mode: mode)
+            let s = PartySession(catalog: catalog, store: store, online: online, origin: origin)
             session = s
             s.start()
         }
@@ -44,8 +44,16 @@ struct PartyLobbyView: View {
         case .failed(let reason):
             statusBody(icon: "wifi.exclamationmark", color: Theme.danger, title: "Connexion impossible", message: reason)
         default:
-            PartyMatchView(session: session, mode: mode, onExit: { dismiss() })
+            PartyMatchView(session: session, mode: session.mode, onExit: { dismiss() })
         }
+    }
+
+    /// Human-friendly label for whatever format the session is currently in.
+    private func formatLabel(_ mode: PartyMode) -> String {
+        if mode == .team10 { return "10 vs 10" }
+        if mode == .oneVsTen { return "1 vs 10" }
+        if mode.isCustom { return "\(mode.allyCount + 1) vs \(mode.opponentCount)" }
+        return "1 vs 19"
     }
 
     private func waitingBody(_ session: PartySession) -> some View {
@@ -71,12 +79,16 @@ struct PartyLobbyView: View {
             Spacer(minLength: 8)
 
             VStack(spacing: 6) {
-                Text(mode == .team10 ? "10 vs 10" : (mode == .duo ? "2 vs 2" : "1 vs 19"))
+                Text(formatLabel(session.mode))
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(Theme.quizInk)
                 Text("Recherche de joueurs…")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(Theme.quizInkMuted)
+            }
+
+            if let roomCode = session.roomCode {
+                roomCodeBanner(roomCode)
             }
 
             Text("\(players.count) / \(capacity)")
@@ -111,14 +123,48 @@ struct PartyLobbyView: View {
 
             Spacer(minLength: 8)
 
-            Text("Les places vides seront comblées automatiquement")
-                .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
+            if session.isHost {
+                VStack(spacing: 10) {
+                    Button("Démarrer maintenant") {
+                        Haptics.medium()
+                        session.forceStart()
+                    }
+                    .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
+                    Text("Les places vides seront comblées par des bots")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
+                }
+                .padding(.horizontal, 32)
                 .padding(.bottom, 24)
+            } else {
+                Text("Les places vides seront comblées automatiquement")
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
+                    .padding(.bottom, 24)
+            }
         }
         .onChange(of: session.phase) { _, phase in
             if phase == .countdown { runCountdown() }
         }
+    }
+
+    /// The code a custom room's host shares with friends, front and center
+    /// with a one-tap share sheet.
+    private func roomCodeBanner(_ code: String) -> some View {
+        HStack(spacing: 10) {
+            Text(code)
+                .font(.system(size: 20, weight: .heavy, design: .monospaced))
+                .foregroundStyle(Theme.duelAccent)
+                .kerning(3)
+            ShareLink(item: "Rejoins ma partie Minduel avec le code \(code) !") {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.duelAccent)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.duelAccent.opacity(0.1)))
     }
 
     private var countdownBody: some View {

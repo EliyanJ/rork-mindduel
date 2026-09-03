@@ -64,22 +64,45 @@ type QueueRow = {
 const QUEUE_STALE_MS = 12_000;
 const EMOJIS = ["🧠", "🦊", "🦉", "🐼", "🐸", "🐨", "🐯", "🦁", "🐙", "🦄"];
 
-// MARK: party modes (10v10 and 1v19)
+// MARK: party modes (10v10, 1v19, 1v10, and free-form custom rooms)
 export const PARTY_CAPACITY = 20;
 /** How long a lobby waits for real players before bots fill the rest. */
 const PARTY_FILL_MS = 15_000;
 /** A finalized-but-never-connected lobby is abandoned after this long. */
 const PARTY_STALE_TICKET_MS = 120_000;
-export type PartyMode = "team10" | "solo" | "duo";
+// "team10" (10v10), "solo" (1v19), "oneVsTen" (1v10), or a free-form
+// `custom:<allies>:<opponents>` room where the host picked both team sizes
+// and invited people with a share code.
+export type PartyMode = string;
+
+type PartyModeInfo = {
+  kind: "team10" | "solo" | "oneVsTen" | "custom";
+  /** Seats on the host's side, including the host. */
+  teamACapacity: number;
+  capacity: number;
+};
+
+function parsePartyMode(mode: PartyMode): PartyModeInfo {
+  if (mode === "team10") return { kind: "team10", teamACapacity: 10, capacity: PARTY_CAPACITY };
+  if (mode === "oneVsTen") return { kind: "oneVsTen", teamACapacity: 1, capacity: 11 };
+  if (mode.startsWith("custom:")) {
+    const [, alliesRaw, opponentsRaw] = mode.split(":");
+    const allies = Math.max(0, Math.min(9, parseInt(alliesRaw ?? "0", 10) || 0));
+    const opponents = Math.max(1, Math.min(19, parseInt(opponentsRaw ?? "1", 10) || 1));
+    const teamACapacity = allies + 1;
+    return { kind: "custom", teamACapacity, capacity: teamACapacity + opponents };
+  }
+  return { kind: "solo", teamACapacity: 0, capacity: PARTY_CAPACITY };
+}
 
 /** Seats to fill for each party format before bots top up the rest. */
 function partyCapacity(mode: PartyMode): number {
-  return mode === "duo" ? 4 : PARTY_CAPACITY;
+  return parsePartyMode(mode).capacity;
 }
 
 /** Team formats (score cumulated per side) vs. individual-ranking formats. */
 function isTeamMode(mode: PartyMode): boolean {
-  return mode === "team10" || mode === "duo";
+  return parsePartyMode(mode).kind !== "solo";
 }
 
 /** Shared secret guarding every admin route. */
@@ -280,6 +303,24 @@ export class Hub extends DurableObject {
         started INTEGER NOT NULL DEFAULT 0
       )
     `);
+    // Custom rooms: a share code, the host's id, and a host-triggered start
+    // that skips the usual 15s auto-fill wait — added after party_lobbies
+    // already existed in the wild.
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE party_lobbies ADD COLUMN room_code TEXT");
+    } catch {
+      // column already exists
+    }
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE party_lobbies ADD COLUMN host_user_id TEXT");
+    } catch {
+      // column already exists
+    }
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE party_lobbies ADD COLUMN force_start INTEGER NOT NULL DEFAULT 0");
+    } catch {
+      // column already exists
+    }
     this.ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS party_queue (
         user_id TEXT PRIMARY KEY,
@@ -678,7 +719,8 @@ export class Hub extends DurableObject {
       if (path === "/api/hub/party/queue/join" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as { mode?: string };
         this.ensureProfile(userId, userName);
-        return this.partyQueueJoin(userId, body.mode === "team10" ? "team10" : body.mode === "duo" ? "duo" : "solo");
+        const mode = body.mode === "team10" ? "team10" : body.mode === "oneVsTen" ? "oneVsTen" : "solo";
+        return this.partyQueueJoin(userId, mode);
       }
 
       if (path === "/api/hub/party/queue/poll" && request.method === "GET") {
@@ -687,6 +729,23 @@ export class Hub extends DurableObject {
 
       if (path === "/api/hub/party/queue/leave" && request.method === "POST") {
         return this.partyQueueLeave(userId);
+      }
+
+      if (path === "/api/hub/party/custom/create" && request.method === "POST") {
+        const body = (await request.json().catch(() => ({}))) as { allies?: number; opponents?: number };
+        this.ensureProfile(userId, userName);
+        return this.customPartyCreate(userId, Number(body.allies) || 0, Number(body.opponents) || 1);
+      }
+
+      if (path === "/api/hub/party/custom/join" && request.method === "POST") {
+        const body = (await request.json().catch(() => ({}))) as { roomCode?: string };
+        this.ensureProfile(userId, userName);
+        return this.customPartyJoin(userId, (body.roomCode ?? "").trim().toUpperCase());
+      }
+
+      if (path === "/api/hub/party/custom/start" && request.method === "POST") {
+        const body = (await request.json().catch(() => ({}))) as { lobbyId?: string };
+        return this.customPartyStart(userId, body.lobbyId ?? "");
       }
 
       return Response.json({ error: "not found" }, { status: 404 });
@@ -1474,6 +1533,8 @@ export class Hub extends DurableObject {
       capacity: partyCapacity(row.mode as PartyMode),
       players: members,
       waitingSince: lobby?.created_at ?? row.queued_at,
+      roomCode: lobby?.room_code ?? null,
+      isHost: lobby?.host_user_id === userId,
     });
   }
 
@@ -1488,6 +1549,89 @@ export class Hub extends DurableObject {
     this.ctx.storage.sql.exec("DELETE FROM party_queue WHERE user_id = ?", userId);
     this.adjustReputation(userId, -PARTY_LOBBY_LEAVE_PENALTY);
     return Response.json({ ok: true });
+  }
+
+  /** Host creates a free-form room: picks both team sizes, gets a share code. */
+  private customPartyCreate(userId: string, alliesRaw: number, opponentsRaw: number): Response {
+    this.purgePartyQueue();
+    const me = this.playerRow(userId);
+    if (!me) return Response.json({ error: "profil introuvable" }, { status: 400 });
+    const existing = this.partyQueueRow(userId);
+    if (existing?.match_payload) return this.deliverPartyTicket(existing);
+    if (existing) {
+      this.maybeFinalizeLobby(existing.lobby_id);
+      return this.partyQueuePoll(userId);
+    }
+    const allies = Math.max(0, Math.min(9, Math.round(alliesRaw)));
+    const opponents = Math.max(1, Math.min(19, Math.round(opponentsRaw)));
+    const mode = `custom:${allies}:${opponents}`;
+    const lobbyId = crypto.randomUUID();
+    const roomCode = this.generateRoomCode();
+    this.ctx.storage.sql.exec(
+      "INSERT INTO party_lobbies (lobby_id, mode, created_at, started, room_code, host_user_id, force_start) VALUES (?, ?, ?, 0, ?, ?, 0)",
+      lobbyId, mode, Date.now(), roomCode, userId,
+    );
+    this.ctx.storage.sql.exec(
+      `INSERT INTO party_queue (user_id, mode, elo, lobby_id, queued_at, last_seen_at, match_payload)
+       VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+      userId, mode, me.elo, lobbyId, Date.now(), Date.now(),
+    );
+    return this.partyQueuePoll(userId);
+  }
+
+  /** A friend joins a room by typing in the host's share code. */
+  private customPartyJoin(userId: string, roomCode: string): Response {
+    this.purgePartyQueue();
+    const me = this.playerRow(userId);
+    if (!me) return Response.json({ error: "profil introuvable" }, { status: 400 });
+    const existing = this.partyQueueRow(userId);
+    if (existing?.match_payload) return this.deliverPartyTicket(existing);
+    if (existing) {
+      this.maybeFinalizeLobby(existing.lobby_id);
+      return this.partyQueuePoll(userId);
+    }
+    if (!roomCode) return Response.json({ error: "Code manquant" }, { status: 400 });
+    const lobby = this.ctx.storage.sql
+      .exec<PartyLobbyRow>("SELECT * FROM party_lobbies WHERE room_code = ? AND started = 0", roomCode)
+      .toArray()[0];
+    if (!lobby) return Response.json({ error: "Code introuvable ou partie déjà lancée" }, { status: 404 });
+    const capacity = partyCapacity(lobby.mode);
+    const count = this.ctx.storage.sql
+      .exec<{ n: number }>("SELECT COUNT(*) AS n FROM party_queue WHERE lobby_id = ?", lobby.lobby_id)
+      .toArray()[0]?.n ?? 0;
+    if (count >= capacity) return Response.json({ error: "Cette partie est déjà pleine" }, { status: 400 });
+    this.ctx.storage.sql.exec(
+      `INSERT INTO party_queue (user_id, mode, elo, lobby_id, queued_at, last_seen_at, match_payload)
+       VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+      userId, lobby.mode, me.elo, lobby.lobby_id, Date.now(), Date.now(),
+    );
+    this.maybeFinalizeLobby(lobby.lobby_id);
+    return this.partyQueuePoll(userId);
+  }
+
+  /** Host-only: start right away instead of waiting for the usual auto-fill window. */
+  private customPartyStart(userId: string, lobbyId: string): Response {
+    const lobby = this.partyLobbyRow(lobbyId);
+    if (!lobby) return Response.json({ error: "Partie introuvable" }, { status: 404 });
+    if (lobby.host_user_id !== userId) return Response.json({ error: "Seul l'hôte peut démarrer" }, { status: 403 });
+    if (!lobby.started) {
+      this.ctx.storage.sql.exec("UPDATE party_lobbies SET force_start = 1 WHERE lobby_id = ?", lobbyId);
+      this.maybeFinalizeLobby(lobbyId);
+    }
+    return Response.json({ ok: true });
+  }
+
+  private generateRoomCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      let code = "";
+      for (let i = 0; i < 5; i += 1) code += chars[Math.floor(Math.random() * chars.length)];
+      const taken = this.ctx.storage.sql
+        .exec<{ lobby_id: string }>("SELECT lobby_id FROM party_lobbies WHERE room_code = ? AND started = 0", code)
+        .toArray()[0];
+      if (!taken) return code;
+    }
+    return crypto.randomUUID().slice(0, 5).toUpperCase();
   }
 
   private partyQueueRow(userId: string): PartyQueueRow | null {
@@ -1538,12 +1682,13 @@ export class Hub extends DurableObject {
     const lobby = this.partyLobbyRow(lobbyId);
     if (!lobby || lobby.started) return;
     const realRows = this.ctx.storage.sql
-      .exec<PartyQueueRow>("SELECT * FROM party_queue WHERE lobby_id = ?", lobbyId)
+      .exec<PartyQueueRow>("SELECT * FROM party_queue WHERE lobby_id = ? ORDER BY queued_at ASC", lobbyId)
       .toArray();
     if (realRows.length === 0) return;
     const age = Date.now() - lobby.created_at;
-    const capacity = partyCapacity(lobby.mode as PartyMode);
-    if (realRows.length < capacity && age < PARTY_FILL_MS) return;
+    const info = parsePartyMode(lobby.mode as PartyMode);
+    const capacity = info.capacity;
+    if (realRows.length < capacity && age < PARTY_FILL_MS && !lobby.force_start) return;
 
     const realPlayers: PartyPlayer[] = realRows
       .map((r) => this.getProfile(r.user_id))
@@ -1553,11 +1698,21 @@ export class Hub extends DurableObject {
 
     const usedNames = new Set(realPlayers.map((p) => p.name.trim().toLowerCase()));
     const avgElo = Math.round(realPlayers.reduce((s, p) => s + p.elo, 0) / realPlayers.length);
-    const botsNeeded = Math.max(0, capacity - realPlayers.length);
+    // A host-forced start before the room is full shrinks around whoever
+    // actually showed up, so a lone host isn't stuck against 10 bots when
+    // they only invited two friends.
+    const effectiveCapacity = lobby.force_start && realPlayers.length < capacity
+      ? Math.max(realPlayers.length, info.kind === "solo" || info.kind === "team10" ? realPlayers.length : info.teamACapacity + 1)
+      : capacity;
+    const botsNeeded = Math.max(0, effectiveCapacity - realPlayers.length);
     const bots = generateBotRoster(botsNeeded, avgElo, usedNames, lobbyId);
 
     const allPlayers = shuffled([...realPlayers, ...bots]);
-    if (isTeamMode(lobby.mode as PartyMode)) balanceTeams(allPlayers);
+    if (info.kind === "team10") {
+      balanceTeams(allPlayers);
+    } else if (info.kind === "oneVsTen" || info.kind === "custom") {
+      assignFixedTeams(realRows, allPlayers, Math.min(info.teamACapacity, allPlayers.length));
+    }
 
     const seed = randomSeed();
     const base = {
@@ -1626,7 +1781,7 @@ export class Hub extends DurableObject {
     const pointsChanges: Record<string, number> = {};
     const reputationChanges: Record<string, number> = {};
 
-    if (payload.mode === "team10" || payload.mode === "duo") {
+    if (payload.mode && isTeamMode(payload.mode)) {
       let sumA = 0;
       let sumB = 0;
       for (const r of results) {
@@ -2300,6 +2455,9 @@ type PartyLobbyRow = {
   mode: string;
   created_at: number;
   started: number;
+  room_code: string | null;
+  host_user_id: string | null;
+  force_start: number | null;
 };
 
 export type PartyPlayer = {
@@ -2396,6 +2554,29 @@ function balanceTeams(players: PartyPlayer[]): void {
     } else {
       p.team = "B";
       sumB += p.elo;
+    }
+  }
+}
+
+/**
+ * Fixed-size teams for lopsided formats (1v10, or any custom ally/opponent
+ * split): whoever queued first up to the host's side capacity is "A" (the
+ * host and the friends who joined right after via the room code), everyone
+ * else is "B". Bots fill out whichever side is still short.
+ */
+function assignFixedTeams(realRows: PartyQueueRow[], allPlayers: PartyPlayer[], teamACapacity: number): void {
+  const order = new Map(realRows.map((r, index) => [r.user_id, index]));
+  const realPlayers = allPlayers
+    .filter((p) => order.has(p.id))
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  const bots = allPlayers.filter((p) => !order.has(p.id));
+  let countA = 0;
+  for (const p of [...realPlayers, ...bots]) {
+    if (countA < teamACapacity) {
+      p.team = "A";
+      countA += 1;
+    } else {
+      p.team = "B";
     }
   }
 }

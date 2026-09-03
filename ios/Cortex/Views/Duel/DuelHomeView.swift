@@ -14,18 +14,14 @@ struct DuelHomeView: View {
     @State private var selectedDuelDisciplineId: String? = nil
     @State private var showThemePicker: Bool = false
     @State private var pendingMode: DuelMode = .training
-    @State private var pendingPartyMode: PartyMode?
-    @State private var pendingFlash: FlashKind?
+    @State private var pendingPartyOrigin: PartySession.Origin?
+    @State private var isFlashPresented: Bool = false
     @State private var isLocalPresented: Bool = false
+    @State private var isCustomSetupPresented: Bool = false
 
     private enum DuelMode {
         case ranked
         case training
-    }
-
-    private enum FlashKind: Identifiable {
-        case solo, duo
-        var id: Self { self }
     }
 
     var body: some View {
@@ -43,14 +39,16 @@ struct DuelHomeView: View {
                             modeCard(title: "10 vs 10", subtitle: "Équipes", icon: "person.3.fill", colors: ["6C5CE7", "4834D4"]) {
                                 joinParty(.team10)
                             }
-                            modeCard(title: "2 vs 2", subtitle: "En duo", icon: "person.2.fill", colors: ["00B894", "00896B"]) {
-                                joinParty(.duo)
+                            modeCard(title: "1 vs 10", subtitle: "Toi contre tous", icon: "flame.fill", colors: ["FF7675", "D63031"]) {
+                                joinParty(.oneVsTen)
                             }
                             modeCard(title: "Flash", subtitle: "Solo rapide", icon: "bolt.fill", colors: ["FDCB6E", "E17055"]) {
-                                pendingFlash = .solo
+                                Haptics.medium()
+                                isFlashPresented = true
                             }
-                            modeCard(title: "Flash 2v2", subtitle: "Duo rapide", icon: "bolt.badge.clock.fill", colors: ["FF7675", "D63031"]) {
-                                pendingFlash = .duo
+                            modeCard(title: "Personnalisé", subtitle: "Choisis tes équipes", icon: "slider.horizontal.3", colors: ["00B894", "00896B"]) {
+                                Haptics.medium()
+                                isCustomSetupPresented = true
                             }
                             modeCard(title: "Local", subtitle: "Même réseau", icon: "wifi", colors: ["0984E3", "0652DD"]) {
                                 Haptics.medium()
@@ -74,12 +72,12 @@ struct DuelHomeView: View {
         .fullScreenCover(isPresented: $isTrainingPresented) {
             DuelMatchView(catalog: model.catalog, store: model.store, disciplineId: selectedDuelDisciplineId)
         }
-        .fullScreenCover(item: $pendingPartyMode) { mode in
-            PartyLobbyView(catalog: model.catalog, store: model.store, online: online, mode: mode)
+        .fullScreenCover(item: $pendingPartyOrigin) { origin in
+            PartyLobbyView(catalog: model.catalog, store: model.store, online: online, origin: origin)
         }
-        .fullScreenCover(item: $pendingFlash) { kind in
-            FlashDuelView(catalog: model.catalog, store: model.store, isTeamFlavor: kind == .duo) {
-                pendingFlash = nil
+        .fullScreenCover(isPresented: $isFlashPresented) {
+            FlashDuelView(catalog: model.catalog, store: model.store, isTeamFlavor: false) {
+                isFlashPresented = false
             }
         }
         .fullScreenCover(isPresented: $isLocalPresented) {
@@ -106,6 +104,17 @@ struct DuelHomeView: View {
         }
         .sheet(isPresented: $isMissionsPresented) {
             MissionsView()
+        }
+        .sheet(isPresented: $isCustomSetupPresented) {
+            CustomPartySetupView { origin in
+                isCustomSetupPresented = false
+                guard online.isSignedIn else {
+                    isSignInPresented = true
+                    return
+                }
+                pendingPartyOrigin = origin
+            }
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showThemePicker) {
             DuelThemePickerView(
@@ -296,7 +305,7 @@ struct DuelHomeView: View {
             isSignInPresented = true
             return
         }
-        pendingPartyMode = mode
+        pendingPartyOrigin = .matchmaking(mode)
     }
 
     private func presentRankedDuel() {

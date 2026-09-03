@@ -130,13 +130,13 @@ nonisolated struct MultiplayerService {
         _ = try await request(path: "/api/hub/queue/leave", method: "POST", body: [:])
     }
 
-    // MARK: Party lobbies (10 vs 10 / 1 vs 19)
+    // MARK: Party lobbies (10 vs 10 / 1 vs 19 / 1 vs 10 / custom rooms)
 
     func joinPartyQueue(mode: PartyMode) async throws -> PartyQueueStatus {
         let data = try await request(
             path: "/api/hub/party/queue/join",
             method: "POST",
-            body: ["mode": mode.rawValue]
+            body: ["mode": mode.raw]
         )
         return try parseParty(data)
     }
@@ -148,6 +148,33 @@ nonisolated struct MultiplayerService {
 
     func leavePartyQueue() async throws {
         _ = try await request(path: "/api/hub/party/queue/leave", method: "POST", body: [:])
+    }
+
+    /// Creates a free-form custom room (host picks both team sizes) and
+    /// returns a share code for inviting friends.
+    func createCustomParty(allies: Int, opponents: Int) async throws -> PartyQueueStatus {
+        let data = try await request(
+            path: "/api/hub/party/custom/create",
+            method: "POST",
+            body: ["allies": allies, "opponents": opponents]
+        )
+        return try parseParty(data)
+    }
+
+    /// Joins a friend's custom room using their share code.
+    func joinCustomParty(roomCode: String) async throws -> PartyQueueStatus {
+        let data = try await request(
+            path: "/api/hub/party/custom/join",
+            method: "POST",
+            body: ["roomCode": roomCode]
+        )
+        return try parseParty(data)
+    }
+
+    /// Host-only: starts the custom room right away instead of waiting for
+    /// the usual auto-fill window.
+    func startCustomParty(lobbyId: String) async throws {
+        _ = try await request(path: "/api/hub/party/custom/start", method: "POST", body: ["lobbyId": lobbyId])
     }
 
     /// WebSocket URL for a party room, carrying the full roster (real + bots)
@@ -162,7 +189,7 @@ nonisolated struct MultiplayerService {
         if components.scheme == "http" { components.scheme = "ws" }
         let initPayload: [String: Any] = [
             "partyId": ticket.partyId,
-            "mode": ticket.mode.rawValue,
+            "mode": ticket.mode.raw,
             "seed": ticket.seed,
             "rounds": ticket.rounds,
             "questionsPerRound": ticket.questionsPerRound,
