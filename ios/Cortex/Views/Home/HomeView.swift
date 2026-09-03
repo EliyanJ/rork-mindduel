@@ -15,8 +15,17 @@ struct HomeView: View {
     @State private var focusedLessonId: String?
 
     /// Lesson currently on display: the menu pick when it still exists,
-    /// otherwise the journey's next lesson.
+    /// otherwise the current lesson of whichever path is active — a single
+    /// theme's own dedicated path when the player jumped in from the Thèmes
+    /// tab, or the mixed general journey otherwise.
     private var visibleLesson: PathLesson? {
+        if let themeId = model.selectedDisciplineId {
+            if let focusedLessonId,
+               let picked = model.lessons(inDiscipline: themeId).first(where: { $0.id == focusedLessonId }) {
+                return picked
+            }
+            return model.currentLesson(inDiscipline: themeId)
+        }
         if let focusedLessonId {
             guard let picked = model.lessons.first(where: { $0.id == focusedLessonId }) else {
                 return model.currentLesson
@@ -77,7 +86,7 @@ struct HomeView: View {
                 LessonsMenuView(
                     discipline: discipline,
                     lessons: model.lessons(inDiscipline: discipline.id),
-                    currentLessonId: model.currentLesson?.id,
+                    currentLessonId: currentLessonId(inDiscipline: discipline.id),
                     focusedLessonId: focusedLessonId,
                     lessonProgress: { model.lessonRingCounts($0) }
                 ) { picked in
@@ -90,6 +99,20 @@ struct HomeView: View {
             // The journey moved on — stop showing an older, menu-picked lesson.
             focusedLessonId = nil
         }
+        .onChange(of: model.selectedDisciplineId) { _, _ in
+            // Switched theme (or came back to the general journey) — always
+            // start from that path's own current lesson.
+            focusedLessonId = nil
+        }
+    }
+
+    /// The "current lesson" id to highlight in the hamburger menu, scoped to
+    /// whichever path is active.
+    private func currentLessonId(inDiscipline disciplineId: String) -> String? {
+        if let themeId = model.selectedDisciplineId, themeId == disciplineId {
+            return model.currentLesson(inDiscipline: themeId)?.id
+        }
+        return model.currentLesson?.id
     }
 
     // MARK: - Headers

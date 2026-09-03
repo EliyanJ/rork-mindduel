@@ -1,13 +1,16 @@
 import SwiftUI
 
-/// Grid of pastel theme cards — one card per discipline. Tapping a card opens
-/// the theme's dedicated page with its progression and its lesson packs.
-/// The visual language follows the reference: soft pastel pills, two columns,
-/// name in the theme's own colour with the illustrated badge on the right.
+/// Grid of pastel theme cards — one card per discipline. Tapping a card
+/// jumps straight to the Parcours tab, showing that theme's own dedicated
+/// ring path. The visual language follows the reference: soft pastel pills,
+/// two columns, name in the theme's own colour with the illustrated badge
+/// on the right.
 struct ThemesView: View {
     @Environment(AppModel.self) private var model
 
     @State private var searchText: String = ""
+    /// Jumps to Parcours with this theme's own path on display.
+    let onSelectDiscipline: (Discipline) -> Void
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
@@ -27,37 +30,34 @@ struct ThemesView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                header
-                searchField
-                ScrollView {
-                    if filteredDisciplines.isEmpty {
-                        Text("Aucun thème ne correspond à ta recherche.")
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundStyle(Theme.inkMuted)
-                            .padding(.top, 40)
-                    } else {
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(filteredDisciplines) { discipline in
-                                NavigationLink(value: discipline) {
-                                    ThemePillCard(discipline: discipline)
-                                }
-                                .buttonStyle(.plain)
+        VStack(spacing: 0) {
+            header
+            searchField
+            ScrollView {
+                if filteredDisciplines.isEmpty {
+                    Text("Aucun thème ne correspond à ta recherche.")
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .padding(.top, 40)
+                } else {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(filteredDisciplines) { discipline in
+                            Button {
+                                Haptics.tap()
+                                onSelectDiscipline(discipline)
+                            } label: {
+                                ThemePillCard(discipline: discipline)
                             }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 4)
-                        footer
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    footer
                 }
             }
-            .background(Theme.canvas.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: Discipline.self) { discipline in
-                ThemeDetailView(discipline: discipline)
-            }
         }
+        .background(Theme.canvas.ignoresSafeArea())
     }
 
     private var header: some View {

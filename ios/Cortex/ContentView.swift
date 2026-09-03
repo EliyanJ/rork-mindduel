@@ -103,7 +103,12 @@ struct ContentView: View {
                 HomeView()
             }
             Tab("Thèmes", systemImage: "square.grid.2x2.fill", value: AppTab.themes) {
-                ThemesView()
+                ThemesView { discipline in
+                    // Jump straight to Parcours, showing that theme's own
+                    // dedicated ring path instead of the mixed journey.
+                    model.selectedDisciplineId = discipline.id
+                    selectedTab = .parcours
+                }
             }
             Tab("Duel", systemImage: "bolt.fill", value: AppTab.duel) {
                 DuelHomeView()

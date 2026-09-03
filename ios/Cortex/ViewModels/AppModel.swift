@@ -157,34 +157,45 @@ final class AppModel {
     /// The journey walks each theme to completion before moving to the next:
     /// disciplines in path order, their chapters in path order. Specific
     /// themes (football, ...) stay out — the journey is the general-culture
-    /// run; a specific theme is played by choosing it from the themes menu.
+    /// run; a specific theme is played by choosing it from the themes tab,
+    /// which jumps straight into that theme's own dedicated path instead.
     private func rebuildJourney() {
         var merged: [PathRing] = []
         var lessons: [PathLesson] = []
         for discipline in generalDisciplines {
-            for ring in ringsByDiscipline[discipline.id] ?? [] {
-                merged.append(ring)
-                if let last = lessons.last, last.chapterId == ring.chapterId {
-                    lessons[lessons.count - 1] = PathLesson(
-                        chapterId: last.chapterId,
-                        disciplineId: last.disciplineId,
-                        title: last.title,
-                        rings: last.rings + [ring]
-                    )
-                } else {
-                    lessons.append(
-                        PathLesson(
-                            chapterId: ring.chapterId,
-                            disciplineId: ring.disciplineId,
-                            title: ring.chapterTitle,
-                            rings: [ring]
-                        )
-                    )
-                }
-            }
+            let rings = ringsByDiscipline[discipline.id] ?? []
+            merged.append(contentsOf: rings)
+            lessons.append(contentsOf: Self.groupIntoLessons(rings))
         }
         journeyRings = merged
         self.lessons = lessons
+    }
+
+    /// Groups consecutive rings of the same chapter into one `PathLesson`,
+    /// preserving ring order. Shared by the mixed general journey and by a
+    /// single theme's own dedicated path (built on demand).
+    private static func groupIntoLessons(_ rings: [PathRing]) -> [PathLesson] {
+        var lessons: [PathLesson] = []
+        for ring in rings {
+            if let last = lessons.last, last.chapterId == ring.chapterId {
+                lessons[lessons.count - 1] = PathLesson(
+                    chapterId: last.chapterId,
+                    disciplineId: last.disciplineId,
+                    title: last.title,
+                    rings: last.rings + [ring]
+                )
+            } else {
+                lessons.append(
+                    PathLesson(
+                        chapterId: ring.chapterId,
+                        disciplineId: ring.disciplineId,
+                        title: ring.chapterTitle,
+                        rings: [ring]
+                    )
+                )
+            }
+        }
+        return lessons
     }
 
     /// The lesson the player should be working on: the first lesson with an
@@ -214,8 +225,21 @@ final class AppModel {
     }
 
     /// Lessons of one theme, in journey order — used by the lessons menu.
+    /// General disciplines reuse the pre-built journey lessons; a specific
+    /// theme (football, ...) isn't part of the mixed journey, so its own
+    /// lessons are grouped on demand from its rings.
     func lessons(inDiscipline id: String) -> [PathLesson] {
-        lessons.filter { $0.disciplineId == id }
+        let cached = lessons.filter { $0.disciplineId == id }
+        if !cached.isEmpty { return cached }
+        return Self.groupIntoLessons(ringsByDiscipline[id] ?? [])
+    }
+
+    /// The lesson to land on when jumping straight into one theme's own
+    /// path: the first not-yet-cleared lesson, or the last one when the
+    /// whole theme is already done.
+    func currentLesson(inDiscipline id: String) -> PathLesson? {
+        let group = lessons(inDiscipline: id)
+        return group.first { !isLessonDone($0) } ?? group.last
     }
 
     /// 1-based position of a lesson within its theme ("LEÇON 2").
