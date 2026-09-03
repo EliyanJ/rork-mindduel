@@ -9,6 +9,8 @@ struct HomeView: View {
     @State private var isEnergyOutPresented = false
     @State private var isMenuPresented = false
     @State private var isPathScrolledToBottom = false
+    @State private var factIntro: FactIntro?
+    @State private var lastFactIdByDiscipline: [String: String] = [:]
     /// A lesson the player picked from the menu to replay; nil tracks the
     /// current lesson of the journey.
     @State private var focusedLessonId: String?
@@ -40,6 +42,17 @@ struct HomeView: View {
             LessonView(launch: launch, store: model.store) { retryLaunch in
                 handleLessonRetry(retryLaunch)
             }
+        }
+        .fullScreenCover(item: $factIntro) { intro in
+            FunFactIntroView(
+                discipline: intro.discipline,
+                fact: intro.fact,
+                onStart: {
+                    factIntro = nil
+                    launchRing(intro.ring)
+                },
+                onClose: { factIntro = nil }
+            )
         }
         .sheet(item: $lockedRingPending) { ring in
             UnlockWithLivresView(kind: .lesson, progressStore: model.store) {
@@ -277,6 +290,23 @@ struct HomeView: View {
             lockedRingPending = ring
             return
         }
+        guard let discipline = model.discipline(withId: ring.disciplineId) else {
+            launchRing(ring)
+            return
+        }
+        let previousFactId = lastFactIdByDiscipline[ring.disciplineId]
+        guard let fact = FunFactLibrary.randomFact(for: ring.disciplineId, avoiding: previousFactId) else {
+            launchRing(ring)
+            return
+        }
+        lastFactIdByDiscipline[ring.disciplineId] = fact.id
+        Haptics.tap()
+        factIntro = FactIntro(ring: ring, discipline: discipline, fact: fact)
+    }
+
+    /// Actually starts a ring's lesson, once past every gate (and past the
+    /// fun-fact teaser, if it was shown).
+    private func launchRing(_ ring: PathRing) {
         let items = model.playableItems(for: ring)
         guard !items.isEmpty else { return }
         Haptics.medium()
@@ -303,6 +333,14 @@ struct HomeView: View {
             ringKind: retryLaunch.ringKind
         )
     }
+}
+
+/// Identifies the pre-quiz fun-fact teaser for a given ring launch.
+private struct FactIntro: Identifiable {
+    var id: String { ring.id }
+    let ring: PathRing
+    let discipline: Discipline
+    let fact: FunFact
 }
 
 /// Dedicated full page opened from the sticky banner's hamburger: the
