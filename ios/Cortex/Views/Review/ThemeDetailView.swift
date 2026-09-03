@@ -16,6 +16,7 @@ struct ThemeDetailView: View {
     @State private var lessonLaunch: LessonLaunch?
     @State private var cooldownRing: PathRing?
     @State private var isEnergyOutPresented = false
+    @State private var factIntro: ThemeFactIntro?
 
     private enum ProgressionFilter: String, CaseIterable {
         case all, todo, done
@@ -112,6 +113,17 @@ struct ThemeDetailView: View {
                     ringKind: retryLaunch.ringKind
                 )
             }
+        }
+        .fullScreenCover(item: $factIntro) { intro in
+            FunFactIntroView(
+                discipline: intro.discipline,
+                cards: intro.cards,
+                onStart: {
+                    factIntro = nil
+                    launch(intro.ring, items: intro.items)
+                },
+                onClose: { factIntro = nil }
+            )
         }
         .sheet(item: $cooldownRing) { ring in
             RecapCooldownSheet(
@@ -300,6 +312,16 @@ struct ThemeDetailView: View {
         }
         let items = model.playableItems(for: ring)
         guard !items.isEmpty else { return }
+        let cards = StudyGuide.cards(for: items.map(\.question))
+        guard !cards.isEmpty else {
+            launch(ring, items: items)
+            return
+        }
+        Haptics.tap()
+        factIntro = ThemeFactIntro(ring: ring, discipline: discipline, cards: cards, items: items)
+    }
+
+    private func launch(_ ring: PathRing, items: [LessonItem]) {
         Haptics.medium()
         lessonLaunch = LessonLaunch(
             title: ring.lessonTitle,
@@ -310,6 +332,16 @@ struct ThemeDetailView: View {
             ringKind: ring.kind
         )
     }
+}
+
+/// Identifies the pre-quiz revision sheet for a given ring launch, shown
+/// from the Thèmes tab's pack picker.
+private struct ThemeFactIntro: Identifiable {
+    var id: String { ring.id }
+    let ring: PathRing
+    let discipline: Discipline
+    let cards: [StudyCard]
+    let items: [LessonItem]
 }
 
 /// One white pack card: icon top-left (with a green check once the pack is
