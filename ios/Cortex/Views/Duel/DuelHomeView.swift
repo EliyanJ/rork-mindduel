@@ -36,9 +36,6 @@ struct DuelHomeView: View {
                             .foregroundStyle(Theme.ink)
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                             rankedModeCard
-                            modeCard(title: "10 vs 10", subtitle: "Équipes", icon: "person.3.fill", colors: ["6C5CE7", "4834D4"]) {
-                                joinParty(.team10)
-                            }
                             modeCard(title: "1 vs 10", subtitle: "Toi contre tous", icon: "flame.fill", colors: ["FF7675", "D63031"]) {
                                 joinParty(.oneVsTen)
                             }
