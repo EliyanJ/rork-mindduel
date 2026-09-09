@@ -196,7 +196,26 @@ nonisolated enum RingBuilder {
             if !cleaned.contains(where: { $0.kind == .recap }) {
                 cleaned.append(RingSlot(kind: .recap))
             }
-            return cleaned
+            // Self-heal timelines published under an older, larger `ringSize`:
+            // any explicit ring still oversized gets split so every ring the
+            // player actually sees respects the current cap.
+            return cleaned.flatMap { slot -> [RingSlot] in
+                guard slot.kind == .normal, let ids = slot.questionIds, ids.count > ringSize else {
+                    return [slot]
+                }
+                var start = 0
+                var pieces: [[String]] = []
+                while start < ids.count {
+                    let end = min(start + ringSize, ids.count)
+                    pieces.append(Array(ids[start..<end]))
+                    start = end
+                }
+                if pieces.count >= 2, let last = pieces.last, last.count < minTrailingRing {
+                    pieces[pieces.count - 2].append(contentsOf: last)
+                    pieces.removeLast()
+                }
+                return pieces.map { RingSlot(kind: .normal, questionIds: $0, targetLevel: slot.targetLevel) }
+            }
         }
 
         var seen = Set<Int>()
