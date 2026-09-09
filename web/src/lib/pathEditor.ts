@@ -93,7 +93,7 @@ export type PlacementResult = {
  *  1. Target the **last** ring of that difficulty — a question promoted to
  *     "difficile" in a chapter with two difficult rings joins the second.
  *  2. That ring takes it while it stays under `RING_MAX_OVERFLOW`. Overflowing
- *     past 15 beats spawning a ring with 2 questions in it.
+ *     past `RING_SIZE` beats spawning a ring with 2 questions in it.
  *  3. Once it's saturated, a fresh ring is created straight after it.
  *  4. If no ring of that difficulty exists yet, one is created at the right
  *     spot on the ramp — after every easier ring, before every harder one, and

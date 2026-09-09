@@ -5,7 +5,7 @@ import Foundation
 ///
 /// A timeline is in one of two modes:
 /// - **auto**: slots only carry `source`, the index of a ring built by sorting
-///   the chapter easiest-first and cutting every 15.
+///   the chapter easiest-first and cutting every `RingBuilder.ringSize`.
 /// - **explicit**: slots carry `questionIds`, pinning exactly which question
 ///   sits in which ring. Set once an admin arranges a chapter by hand, so
 ///   unrelated edits can never reshuffle their work.

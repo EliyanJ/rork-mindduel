@@ -2,7 +2,7 @@ import Foundation
 
 /// What a ring on the learning path represents.
 nonisolated enum RingKind: String, Codable, Hashable {
-    /// A regular 15-question ring.
+    /// A regular ring of `RingBuilder.ringSize` questions.
     case normal
     /// The end-of-chapter "boss": personalised recap of the whole sub-chapter.
     case recap
@@ -25,8 +25,8 @@ nonisolated struct PathRing: Identifiable, Hashable {
     let ringsInChapter: Int
     let kind: RingKind
     /// Questions to play. For a recap ring this is the *candidate pool*
-    /// (whole sub-chapter, hardest first) — the final 15 are picked per player
-    /// at launch time by `AppModel.playableItems(for:)`.
+    /// (whole sub-chapter, hardest first) — the final `RingBuilder.ringSize`
+    /// are picked per player at launch time by `AppModel.playableItems(for:)`.
     let items: [LessonItem]
     /// Average familiarity of the ring, driving its label and colour ramp.
     let tier: RingTier

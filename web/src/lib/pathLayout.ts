@@ -7,8 +7,8 @@
 // A sub-chapter's ring timeline exists in one of two modes:
 //
 //  - **auto** — slots only carry `source`, an index into the chunks produced by
-//    sorting the chapter's questions easiest-first and cutting every 15. Adding
-//    or re-levelling questions reshuffles the whole chapter.
+//    sorting the chapter's questions easiest-first and cutting every RING_SIZE.
+//    Adding or re-levelling questions reshuffles the whole chapter.
 //  - **explicit** — slots carry `questionIds`, pinning exactly which question
 //    sits in which ring. Entered the first time an admin edits a ring by hand
 //    (see `pathEditor.materializeSlots`) so their arrangement is never silently
@@ -23,21 +23,22 @@ const FN_URL: string =
   (import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL as string | undefined) ??
   "https://mindduel-kqfozex-backend.rork.app";
 
-/** Questions per ring. */
-export const RING_SIZE = 15;
+/** Questions per ring. Kept low so a quiz — and the revision sheet before it —
+ * never covers more material than a player can realistically skim. */
+export const RING_SIZE = 7;
 /** A trailing group smaller than this is merged into the previous ring. */
-export const MIN_TRAILING_RING = 6;
+export const MIN_TRAILING_RING = 3;
 /**
  * Hard ceiling for an explicit ring. A ring may exceed `RING_SIZE` when the
- * leftovers are too few to form a real ring of their own — overflowing to 20
- * beats stranding 3 questions in a ring nobody wants to play.
+ * leftovers are too few to form a real ring of their own — overflowing beats
+ * stranding a couple of questions in a ring nobody wants to play.
  */
-export const RING_MAX_OVERFLOW = 20;
+export const RING_MAX_OVERFLOW = 9;
 /**
  * Floor enforced by the "réorganiser par difficulté" tool: a ring under this
  * size gets folded into the nearest difficulty rather than standing alone.
  */
-export const RING_MIN_SIZE = 12;
+export const RING_MIN_SIZE = 6;
 
 /** Difficulty buckets, easiest first — mirrors Swift's `DifficultyLevel`. */
 export const LEVEL_ORDER = ["facile", "intermediaire", "difficile", "maitre", "legende"] as const;
@@ -379,7 +380,7 @@ export type PreviewRing = {
   /** Dominant difficulty bucket of the ring's questions. */
   level: PathLevel;
   questions: Question[];
-  /** Recap rings show a pool, not a fixed set — the player gets 15 of these. */
+  /** Recap rings show a pool, not a fixed set — the player gets RING_SIZE of these. */
   isPool: boolean;
   /** Explicit ring an admin created but hasn't filled yet — never served. */
   isEmpty: boolean;

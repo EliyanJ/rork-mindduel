@@ -9,11 +9,12 @@ import Foundation
 /// the tail of one tier and the head of the next, which smooths the curve
 /// instead of jumping between levels.
 nonisolated enum RingBuilder {
-    /// Questions per ring.
-    static let ringSize = 15
+    /// Questions per ring. Kept low so the pre-quiz revision sheet never has
+    /// to summarise more material than a player can realistically skim.
+    static let ringSize = 7
     /// A trailing chunk smaller than this is merged into the previous ring
     /// rather than becoming a frustratingly short ring of its own.
-    static let minTrailingRing = 6
+    static let minTrailingRing = 3
 
     // MARK: - Ordering
 
