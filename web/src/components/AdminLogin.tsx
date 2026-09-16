@@ -63,7 +63,7 @@ const AdminLogin = () => {
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 <strong className="font-bold">{rejectedEmail}</strong> n'est pas un compte administrateur. Connecte-toi
-                avec le compte autorisé, ou utilise l'identifiant et le mot de passe.
+                avec le compte autorisé.
               </span>
             </div>
           )}

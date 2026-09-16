@@ -466,7 +466,7 @@ export class Hub extends DurableObject {
 
     // MARK: back-office account management
     // Roles and manually offered premium live on the player row. They are an
-    // admin-only concept: the app never sets them, only the password-protected
+    // admin-only concept: the app never sets them, only the key-protected
     // /api/admin/* routes do.
     for (const migration of [
       "ALTER TABLE players ADD COLUMN role TEXT NOT NULL DEFAULT 'standard'",
@@ -620,8 +620,8 @@ export class Hub extends DurableObject {
     if (path.startsWith("/api/images/") && request.method === "GET") {
       return this.serveImage(path.slice("/api/images/".length));
     }
-    // Store webhook (RevenueCat). Authenticated by a shared bearer secret, not
-    // the admin password, because it is called machine-to-machine.
+    // Store webhook (RevenueCat). Authenticated by its own shared bearer secret,
+    // separate from the admin key, because it is called machine-to-machine.
     if (path === "/api/webhooks/revenuecat" && request.method === "POST") {
       return this.storeWebhook(request);
     }
