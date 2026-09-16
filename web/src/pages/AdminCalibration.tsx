@@ -16,7 +16,6 @@ import {
 import { type Content, type Question, fetchContent } from "@/lib/generator";
 import { flattenQuestions, type FlatQuestion, type QuestionRef } from "@/lib/moderation";
 import {
-  ADMIN_PASSWORD,
   type PendingChange,
   fetchReviewState,
   publishPendingChanges,
@@ -146,7 +145,7 @@ const AdminCalibration = () => {
           addLog("warn", `Décisions serveur indisponibles (${String(err)}).`);
           return null;
         }),
-        fetchQuestionStats(ADMIN_PASSWORD).catch((err: unknown) => {
+        fetchQuestionStats().catch((err: unknown) => {
           addLog("warn", `Statistiques de jeu indisponibles (${String(err)}).`);
           return new Map<string, QuestionStat>();
         }),
@@ -543,7 +542,7 @@ const AdminCalibration = () => {
 
   const refreshStats = useCallback(async () => {
     try {
-      const statMap = await fetchQuestionStats(ADMIN_PASSWORD);
+      const statMap = await fetchQuestionStats();
       setStats(statMap);
       addLog("info", `Statistiques rafraîchies : ${statMap.size} question(s) jouée(s).`);
     } catch (err) {

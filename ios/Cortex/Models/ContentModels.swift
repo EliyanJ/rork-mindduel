@@ -150,6 +150,22 @@ nonisolated struct ChapterLevel: Codable, Hashable {
     let questions: [Question]
 }
 
+/// A key revision point shown on the "\u00c0 retenir avant de jouer" screen, plus
+/// exactly which questions it's relevant to — so only the points that apply to
+/// the ring actually being played are shown.
+nonisolated struct LessonPoint: Codable, Hashable {
+    let text: String
+    let questionIds: [String]
+}
+
+/// A chapter-level revision lesson, published from the admin catalog
+/// alongside the questions. Optional: chapters without one keep the existing
+/// behaviour (cards distilled from the ring's own question explanations).
+nonisolated struct ChapterLesson: Codable, Hashable {
+    let hook: String
+    let points: [LessonPoint]
+}
+
 /// A chapter supports two formats:
 /// - **Legacy (v1):** a flat `questions` array
 /// - **Multi-level (v2):** a `levels` dictionary keyed by difficulty name
@@ -159,6 +175,14 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
     let title: String
     let levels: [String: ChapterLevel]?
     let questions: [Question]?
+    /// Optional hand-written revision lesson for this chapter. Absent on most
+    /// chapters — falls back to explanations distilled from the ring's own
+    /// questions.
+    let lesson: ChapterLesson?
+    /// Optional remote illustration for this chapter, downloaded and cached
+    /// on-device. Falls back to the bundled illustration when absent or
+    /// unreachable.
+    let imageUrl: String?
 
     var hasLevels: Bool { levels != nil }
 
@@ -195,7 +219,7 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, levels, questions
+        case id, title, levels, questions, lesson, imageUrl
     }
 
     init(from decoder: Decoder) throws {
@@ -204,6 +228,8 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
         title = try container.decode(String.self, forKey: .title)
         levels = try container.decodeIfPresent([String: ChapterLevel].self, forKey: .levels)
         questions = try container.decodeIfPresent([Question].self, forKey: .questions)
+        lesson = try container.decodeIfPresent(ChapterLesson.self, forKey: .lesson)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -215,13 +241,24 @@ nonisolated struct Chapter: Codable, Identifiable, Hashable {
         } else if let questions {
             try container.encode(questions, forKey: .questions)
         }
+        try container.encodeIfPresent(lesson, forKey: .lesson)
+        try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
     }
 
-    init(id: String, title: String, levels: [String: ChapterLevel]? = nil, questions: [Question]? = nil) {
+    init(
+        id: String,
+        title: String,
+        levels: [String: ChapterLevel]? = nil,
+        questions: [Question]? = nil,
+        lesson: ChapterLesson? = nil,
+        imageUrl: String? = nil
+    ) {
         self.id = id
         self.title = title
         self.levels = levels
         self.questions = questions
+        self.lesson = lesson
+        self.imageUrl = imageUrl
     }
 }
 
@@ -241,9 +278,13 @@ nonisolated struct Discipline: Codable, Identifiable, Hashable {
     /// General culture (histoire, sciences, ...) vs specific domain (football).
     /// Optional for backward-compat with older catalogs that predate this field.
     let kind: DisciplineKind?
+    /// Optional remote illustration for this theme, downloaded and cached
+    /// on-device. Falls back to the bundled illustration when absent or
+    /// unreachable.
+    let imageUrl: String?
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, icon, colorHex, chapters, kind
+        case id, name, icon, colorHex, chapters, kind, imageUrl
     }
 
     init(from decoder: Decoder) throws {
@@ -254,6 +295,7 @@ nonisolated struct Discipline: Codable, Identifiable, Hashable {
         colorHex = try container.decode(String.self, forKey: .colorHex)
         chapters = try container.decode([Chapter].self, forKey: .chapters)
         kind = try container.decodeIfPresent(DisciplineKind.self, forKey: .kind)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
     }
 
     /// Convenience accessor defaulting to general culture when the field is missing.

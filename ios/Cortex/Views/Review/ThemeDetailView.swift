@@ -312,7 +312,8 @@ struct ThemeDetailView: View {
         }
         let items = model.playableItems(for: ring)
         guard !items.isEmpty else { return }
-        let cards = StudyGuide.cards(for: items.map(\.question))
+        let lesson = model.chapterLesson(chapterId: ring.chapterId, disciplineId: ring.disciplineId)
+        let cards = StudyGuide.cards(for: items.map(\.question), lesson: lesson)
         guard !cards.isEmpty else {
             launch(ring, items: items)
             return
@@ -355,6 +356,9 @@ private struct PackCard: View {
     let isDone: Bool
     let action: () -> Void
 
+    /// A chapter's own illustration wins over the theme's shared one.
+    private var imageUrl: String? { chapter.imageUrl ?? discipline.imageUrl }
+
     private var badgeColor: Color {
         switch difficulty {
         case .facile: return Color(hex: "2FBF71")
@@ -369,7 +373,7 @@ private struct PackCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top) {
-                    PackIcon(discipline: discipline)
+                    PackIcon(discipline: discipline, imageUrl: imageUrl)
                         .overlay(alignment: .topTrailing) {
                             if isDone {
                                 Image(systemName: "checkmark.circle.fill")
@@ -413,12 +417,14 @@ private struct PackCard: View {
     }
 }
 
-/// Discipline badge reused on each pack card.
+/// Discipline badge reused on each pack card. A chapter/theme `imageUrl`
+/// published from the admin catalog wins over the bundled illustrated badge.
 private struct PackIcon: View {
     let discipline: Discipline
+    var imageUrl: String? = nil
 
     var body: some View {
-        Group {
+        RemoteThemeImage(urlString: imageUrl) {
             if let illustratedIconName = discipline.illustratedIconName {
                 Image(illustratedIconName)
                     .resizable()
@@ -429,6 +435,7 @@ private struct PackIcon: View {
                     .foregroundStyle(discipline.color)
             }
         }
+        .aspectRatio(contentMode: .fill)
         .frame(width: 44, height: 44)
         .clipShape(Circle())
     }

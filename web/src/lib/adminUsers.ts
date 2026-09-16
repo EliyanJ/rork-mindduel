@@ -5,7 +5,7 @@
 // never exposed as a role, because confusing a gift with a paid subscription
 // would produce wrong billing decisions.
 
-import { ADMIN_PASSWORD } from "./reviewSync";
+import { adminAuthHeaders } from "./adminAuth";
 
 const FN_URL: string =
   (import.meta.env.VITE_RORK_FUNCTIONS_URL as string | undefined) ??
@@ -120,21 +120,21 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export async function fetchUsers(filters: UserFilters = {}): Promise<UsersPage> {
-  const params = new URLSearchParams({ password: ADMIN_PASSWORD });
+  const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
   if (filters.role && filters.role !== "all") params.set("role", filters.role);
   if (filters.inactiveDays && filters.inactiveDays > 0) {
     params.set("inactiveDays", String(filters.inactiveDays));
   }
   return readJson<UsersPage>(
-    await fetch(`${FN_URL}/api/admin/users?${params.toString()}`, { cache: "no-store" }),
+    await fetch(`${FN_URL}/api/admin/users?${params.toString()}`, { cache: "no-store", headers: adminAuthHeaders() }),
   );
 }
 
 export async function fetchUserDetail(userId: string): Promise<UserDetail> {
-  const params = new URLSearchParams({ password: ADMIN_PASSWORD, userId });
+  const params = new URLSearchParams({ userId });
   return readJson<UserDetail>(
-    await fetch(`${FN_URL}/api/admin/users/detail?${params.toString()}`, { cache: "no-store" }),
+    await fetch(`${FN_URL}/api/admin/users/detail?${params.toString()}`, { cache: "no-store", headers: adminAuthHeaders() }),
   );
 }
 
@@ -146,8 +146,8 @@ export async function setUserRole(
   const data = await readJson<{ user: AdminUserSummary }>(
     await fetch(`${FN_URL}/api/admin/users/role`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: ADMIN_PASSWORD, userId, role, actor }),
+      headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+      body: JSON.stringify({ userId, role, actor }),
     }),
   );
   return data.user;
@@ -163,8 +163,8 @@ export async function setGrantedPremium(
   return readJson<{ user: AdminUserSummary; access: AccessState }>(
     await fetch(`${FN_URL}/api/admin/users/premium`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: ADMIN_PASSWORD, userId, grant, expiresAt, actor }),
+      headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+      body: JSON.stringify({ userId, grant, expiresAt, actor }),
     }),
   );
 }
@@ -173,32 +173,31 @@ export async function deleteUserAccount(userId: string, actor: string): Promise<
   await readJson<{ ok: boolean }>(
     await fetch(`${FN_URL}/api/admin/users/delete`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: ADMIN_PASSWORD, userId, actor }),
+      headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+      body: JSON.stringify({ userId, actor }),
     }),
   );
 }
 
 /** GDPR portability export — returns the raw server record for one person. */
 export async function exportUserData(userId: string, actor: string): Promise<unknown> {
-  const params = new URLSearchParams({ password: ADMIN_PASSWORD, userId, actor });
+  const params = new URLSearchParams({ userId, actor });
   return readJson<unknown>(
-    await fetch(`${FN_URL}/api/admin/users/export?${params.toString()}`, { cache: "no-store" }),
+    await fetch(`${FN_URL}/api/admin/users/export?${params.toString()}`, { cache: "no-store", headers: adminAuthHeaders() }),
   );
 }
 
 export async function fetchRefunds(): Promise<RefundEntry[]> {
-  const params = new URLSearchParams({ password: ADMIN_PASSWORD });
   const data = await readJson<{ refunds: RefundEntry[] }>(
-    await fetch(`${FN_URL}/api/admin/refunds?${params.toString()}`, { cache: "no-store" }),
+    await fetch(`${FN_URL}/api/admin/refunds`, { cache: "no-store", headers: adminAuthHeaders() }),
   );
   return data.refunds;
 }
 
 export async function fetchAudit(limit = 100): Promise<AuditEntry[]> {
-  const params = new URLSearchParams({ password: ADMIN_PASSWORD, limit: String(limit) });
+  const params = new URLSearchParams({ limit: String(limit) });
   const data = await readJson<{ entries: AuditEntry[] }>(
-    await fetch(`${FN_URL}/api/admin/audit?${params.toString()}`, { cache: "no-store" }),
+    await fetch(`${FN_URL}/api/admin/audit?${params.toString()}`, { cache: "no-store", headers: adminAuthHeaders() }),
   );
   return data.entries;
 }

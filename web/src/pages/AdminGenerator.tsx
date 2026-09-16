@@ -39,6 +39,7 @@ import {
   COST_PER_QUESTION_USD,
   TARGET_PER_LEVEL,
 } from "@/lib/generator";
+import { adminAuthHeaders } from "@/lib/adminAuth";
 
 type RunState = "idle" | "running" | "paused" | "error";
 type LeftTab = "bulk" | "auto" | "manual";
@@ -398,8 +399,8 @@ const AdminGenerator = () => {
 
         const res = await fetch(`${fnUrl}/api/content/publish`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: merged, password: "minduel-admin" }),
+          headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+          body: JSON.stringify({ content: merged }),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));

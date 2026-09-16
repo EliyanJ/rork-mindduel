@@ -55,11 +55,32 @@ export type Level = {
   questions: Question[];
 };
 
+/** A key revision point shown on the pre-quiz screen, plus which questions
+ * it applies to (empty = applies to every question in the ring). */
+export type LessonPoint = {
+  text: string;
+  questionIds: string[];
+};
+
+/** A chapter-level revision lesson, edited from the admin catalog and
+ * consumed by the app's pre-quiz "\u00c0 retenir" screen. Optional — chapters
+ * without one fall back to explanations distilled from the ring's own
+ * questions. */
+export type ChapterLesson = {
+  hook: string;
+  points: LessonPoint[];
+};
+
 export type Chapter = {
   id: string;
   title: string;
   levels?: Record<string, Level>;
   questions?: Question[]; // legacy format
+  /** Optional hand-written revision lesson for this chapter. */
+  lesson?: ChapterLesson;
+  /** Optional remote illustration for this chapter (uploaded via the admin
+   * tool), falling back to the theme's or the bundled illustration. */
+  imageUrl?: string;
 };
 
 /** Whether a discipline is general culture or a specific domain (e.g. football).
@@ -74,6 +95,8 @@ export type Discipline = {
   chapters: Chapter[];
   /** Optional for backward-compat with older content.json entries that predate this field. */
   kind?: DisciplineKind;
+  /** Optional remote illustration for this theme (uploaded via the admin tool). */
+  imageUrl?: string;
 };
 
 export type Content = {

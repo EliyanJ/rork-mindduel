@@ -19,8 +19,7 @@ import {
   updateQuestion,
   type QuestionRef,
 } from "./moderation";
-
-export const ADMIN_PASSWORD = "minduel-admin";
+import { adminAuthHeaders } from "./adminAuth";
 
 const FN_URL: string =
   (import.meta.env.VITE_RORK_FUNCTIONS_URL as string | undefined) ??
@@ -53,10 +52,10 @@ export type ReviewState = {
 };
 
 export async function fetchReviewState(): Promise<ReviewState> {
-  const res = await fetch(
-    `${FN_URL}/api/review/state?password=${encodeURIComponent(ADMIN_PASSWORD)}`,
-    { cache: "no-store" },
-  );
+  const res = await fetch(`${FN_URL}/api/review/state`, {
+    cache: "no-store",
+    headers: adminAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`serveur ${res.status}`);
   const data = (await res.json()) as Partial<ReviewState>;
   return { changes: data.changes ?? {}, notes: data.notes ?? {} };
@@ -73,8 +72,8 @@ export async function pushReviewState(
   if (upserts.length === 0 && deletes.length === 0) return;
   const res = await fetch(`${FN_URL}/api/review/state`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes, reason }),
+    headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+    body: JSON.stringify({ upserts, deletes, reason }),
   });
   if (!res.ok) throw new Error(`serveur ${res.status}`);
 }
@@ -90,10 +89,10 @@ export type ArchiveEntry = {
 
 /** Every decision that ever left the pending queue — the recovery source. */
 export async function fetchReviewArchive(): Promise<ArchiveEntry[]> {
-  const res = await fetch(
-    `${FN_URL}/api/review/archive?password=${encodeURIComponent(ADMIN_PASSWORD)}`,
-    { cache: "no-store" },
-  );
+  const res = await fetch(`${FN_URL}/api/review/archive`, {
+    cache: "no-store",
+    headers: adminAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`serveur ${res.status}`);
   const data = (await res.json()) as { entries?: ArchiveEntry[] };
   return data.entries ?? [];
@@ -105,8 +104,8 @@ export async function restoreReviewArchive(
 ): Promise<{ restored: number; candidates: number }> {
   const res = await fetch(`${FN_URL}/api/review/archive/restore`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: ADMIN_PASSWORD, archiveIds }),
+    headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+    body: JSON.stringify({ archiveIds }),
   });
   if (!res.ok) throw new Error(`serveur ${res.status}`);
   const data = (await res.json()) as { restored?: number; candidates?: number };
@@ -121,10 +120,10 @@ export type ContentVersion = {
 };
 
 export async function fetchContentHistory(): Promise<ContentVersion[]> {
-  const res = await fetch(
-    `${FN_URL}/api/content/history?password=${encodeURIComponent(ADMIN_PASSWORD)}`,
-    { cache: "no-store" },
-  );
+  const res = await fetch(`${FN_URL}/api/content/history`, {
+    cache: "no-store",
+    headers: adminAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`serveur ${res.status}`);
   const data = (await res.json()) as { versions?: ContentVersion[] };
   return data.versions ?? [];
@@ -134,8 +133,8 @@ export async function fetchContentHistory(): Promise<ContentVersion[]> {
 export async function rollbackContent(version: number): Promise<{ version: number }> {
   const res = await fetch(`${FN_URL}/api/content/rollback`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: ADMIN_PASSWORD, version }),
+    headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+    body: JSON.stringify({ version }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -211,8 +210,8 @@ export async function publishPendingChanges(
   }
   const res = await fetch(`${FN_URL}/api/content/publish`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: ADMIN_PASSWORD, content: merged }),
+    headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+    body: JSON.stringify({ content: merged }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };

@@ -1,4 +1,5 @@
-import { BadgeCheck, Gauge, Home, LogOut, Route, ShieldCheck, Sparkles, SlidersHorizontal, Users } from "lucide-react";
+import { BadgeCheck, Check, Gauge, Home, KeyRound, LogOut, Route, ShieldCheck, Sparkles, SlidersHorizontal, Users } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -17,7 +18,9 @@ const TABS = [
  */
 const AdminTopNav = () => {
   const { pathname } = useLocation();
-  const { session, signOutAdmin } = useAdminAuth();
+  const { session, apiKey, setApiKey, signOutAdmin } = useAdminAuth();
+  const [keyDraft, setKeyDraft] = useState<string>(apiKey);
+  const [justSaved, setJustSaved] = useState<boolean>(false);
 
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[#05070d]/95 backdrop-blur-xl">
@@ -64,6 +67,34 @@ const AdminTopNav = () => {
               {session.label}
             </span>
           )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setApiKey(keyDraft);
+              setJustSaved(true);
+              window.setTimeout(() => setJustSaved(false), 1500);
+            }}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1 ${
+              apiKey ? "border-white/10 bg-white/[0.03]" : "border-amber-400/40 bg-amber-400/10"
+            }`}
+            title="Cl\u00e9 d'acc\u00e8s au serveur (stock\u00e9e uniquement dans ce navigateur)"
+          >
+            <KeyRound className={`h-3 w-3 ${apiKey ? "text-indigo-300" : "text-amber-300"}`} />
+            <input
+              type="password"
+              value={keyDraft}
+              onChange={(e) => setKeyDraft(e.target.value)}
+              placeholder="Cl\u00e9 admin"
+              autoComplete="off"
+              className="w-24 bg-transparent text-[11px] text-white outline-none placeholder:text-white/30 sm:w-32"
+            />
+            <button
+              type="submit"
+              className="rounded px-1 py-0.5 text-[10px] font-bold text-white/50 transition hover:text-white"
+            >
+              {justSaved ? <Check className="h-3 w-3 text-emerald-400" /> : "OK"}
+            </button>
+          </form>
           <button
             type="button"
             onClick={signOutAdmin}

@@ -36,11 +36,11 @@ import {
   updateQuestion,
 } from "@/lib/moderation";
 import { type PendingChange, fetchReviewArchive, restoreReviewArchive } from "@/lib/reviewSync";
+import { adminAuthHeaders } from "@/lib/adminAuth";
 import { usePendingChanges } from "@/hooks/usePendingChanges";
 import { type AiConfig, type AiReviewResult, reviewQuestionWithAi } from "@/lib/aiReview";
 import { PhoneQuestionPreview } from "@/components/PhoneQuestionPreview";
 
-const ADMIN_PASSWORD = "minduel-admin";
 const DRAFT_KEY = "minduel-review-draft-v1";
 const NOTES_KEY = "minduel-review-ai-notes-v1";
 const CHANGES_KEY = "minduel-review-pending-changes-v1";
@@ -79,7 +79,7 @@ function readLocal<T>(key: string): T {
 
 /** Fetches the server-persisted review state (moderation decisions + AI notes). */
 async function fetchReviewState(): Promise<{ changes: Record<string, PendingChange>; notes: Record<string, AiReviewResult> }> {
-  const res = await fetch(`${FN_URL}/api/review/state?password=${encodeURIComponent(ADMIN_PASSWORD)}`);
+  const res = await fetch(`${FN_URL}/api/review/state`, { headers: adminAuthHeaders() });
   if (!res.ok) throw new Error(`serveur ${res.status}`);
   const data = (await res.json()) as { changes?: Record<string, PendingChange>; notes?: Record<string, AiReviewResult> };
   return { changes: data.changes ?? {}, notes: data.notes ?? {} };
@@ -290,8 +290,8 @@ const AdminReview = () => {
       try {
         const res = await fetch(`${FN_URL}/api/review/state`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: ADMIN_PASSWORD, upserts, deletes, reason: "admin-review-notes" }),
+          headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+          body: JSON.stringify({ upserts, deletes, reason: "admin-review-notes" }),
         });
         if (!res.ok) throw new Error(`serveur ${res.status}`);
         lastSyncedNotes.current = aiNotes;
@@ -782,8 +782,8 @@ const AdminReview = () => {
 
       const res = await fetch(`${FN_URL}/api/content/publish`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: merged, password: ADMIN_PASSWORD }),
+        headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+        body: JSON.stringify({ content: merged }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

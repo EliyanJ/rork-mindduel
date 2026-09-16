@@ -165,20 +165,21 @@ private struct ThemePillCard: View {
         .contentShape(RoundedRectangle(cornerRadius: 18))
     }
 
-    @ViewBuilder
     private var icon: some View {
-        if let illustratedIconName = discipline.illustratedIconName {
-            Image(illustratedIconName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 30, height: 30)
-                .clipShape(Circle())
-        } else {
-            Image(systemName: discipline.icon)
-                .font(.system(size: 15, weight: .black))
-                .foregroundStyle(textColor)
-                .frame(width: 30, height: 30)
+        RemoteThemeImage(urlString: discipline.imageUrl) {
+            if let illustratedIconName = discipline.illustratedIconName {
+                Image(illustratedIconName)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: discipline.icon)
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(textColor)
+            }
         }
+        .aspectRatio(contentMode: .fill)
+        .frame(width: 30, height: 30)
+        .clipShape(Circle())
     }
 }
 

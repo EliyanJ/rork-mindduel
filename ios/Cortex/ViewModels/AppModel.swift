@@ -354,6 +354,13 @@ final class AppModel {
         (ringsByDiscipline[disciplineId] ?? []).filter { $0.chapterId == chapterId }
     }
 
+    /// Hand-written revision lesson for a chapter, if the admin catalog set
+    /// one — otherwise `nil`, and `StudyGuide` falls back to explanations
+    /// distilled from the ring's own questions.
+    func chapterLesson(chapterId: String, disciplineId: String) -> ChapterLesson? {
+        discipline(withId: disciplineId)?.chapters.first { $0.id == chapterId }?.lesson
+    }
+
     /// A pack counts as done once every ring of its chapter has been passed.
     func isPackDone(chapterId: String, disciplineId: String) -> Bool {
         let chapterRings = rings(inChapter: chapterId, disciplineId: disciplineId)

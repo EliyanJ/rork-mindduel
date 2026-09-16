@@ -318,7 +318,8 @@ struct HomeView: View {
             launchRing(ring, items: items)
             return
         }
-        let cards = StudyGuide.cards(for: items.map(\.question))
+        let lesson = model.chapterLesson(chapterId: ring.chapterId, disciplineId: ring.disciplineId)
+        let cards = StudyGuide.cards(for: items.map(\.question), lesson: lesson)
         guard !cards.isEmpty else {
             launchRing(ring, items: items)
             return

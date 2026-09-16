@@ -23,13 +23,29 @@ nonisolated enum StudyGuide {
     private static let minPointsPerCard = 2
 
     /// Groups the ring's question explanations into a handful of short,
-    /// swipeable cards. Returns an empty array if no question has usable
-    /// explanation text.
-    static func cards(for questions: [Question]) -> [StudyCard] {
+    /// swipeable cards. When the chapter has a hand-written `lesson`, its
+    /// points relevant to the questions actually in play are used instead —
+    /// a curated fiche beats one distilled from raw explanations. Falls back
+    /// to explanations when no lesson is set or none of its points apply.
+    /// Returns an empty array if nothing usable is found either way.
+    static func cards(for questions: [Question], lesson: ChapterLesson? = nil) -> [StudyCard] {
+        if let lesson {
+            let questionIds = Set(questions.map(\.id))
+            let relevant = lesson.points.filter { point in
+                point.questionIds.isEmpty || !Set(point.questionIds).isDisjoint(with: questionIds)
+            }
+            if !relevant.isEmpty {
+                return cards(fromTexts: relevant.map(\.text))
+            }
+        }
         let points = questions.compactMap { question -> String? in
             let text = question.explanation.trimmingCharacters(in: .whitespacesAndNewlines)
             return text.isEmpty ? nil : text
         }
+        return cards(fromTexts: points)
+    }
+
+    private static func cards(fromTexts points: [String]) -> [StudyCard] {
         guard !points.isEmpty else { return [] }
 
         let chunkSize = max(minPointsPerCard, Int(ceil(Double(points.count) / Double(maxCards))))

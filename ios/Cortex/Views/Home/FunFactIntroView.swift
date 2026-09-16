@@ -129,23 +129,30 @@ struct FunFactIntroView: View {
         Theme.canvas
             .frame(height: 150)
             .overlay {
-                if let assetName = ThemeIllustration.assetName(for: discipline.id),
-                   let uiImage = UIImage(named: assetName) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .allowsHitTesting(false)
-                } else {
-                    Image(systemName: discipline.icon)
-                        .font(.system(size: 48, weight: .semibold))
-                        .foregroundStyle(accent)
-                        .allowsHitTesting(false)
+                RemoteThemeImage(urlString: discipline.imageUrl) {
+                    bundledIllustration
                 }
+                .aspectRatio(contentMode: .fill)
+                .allowsHitTesting(false)
             }
             .clipShape(.rect(cornerRadius: 22))
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
             .opacity(hasAppeared ? 1 : 0)
             .scaleEffect(hasAppeared ? 1 : 0.96)
+    }
+
+    @ViewBuilder
+    private var bundledIllustration: some View {
+        if let assetName = ThemeIllustration.assetName(for: discipline.id),
+           let uiImage = UIImage(named: assetName) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            Image(systemName: discipline.icon)
+                .font(.system(size: 48, weight: .semibold))
+                .foregroundStyle(accent)
+        }
     }
 
     private var pageDots: some View {

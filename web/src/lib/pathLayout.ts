@@ -15,8 +15,7 @@
 //    recomputed. "Ronds par défaut" drops back to auto.
 
 import type { Chapter, Content, Discipline, DisciplineKind, Question } from "./generator";
-
-export const ADMIN_PASSWORD = "minduel-admin";
+import { adminAuthHeaders } from "./adminAuth";
 
 const FN_URL: string =
   (import.meta.env.VITE_RORK_FUNCTIONS_URL as string | undefined) ??
@@ -548,8 +547,8 @@ export async function fetchPathLayout(): Promise<PathLayout> {
 export async function publishPathLayout(layout: PathLayout): Promise<{ version: number }> {
   const res = await fetch(`${FN_URL}/api/path-layout`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: ADMIN_PASSWORD, layout }),
+    headers: { "Content-Type": "application/json", ...adminAuthHeaders() },
+    body: JSON.stringify({ layout }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);

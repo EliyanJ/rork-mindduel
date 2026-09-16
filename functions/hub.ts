@@ -105,8 +105,9 @@ function isTeamMode(mode: PartyMode): boolean {
   return parsePartyMode(mode).kind !== "solo";
 }
 
-/** Shared secret guarding every admin route. */
-const ADMIN_PASSWORD = "minduel-admin";
+// Admin routes are guarded by the ADMIN_API_KEY secret (a project env var,
+// never committed to source), sent by callers as `Authorization: Bearer <key>`.
+// See `isAdminAuthorized` below.
 
 /**
  * Back-office roles. `premium` here means *offered* premium only; a paid
@@ -354,6 +355,17 @@ export class Hub extends DurableObject {
         updated_at INTEGER NOT NULL
       )
     `);
+    // Uploaded theme/chapter illustrations, referenced from the catalog's
+    // optional `imageUrl` fields. Small binary storage, base64-encoded — no
+    // separate object storage service needed for icon-sized artwork.
+    this.ctx.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS images (
+        id TEXT PRIMARY KEY,
+        content_type TEXT NOT NULL,
+        data_base64 TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    `);
     // Moderation review state — every admin decision (approve/reject/edit/
     // delete/move) and every AI review note is persisted here in real time,
     // keyed by question id, so the admin-review page never loses history on
@@ -535,71 +547,78 @@ export class Hub extends DurableObject {
     }
 
     // Content delivery routes — public GET (app fetches latest content),
-    // password-protected POST (admin pushes new content from the generator panel).
+    // key-protected POST (admin pushes new content from the generator panel).
     if (path === "/api/content" && request.method === "GET") {
       return this.getContent();
     }
     if (path === "/api/content/publish" && request.method === "POST") {
-      return this.publishContent(await request.json());
+      return this.publishContent(await request.json(), this.isAdminAuthorized(request));
     }
     // Review-state routes — real-time persistence of moderation decisions and
-    // AI notes for the admin review tool (password-protected).
+    // AI notes for the admin review tool (key-protected).
     if (path === "/api/review/state" && request.method === "GET") {
-      return this.getReviewState(url.searchParams.get("password"));
+      return this.getReviewState(this.isAdminAuthorized(request));
     }
     if (path === "/api/review/state" && request.method === "POST") {
-      return this.saveReviewState(await request.json());
+      return this.saveReviewState(await request.json(), this.isAdminAuthorized(request));
     }
     // Recovery routes — archived decisions and previous content versions.
     if (path === "/api/review/archive" && request.method === "GET") {
-      return this.getReviewArchive(url.searchParams.get("password"));
+      return this.getReviewArchive(this.isAdminAuthorized(request));
     }
     if (path === "/api/review/archive/restore" && request.method === "POST") {
-      return this.restoreReviewArchive(await request.json());
+      return this.restoreReviewArchive(await request.json(), this.isAdminAuthorized(request));
     }
     if (path === "/api/content/history" && request.method === "GET") {
-      return this.getContentHistory(url.searchParams.get("password"));
+      return this.getContentHistory(this.isAdminAuthorized(request));
     }
     if (path === "/api/content/rollback" && request.method === "POST") {
-      return this.rollbackContent(await request.json());
+      return this.rollbackContent(await request.json(), this.isAdminAuthorized(request));
     }
     // Difficulty telemetry read-out for the admin calibration tool.
     if (path === "/api/stats/questions" && request.method === "GET") {
-      return this.questionStats(url.searchParams.get("password"));
+      return this.questionStats(this.isAdminAuthorized(request));
     }
     // Learning-path ordering — public GET (the app reads it like the catalog),
-    // password-protected POST from the admin "Parcours" tool.
+    // key-protected POST from the admin "Parcours" tool.
     if (path === "/api/path-layout" && request.method === "GET") {
       return this.getPathLayout();
     }
     if (path === "/api/path-layout" && request.method === "POST") {
-      return this.publishPathLayout(await request.json());
+      return this.publishPathLayout(await request.json(), this.isAdminAuthorized(request));
     }
 
-    // MARK: back-office user administration (password-protected)
+    // MARK: back-office user administration (key-protected)
     if (path === "/api/admin/users" && request.method === "GET") {
-      return this.adminListUsers(url);
+      return this.adminListUsers(url, this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/users/detail" && request.method === "GET") {
-      return this.adminUserDetail(url);
+      return this.adminUserDetail(url, this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/users/export" && request.method === "GET") {
-      return this.adminExportUser(url);
+      return this.adminExportUser(url, this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/users/role" && request.method === "POST") {
-      return this.adminSetRole(await request.json().catch(() => ({})));
+      return this.adminSetRole(await request.json().catch(() => ({})), this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/users/premium" && request.method === "POST") {
-      return this.adminSetGrantedPremium(await request.json().catch(() => ({})));
+      return this.adminSetGrantedPremium(await request.json().catch(() => ({})), this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/users/delete" && request.method === "POST") {
-      return this.adminDeleteUser(await request.json().catch(() => ({})));
+      return this.adminDeleteUser(await request.json().catch(() => ({})), this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/refunds" && request.method === "GET") {
-      return this.adminRefunds(url.searchParams.get("password"));
+      return this.adminRefunds(this.isAdminAuthorized(request));
     }
     if (path === "/api/admin/audit" && request.method === "GET") {
-      return this.adminAudit(url);
+      return this.adminAudit(url, this.isAdminAuthorized(request));
+    }
+    // Image uploads for themes/chapters — key-protected, served back publicly.
+    if (path === "/api/admin/images" && request.method === "POST") {
+      return this.uploadImage(request);
+    }
+    if (path.startsWith("/api/images/") && request.method === "GET") {
+      return this.serveImage(path.slice("/api/images/".length));
     }
     // Store webhook (RevenueCat). Authenticated by a shared bearer secret, not
     // the admin password, because it is called machine-to-machine.
@@ -894,6 +913,20 @@ export class Hub extends DurableObject {
     return normalizeRole(rows[0]?.role);
   }
 
+  /**
+   * Every admin route is guarded by this single check: the caller must send
+   * `Authorization: Bearer <ADMIN_API_KEY>`, where `ADMIN_API_KEY` is a
+   * project secret (server env var, never in source, never in the web bundle).
+   * Fails closed — if the secret isn't configured, nothing can authenticate.
+   */
+  private isAdminAuthorized(request: Request): boolean {
+    const key = (this.env as { ADMIN_API_KEY?: string } | undefined)?.ADMIN_API_KEY;
+    if (!key) return false;
+    const auth = request.headers.get("Authorization");
+    if (!auth?.startsWith("Bearer ")) return false;
+    return auth.slice(7) === key;
+  }
+
   private logAudit(actor: string, action: string, targetUser: string | null, detail: string): void {
     this.ctx.storage.sql.exec(
       "INSERT INTO admin_audit (at, actor, action, target_user, detail) VALUES (?, ?, ?, ?, ?)",
@@ -937,8 +970,8 @@ export class Hub extends DurableObject {
       .toArray()[0] ?? null;
   }
 
-  private adminListUsers(url: URL): Response {
-    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+  private adminListUsers(url: URL, isAdmin: boolean): Response {
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const search = (url.searchParams.get("search") ?? "").trim().toLowerCase();
@@ -1004,8 +1037,8 @@ export class Hub extends DurableObject {
     };
   }
 
-  private adminUserDetail(url: URL): Response {
-    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+  private adminUserDetail(url: URL, isAdmin: boolean): Response {
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const userId = url.searchParams.get("userId") ?? "";
@@ -1040,8 +1073,8 @@ export class Hub extends DurableObject {
   }
 
   /** GDPR portability: everything the server holds about one person. */
-  private adminExportUser(url: URL): Response {
-    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+  private adminExportUser(url: URL, isAdmin: boolean): Response {
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const userId = url.searchParams.get("userId") ?? "";
@@ -1076,9 +1109,9 @@ export class Hub extends DurableObject {
     });
   }
 
-  private adminSetRole(body: unknown): Response {
-    const p = body as { password?: string; userId?: string; role?: string; actor?: string };
-    if (p.password !== ADMIN_PASSWORD) {
+  private adminSetRole(body: unknown, isAdmin: boolean): Response {
+    const p = body as { userId?: string; role?: string; actor?: string };
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const userId = p.userId ?? "";
@@ -1098,15 +1131,14 @@ export class Hub extends DurableObject {
     return Response.json({ user: this.adminUserSummary(this.adminPlayerRow(userId)!) });
   }
 
-  private adminSetGrantedPremium(body: unknown): Response {
+  private adminSetGrantedPremium(body: unknown, isAdmin: boolean): Response {
     const p = body as {
-      password?: string;
       userId?: string;
       grant?: boolean;
       expiresAt?: number | null;
       actor?: string;
     };
-    if (p.password !== ADMIN_PASSWORD) {
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const userId = p.userId ?? "";
@@ -1136,9 +1168,9 @@ export class Hub extends DurableObject {
     return Response.json({ user: this.adminUserSummary(row), access: this.accessOf(userId, row) });
   }
 
-  private adminDeleteUser(body: unknown): Response {
-    const p = body as { password?: string; userId?: string; actor?: string };
-    if (p.password !== ADMIN_PASSWORD) {
+  private adminDeleteUser(body: unknown, isAdmin: boolean): Response {
+    const p = body as { userId?: string; actor?: string };
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const userId = p.userId ?? "";
@@ -1151,8 +1183,8 @@ export class Hub extends DurableObject {
     return this.deleteAccount(userId);
   }
 
-  private adminRefunds(password: string | null): Response {
-    if (password !== ADMIN_PASSWORD) {
+  private adminRefunds(isAdmin: boolean): Response {
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const refunds = this.ctx.storage.sql
@@ -1166,8 +1198,8 @@ export class Hub extends DurableObject {
     return Response.json({ refunds });
   }
 
-  private adminAudit(url: URL): Response {
-    if (url.searchParams.get("password") !== ADMIN_PASSWORD) {
+  private adminAudit(url: URL, isAdmin: boolean): Response {
+    if (!isAdmin) {
       return Response.json({ error: "non autoris\u00e9" }, { status: 401 });
     }
     const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "100"), 1), 500);
@@ -1934,6 +1966,60 @@ export class Hub extends DurableObject {
     });
   }
 
+  // MARK: image uploads (theme/chapter illustrations)
+
+  /**
+   * Stores an uploaded image and returns its public URL. Key-protected, and
+   * capped well below Workers' request-body limits — this is for icon-sized
+   * theme/chapter artwork, not general file hosting.
+   */
+  private async uploadImage(request: Request): Promise<Response> {
+    if (!this.isAdminAuthorized(request)) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
+    }
+    const contentType = request.headers.get("Content-Type") ?? "application/octet-stream";
+    if (!contentType.startsWith("image/")) {
+      return Response.json({ error: "Type de fichier invalide (image attendue)" }, { status: 400 });
+    }
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) {
+      return Response.json({ error: "Image invalide ou trop volumineuse (5 Mo max)" }, { status: 400 });
+    }
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+    const base64 = btoa(binary);
+    const ext = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "bin";
+    const id = `${crypto.randomUUID()}.${ext}`;
+    this.ctx.storage.sql.exec(
+      "INSERT INTO images (id, content_type, data_base64, created_at) VALUES (?, ?, ?, ?)",
+      id, contentType, base64, Date.now(),
+    );
+    return Response.json({ ok: true, url: `/api/images/${id}` });
+  }
+
+  /** Publicly serves a previously uploaded image — no auth, same as any static asset. */
+  private serveImage(id: string): Response {
+    const rows = this.ctx.storage.sql
+      .exec<{ content_type: string; data_base64: string }>(
+        "SELECT content_type, data_base64 FROM images WHERE id = ?",
+        id,
+      )
+      .toArray();
+    const row = rows[0];
+    if (!row) return Response.json({ error: "introuvable" }, { status: 404 });
+    const binary = atob(row.data_base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new Response(bytes, {
+      headers: {
+        "Content-Type": row.content_type,
+        // Immutable: uploads use a fresh random id, never overwritten in place.
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  }
+
   // MARK: learning-path layout
 
   private getPathLayout(): Response {
@@ -1956,10 +2042,10 @@ export class Hub extends DurableObject {
     });
   }
 
-  private publishPathLayout(body: unknown): Response {
-    const payload = body as { layout?: unknown; password?: string };
-    if (payload.password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private publishPathLayout(body: unknown, isAdmin: boolean): Response {
+    const payload = body as { layout?: unknown };
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     if (!payload.layout || typeof payload.layout !== "object") {
       return Response.json({ error: "Organisation invalide" }, { status: 400 });
@@ -1989,10 +2075,10 @@ export class Hub extends DurableObject {
     return Response.json({ ok: true, version: newVersion, updatedAt: now });
   }
 
-  private publishContent(body: unknown): Response {
-    const payload = body as { content?: unknown; password?: string };
-    if (payload.password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private publishContent(body: unknown, isAdmin: boolean): Response {
+    const payload = body as { content?: unknown };
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     if (!payload.content || typeof payload.content !== "object") {
       return Response.json({ error: "Contenu invalide" }, { status: 400 });
@@ -2056,9 +2142,9 @@ export class Hub extends DurableObject {
 
   // MARK: review state (real-time moderation persistence)
 
-  private getReviewState(password: string | null): Response {
-    if (password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private getReviewState(isAdmin: boolean): Response {
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const rows = this.ctx.storage.sql
       .exec<{ kind: string; question_id: string; payload: string; updated_at: number }>(
@@ -2083,9 +2169,9 @@ export class Hub extends DurableObject {
    * Every decision that ever left the pending queue, newest first. This is the
    * safety net: the queue itself is disposable, this is not.
    */
-  private getReviewArchive(password: string | null): Response {
-    if (password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private getReviewArchive(isAdmin: boolean): Response {
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const rows = this.ctx.storage.sql
       .exec<{ archive_id: number; kind: string; question_id: string; payload: string; reason: string | null; archived_at: number }>(
@@ -2113,10 +2199,10 @@ export class Hub extends DurableObject {
    * Puts archived decisions back into the live queue. Existing live decisions
    * always win, so restoring can never undo newer work.
    */
-  private restoreReviewArchive(body: unknown): Response {
-    const payload = body as { password?: string; archiveIds?: number[]; since?: number };
-    if (payload.password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private restoreReviewArchive(body: unknown, isAdmin: boolean): Response {
+    const payload = body as { archiveIds?: number[]; since?: number };
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const ids = Array.isArray(payload.archiveIds) ? payload.archiveIds.filter((n) => Number.isFinite(n)) : [];
     const rows = ids.length > 0
@@ -2153,9 +2239,9 @@ export class Hub extends DurableObject {
     return Response.json({ ok: true, restored, candidates: rows.length });
   }
 
-  private getContentHistory(password: string | null): Response {
-    if (password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private getContentHistory(isAdmin: boolean): Response {
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const rows = this.ctx.storage.sql
       .exec<{ version: number; question_count: number; moderated_count: number; created_at: number }>(
@@ -2173,10 +2259,10 @@ export class Hub extends DurableObject {
   }
 
   /** Republishes an archived version as the newest one (never rewrites history). */
-  private rollbackContent(body: unknown): Response {
-    const payload = body as { password?: string; version?: number };
-    if (payload.password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private rollbackContent(body: unknown, isAdmin: boolean): Response {
+    const payload = body as { version?: number };
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const target = this.ctx.storage.sql
       .exec<{ json: string; question_count: number }>(
@@ -2186,7 +2272,8 @@ export class Hub extends DurableObject {
       .toArray();
     const row = target[0];
     if (!row) return Response.json({ error: "Version introuvable" }, { status: 404 });
-    return this.publishContent({ password: "minduel-admin", content: JSON.parse(row.json) as unknown });
+    // Already authorized above — replay as an already-authorized publish.
+    return this.publishContent({ content: JSON.parse(row.json) as unknown }, true);
   }
 
   // MARK: difficulty telemetry ingest
@@ -2282,9 +2369,9 @@ export class Hub extends DurableObject {
    * Admin read-out of the telemetry, with the empirical difficulty already
    * solved server-side so every consumer agrees on the same number.
    */
-  private questionStats(password: string | null): Response {
-    if (password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+  private questionStats(isAdmin: boolean): Response {
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const rows = this.ctx.storage.sql
       .exec<{
@@ -2352,15 +2439,14 @@ export class Hub extends DurableObject {
     return Response.json({ stats, count: stats.length });
   }
 
-  private saveReviewState(body: unknown): Response {
+  private saveReviewState(body: unknown, isAdmin: boolean): Response {
     const payload = body as {
-      password?: string;
       reason?: string;
       upserts?: Array<{ kind?: string; questionId?: string; payload?: unknown }>;
       deletes?: Array<{ kind?: string; questionId?: string }>;
     };
-    if (payload.password !== "minduel-admin") {
-      return Response.json({ error: "Mot de passe admin requis" }, { status: 403 });
+    if (!isAdmin) {
+      return Response.json({ error: "Cl\u00e9 admin requise" }, { status: 403 });
     }
     const now = Date.now();
     let upserted = 0;

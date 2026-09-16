@@ -18,6 +18,7 @@
 
 import type { Content, Question } from "./generator";
 import { flattenQuestions, type FlatQuestion, type QuestionRef } from "./moderation";
+import { adminAuthHeaders } from "./adminAuth";
 
 /** The four difficulty tiers, ordered from easiest to hardest. */
 export const DIFFICULTY_LEVELS = ["facile", "intermediaire", "difficile", "maitre"] as const;
@@ -189,11 +190,11 @@ const FN_URL: string =
   (import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL as string | undefined) ??
   "https://mindduel-kqfozex-backend.rork.app";
 
-export async function fetchQuestionStats(password: string): Promise<Map<string, QuestionStat>> {
-  const res = await fetch(
-    `${FN_URL}/api/stats/questions?password=${encodeURIComponent(password)}`,
-    { cache: "no-store" },
-  );
+export async function fetchQuestionStats(): Promise<Map<string, QuestionStat>> {
+  const res = await fetch(`${FN_URL}/api/stats/questions`, {
+    cache: "no-store",
+    headers: adminAuthHeaders(),
+  });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Statistiques indisponibles (${res.status})`);

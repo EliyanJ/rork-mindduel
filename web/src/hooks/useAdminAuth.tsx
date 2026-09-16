@@ -2,10 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import { useAuth } from "@/hooks/useAuth";
 import {
+  clearAdminApiKey,
   clearAdminSession,
-  credentialsValid,
   isEmailAllowed,
+  loadAdminApiKey,
   loadAdminSession,
+  saveAdminApiKey,
   saveAdminSession,
   type AdminSession,
 } from "@/lib/adminAuth";
@@ -16,7 +18,9 @@ interface AdminAuthContextType {
   isRestoring: boolean;
   /** Non-null when a Google account signed in but is not on the allow-list. */
   rejectedEmail: string | null;
-  signInWithCredentials: (username: string, password: string) => boolean;
+  /** The backend admin API key stored in this browser, if any. */
+  apiKey: string;
+  setApiKey: (key: string) => void;
   signOutAdmin: () => void;
 }
 
@@ -27,9 +31,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
   const [rejectedEmail, setRejectedEmail] = useState<string | null>(null);
+  const [apiKey, setApiKeyState] = useState<string>("");
 
   useEffect(() => {
     setSession(loadAdminSession());
+    setApiKeyState(loadAdminApiKey());
     setIsRestoring(false);
   }, []);
 
@@ -52,25 +58,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, signOutRork]);
 
-  const signInWithCredentials = useCallback((username: string, password: string): boolean => {
-    if (!credentialsValid(username, password)) return false;
-    const next: AdminSession = { method: "password", label: username.trim(), grantedAt: Date.now() };
-    saveAdminSession(next);
-    setSession(next);
-    setRejectedEmail(null);
-    return true;
+  const setApiKey = useCallback((key: string) => {
+    saveAdminApiKey(key);
+    setApiKeyState(key.trim());
   }, []);
 
   const signOutAdmin = useCallback(() => {
     clearAdminSession();
+    clearAdminApiKey();
+    setApiKeyState("");
     setSession(null);
     setRejectedEmail(null);
     signOutRork();
   }, [signOutRork]);
 
   const value = useMemo<AdminAuthContextType>(
-    () => ({ session, isRestoring, rejectedEmail, signInWithCredentials, signOutAdmin }),
-    [session, isRestoring, rejectedEmail, signInWithCredentials, signOutAdmin],
+    () => ({ session, isRestoring, rejectedEmail, apiKey, setApiKey, signOutAdmin }),
+    [session, isRestoring, rejectedEmail, apiKey, setApiKey, signOutAdmin],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

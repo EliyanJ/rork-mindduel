@@ -1,15 +1,11 @@
-import { ADMIN_PASSWORD } from "@/lib/reviewSync";
-
 /**
  * Admin access rules.
  *
- * Two ways in, both landing on the same session:
- * - Google sign-in, restricted to the e-mail addresses listed below.
- * - Username + password, for when Google is unavailable.
- *
- * `ADMIN_PASSWORD` stays the shared secret the backend expects on admin API
- * routes, so once a session exists every sub-page can call the API without
- * ever asking for a password again.
+ * Signing in (Google, restricted to the e-mail addresses listed below) only
+ * unlocks the admin *pages* in this browser. Talking to the backend admin API
+ * additionally requires the `ADMIN_API_KEY` secret, entered once and stored
+ * locally on this machine (see `adminAuthHeaders` below) — the web bundle
+ * never embeds it, so it can never leak through the published site's source.
  */
 export const ADMIN_USERNAME = "Tiliyan";
 
@@ -21,7 +17,7 @@ export function isEmailAllowed(email: string | undefined | null): boolean {
   return ALLOWED_ADMIN_EMAILS.includes(email.trim().toLowerCase());
 }
 
-export type AdminSessionMethod = "google" | "password";
+export type AdminSessionMethod = "google";
 
 export interface AdminSession {
   method: AdminSessionMethod;
@@ -38,7 +34,7 @@ export function loadAdminSession(): AdminSession | null {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<AdminSession>;
-    if (parsed.method !== "google" && parsed.method !== "password") return null;
+    if (parsed.method !== "google") return null;
     if (typeof parsed.grantedAt !== "number") return null;
     if (Date.now() - parsed.grantedAt > SESSION_MAX_AGE_MS) {
       localStorage.removeItem(SESSION_KEY);
@@ -70,7 +66,42 @@ export function clearAdminSession(): void {
   }
 }
 
-/** Case-insensitive on the username, exact on the password. */
-export function credentialsValid(username: string, password: string): boolean {
-  return username.trim().toLowerCase() === ADMIN_USERNAME.toLowerCase() && password === ADMIN_PASSWORD;
+// MARK: backend admin key
+//
+// The key that guards every /api/admin/*, /api/content/publish,
+// /api/path-layout POST, /api/review/*, /api/stats/questions and
+// /api/admin/images route server-side. Entered once per browser (see
+// `AdminLogin`'s "Clé API" field) and kept only in this browser's
+// localStorage — it is never hardcoded, never bundled, and never sent to
+// any place other than this project's own backend.
+const API_KEY_STORAGE_KEY = "minduel:admin_api_key";
+
+export function loadAdminApiKey(): string {
+  try {
+    return localStorage.getItem(API_KEY_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveAdminApiKey(key: string): void {
+  try {
+    localStorage.setItem(API_KEY_STORAGE_KEY, key.trim());
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearAdminApiKey(): void {
+  try {
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** `Authorization: Bearer <key>` header for every admin API call. */
+export function adminAuthHeaders(): Record<string, string> {
+  const key = loadAdminApiKey();
+  return key ? { Authorization: `Bearer ${key}` } : {};
 }

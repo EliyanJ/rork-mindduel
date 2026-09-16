@@ -1,4 +1,4 @@
-import { ArrowLeft, KeyRound, Loader2, ShieldCheck, TriangleAlert, User } from "lucide-react";
+import { ArrowLeft, KeyRound, Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -28,26 +28,13 @@ const GoogleMark = () => (
 );
 
 /**
- * Single door into every admin tool. Google sign-in is the primary path
- * (restricted to the allow-list); the username + password form is the fallback.
+ * Single door into the admin pages: Google sign-in, restricted to the
+ * allow-list. Talking to the backend additionally needs the admin API key,
+ * entered separately once signed in (see the key banner in `AdminTopNav`).
  */
 const AdminLogin = () => {
   const { signIn, isSigningIn, error: authError, clearError } = useAuth();
-  const { signInWithCredentials, rejectedEmail } = useAdminAuth();
-
-  const [showPasswordForm, setShowPasswordForm] = useState<boolean>(false);
-  const [username, setUsername] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [formError, setFormError] = useState<string>("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!signInWithCredentials(username, password)) {
-      setFormError("Identifiant ou mot de passe incorrect.");
-      return;
-    }
-    setFormError("");
-  };
+  const { rejectedEmail } = useAdminAuth();
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070a12] px-6 py-16 text-white">
@@ -100,66 +87,10 @@ const AdminLogin = () => {
             {isSigningIn ? "Connexion…" : "Continuer avec Google"}
           </button>
 
-          <div className="my-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-white/25">
-            <span className="h-px flex-1 bg-white/10" />
-            ou
-            <span className="h-px flex-1 bg-white/10" />
-          </div>
-
-          {showPasswordForm ? (
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-white/40">
-                  Identifiant
-                </span>
-                <div className="relative">
-                  <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-                  <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Tiliyan"
-                    autoComplete="username"
-                    autoFocus
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/25 focus:border-indigo-400/60 focus:outline-none focus:ring-1 focus:ring-indigo-400/30"
-                  />
-                </div>
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-white/40">
-                  Mot de passe
-                </span>
-                <div className="relative">
-                  <KeyRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/25 focus:border-indigo-400/60 focus:outline-none focus:ring-1 focus:ring-indigo-400/30"
-                  />
-                </div>
-              </label>
-              {formError && <p className="text-xs font-semibold text-red-400">{formError}</p>}
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-gradient-to-r from-indigo-400 to-violet-500 px-4 py-3.5 text-sm font-bold text-white transition hover:brightness-110 active:scale-[0.985]"
-              >
-                Se connecter
-              </button>
-            </form>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowPasswordForm(true)}
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm font-bold text-white/70 transition hover:bg-white/[0.07] hover:text-white"
-            >
-              Identifiant et mot de passe
-            </button>
-          )}
-
-          <p className="mt-6 text-center text-[11px] leading-relaxed text-white/30">
-            La session reste active 30 jours sur cet appareil. Aucun mot de passe n'est redemandé d'un outil à l'autre.
+          <p className="mt-6 flex items-start gap-2 text-[11px] leading-relaxed text-white/30">
+            <KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Une fois connecté, il te sera demandé la clé d'accès au serveur — elle reste stockée uniquement sur cet
+            appareil.
           </p>
         </div>
       </div>
