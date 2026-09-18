@@ -1,5 +1,5 @@
 /** Set immediately before the first security deployment. Never extend this deadline on later deployments. */
-export const LEGACY_DEADLINE_MS = 0;
+export const LEGACY_DEADLINE_MS = 1789746147520; // 2026-09-18 15:42:27.520 UTC
 
 /** Compatibility is limited to already-persisted, already-started rooms, never client init payloads. */
 export function isLegacyExpired(state: { questions?: unknown[]; phase: string }, now = Date.now()): boolean {
