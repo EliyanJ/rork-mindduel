@@ -18,7 +18,7 @@ enum PathLayoutService {
         guard !Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL.isEmpty else { return nil }
         guard let url = URL(string: remoteURL) else { return nil }
 
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 6
 

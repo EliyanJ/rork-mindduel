@@ -1,18 +1,13 @@
 import SwiftUI
 
-/// Displays a remote theme/chapter illustration published from the admin
-/// catalog, downloaded and transparently cached on-device (`URLSession`'s
-/// shared `URLCache`, which `AsyncImage` already honours) — falling back to
-/// bundled artwork while loading, offline, or on any failure.
+/// Loads artwork with the app version header and standard HTTP caching.
 struct RemoteThemeImage<Fallback: View>: View {
     let urlString: String?
     @ViewBuilder var fallback: () -> Fallback
+    @State private var loadedImage: UIImage?
 
     private var resolvedURL: URL? {
         guard let urlString, !urlString.isEmpty else { return nil }
-        // Uploaded images are served from the project's own backend as a
-        // relative `/api/images/<id>` path — resolve it against the
-        // functions base URL, same as every other backend call.
         if urlString.hasPrefix("/") {
             return URL(string: "\(Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL)\(urlString)")
         }
@@ -20,16 +15,21 @@ struct RemoteThemeImage<Fallback: View>: View {
     }
 
     var body: some View {
-        if let url = resolvedURL {
-            AsyncImage(url: url) { phase in
-                if case .success(let image) = phase {
-                    image.resizable()
-                } else {
-                    fallback()
-                }
+        Group {
+            if let loadedImage {
+                Image(uiImage: loadedImage).resizable()
+            } else {
+                fallback()
             }
-        } else {
-            fallback()
+        }
+        .task(id: resolvedURL) {
+            loadedImage = nil
+            guard let url = resolvedURL else { return }
+            do {
+                let (data, response) = try await URLSession.shared.data(for: AppVersion.request(url: url))
+                guard !Task.isCancelled, (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+                loadedImage = UIImage(data: data)
+            } catch { /* Bundled artwork remains visible on failure. */ }
         }
     }
 }

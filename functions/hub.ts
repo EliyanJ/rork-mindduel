@@ -3,6 +3,8 @@
 // matchmaking queue (HTTP polling) and ELO settlement of finished matches.
 
 import { DurableObject } from "cloudflare:workers";
+import { LEGACY_DEADLINE_MS } from "./security-rollout";
+import { appConfig, partyUpdateRequired, pickQuestions, versionAtLeast, type GameCatalog, type GameQuestion, type VersionEnvironment } from "./game-security";
 
 export type PlayerProfile = {
   id: string;
@@ -519,6 +521,18 @@ export class Hub extends DurableObject {
       )
     `);
 
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE party_lobbies ADD COLUMN protocol_version INTEGER NOT NULL DEFAULT 0");
+    } catch { /* Column already exists; never rewrite existing lobby membership. */ }
+    this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS cheat_flags (
+      user_id TEXT NOT NULL, match_id TEXT NOT NULL, raison TEXT NOT NULL,
+      date INTEGER NOT NULL, question_index INTEGER NOT NULL,
+      UNIQUE(user_id, match_id, question_index, raison)
+    )`);
+    this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS room_tickets (
+      id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL, created_at INTEGER NOT NULL
+    )`);
+
     // Every back-office action on a personal account is traced: a GDPR
     // accountability requirement, and the only way to understand later why an
     // account was changed.
@@ -534,11 +548,44 @@ export class Hub extends DurableObject {
     `);
   }
 
+  private gameQuestions(seed: string, count: number, themes: string[], elo: number): GameQuestion[] {
+    const row = this.ctx.storage.sql.exec<{ json: string }>("SELECT json FROM content WHERE id = 1").toArray()[0];
+    if (!row) throw new Error("Published catalog unavailable");
+    const questions = pickQuestions(JSON.parse(row.json) as GameCatalog, seed, count, themes, elo);
+    if (questions.length < count) throw new Error("Published catalog too small");
+    return questions;
+  }
+
+  private saveRoomTicket(id: string, kind: string, ticket: unknown): void {
+    this.ctx.storage.sql.exec("INSERT OR IGNORE INTO room_tickets (id, kind, payload, created_at) VALUES (?, ?, ?, ?)", id, kind, JSON.stringify(ticket), Date.now());
+  }
+
   override async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    if (path === "/api/app/config" && request.method === "GET") {
+      return Response.json(appConfig(this.env as VersionEnvironment), { headers: { "Cache-Control": "no-store" } });
+    }
+    if (path === "/api/admin/access" && request.method === "GET") {
+      const email = decodeHeader(request.headers.get("X-Rork-User-Email"))?.trim().toLowerCase();
+      const allowed = ((this.env as { ADMIN_ALLOWED_EMAILS?: string }).ADMIN_ALLOWED_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      return Response.json({ allowed: !!request.headers.get("X-Rork-User-Id") && !!email && allowed.includes(email) }, { headers: { "Cache-Control": "no-store" } });
+    }
     // Internal (DO-to-DO) routes — never forwarded by the public entrypoint.
+    if (path === "/internal/room-ticket" && request.method === "POST") {
+      const body = await request.json() as { id: string; kind: string; userId: string };
+      const row = this.ctx.storage.sql.exec<{ payload: string }>("SELECT payload FROM room_tickets WHERE id = ? AND kind = ? AND created_at >= ?", body.id, body.kind, Date.now() - 300_000).toArray()[0];
+      if (!row) return Response.json({ error: "ticket unavailable" }, { status: 404 });
+      const ticket = JSON.parse(row.payload) as { players: { id: string; isBot?: boolean }[] };
+      if (!ticket.players.some(p => p.id === body.userId && !p.isBot)) return Response.json({ error: "not a participant" }, { status: 403 });
+      return Response.json(ticket);
+    }
+    if (path === "/internal/cheat-flag" && request.method === "POST") {
+      const b = await request.json() as { userId: string; matchId: string; index: number; reason: string };
+      this.ctx.storage.sql.exec("INSERT OR IGNORE INTO cheat_flags (user_id, match_id, raison, date, question_index) VALUES (?, ?, ?, ?, ?)", b.userId, b.matchId, b.reason, Date.now(), b.index);
+      return Response.json({ ok: true });
+    }
     if (path === "/internal/match-result" && request.method === "POST") {
       return this.settleMatch(await request.json());
     }
@@ -626,6 +673,11 @@ export class Hub extends DurableObject {
       return this.storeWebhook(request);
     }
 
+    const partyEntry = ["/api/hub/party/queue/join", "/api/hub/party/custom/create", "/api/hub/party/custom/join"];
+    if (request.method === "POST" && partyEntry.includes(path)
+        && !versionAtLeast(request.headers.get("X-App-Version"), appConfig(this.env as VersionEnvironment).min_version_party)) {
+      return partyUpdateRequired();
+    }
     const userId = request.headers.get("X-Rork-User-Id");
     if (!userId) {
       return Response.json({ error: "authentification requise" }, { status: 401 });
@@ -641,6 +693,17 @@ export class Hub extends DurableObject {
       return Response.json({ error: "compte suspendu" }, { status: 403 });
     }
 
+    if (path.startsWith("/api/hub/party/") && !path.endsWith("/leave")) {
+      const queued = this.partyQueueRow(userId);
+      // Old, already-issued tickets remain usable. An old unstarted lobby is never upgraded in place.
+      if (queued && !queued.match_payload && this.partyLobbyRow(queued.lobby_id)?.protocol_version !== 1) {
+        // Remove only the temporary queue seat, never player data or reputation.
+        this.ctx.storage.sql.exec("DELETE FROM party_queue WHERE user_id = ? AND match_payload IS NULL", userId);
+        return Response.json({ error: "Le salon a été renouvelé. Relance une recherche de partie.", code: "lobby_requeue_required" }, { status: 409 });
+      }
+      if (path === "/api/hub/party/queue/poll" && !queued?.match_payload
+          && !versionAtLeast(request.headers.get("X-App-Version"), appConfig(this.env as VersionEnvironment).min_version_party)) return partyUpdateRequired();
+    }
     try {
       if (path === "/api/hub/profile/sync" && request.method === "POST") {
         const body = (await request.json().catch(() => ({}))) as {
@@ -1491,6 +1554,8 @@ export class Hub extends DurableObject {
     // an identical mixed question set from the shared seed.
     const themes = [me.discipline_id ?? "all", opponent.discipline_id ?? "all"].sort();
     const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes };
+    const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + oppProfile.elo) / 2));
+    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, oppProfile], questions });
     const forMe = JSON.stringify({ ...base, you: myProfile, opponent: oppProfile });
     const forOpp = JSON.stringify({ ...base, you: oppProfile, opponent: myProfile });
 
@@ -1579,7 +1644,9 @@ export class Hub extends DurableObject {
       return Response.json({ error: "la partie a déjà commencé" }, { status: 400 });
     }
     this.ctx.storage.sql.exec("DELETE FROM party_queue WHERE user_id = ?", userId);
-    this.adjustReputation(userId, -PARTY_LOBBY_LEAVE_PENALTY);
+    if (this.partyLobbyRow(row.lobby_id)?.protocol_version === 1) {
+      this.adjustReputation(userId, -PARTY_LOBBY_LEAVE_PENALTY);
+    }
     return Response.json({ ok: true });
   }
 
@@ -1600,7 +1667,7 @@ export class Hub extends DurableObject {
     const lobbyId = crypto.randomUUID();
     const roomCode = this.generateRoomCode();
     this.ctx.storage.sql.exec(
-      "INSERT INTO party_lobbies (lobby_id, mode, created_at, started, room_code, host_user_id, force_start) VALUES (?, ?, ?, 0, ?, ?, 0)",
+      "INSERT INTO party_lobbies (lobby_id, mode, created_at, started, room_code, host_user_id, force_start, protocol_version) VALUES (?, ?, ?, 0, ?, ?, 0, 1)",
       lobbyId, mode, Date.now(), roomCode, userId,
     );
     this.ctx.storage.sql.exec(
@@ -1627,6 +1694,7 @@ export class Hub extends DurableObject {
       .exec<PartyLobbyRow>("SELECT * FROM party_lobbies WHERE room_code = ? AND started = 0", roomCode)
       .toArray()[0];
     if (!lobby) return Response.json({ error: "Code introuvable ou partie déjà lancée" }, { status: 404 });
+    if (lobby.protocol_version !== 1) return partyUpdateRequired();
     const capacity = partyCapacity(lobby.mode);
     const count = this.ctx.storage.sql
       .exec<{ n: number }>("SELECT COUNT(*) AS n FROM party_queue WHERE lobby_id = ?", lobby.lobby_id)
@@ -1687,7 +1755,7 @@ export class Hub extends DurableObject {
   private openLobbyFor(mode: PartyMode): string {
     const candidates = this.ctx.storage.sql
       .exec<PartyLobbyRow>(
-        "SELECT * FROM party_lobbies WHERE mode = ? AND started = 0 ORDER BY created_at ASC",
+        "SELECT * FROM party_lobbies WHERE mode = ? AND started = 0 AND protocol_version = 1 ORDER BY created_at ASC",
         mode,
       )
       .toArray();
@@ -1699,7 +1767,7 @@ export class Hub extends DurableObject {
     }
     const lobbyId = crypto.randomUUID();
     this.ctx.storage.sql.exec(
-      "INSERT INTO party_lobbies (lobby_id, mode, created_at, started) VALUES (?, ?, ?, 0)",
+      "INSERT INTO party_lobbies (lobby_id, mode, created_at, started, protocol_version) VALUES (?, ?, ?, 0, 1)",
       lobbyId, mode, Date.now(),
     );
     return lobbyId;
@@ -1712,7 +1780,7 @@ export class Hub extends DurableObject {
    */
   private maybeFinalizeLobby(lobbyId: string): void {
     const lobby = this.partyLobbyRow(lobbyId);
-    if (!lobby || lobby.started) return;
+    if (!lobby || lobby.started || lobby.protocol_version !== 1) return;
     const realRows = this.ctx.storage.sql
       .exec<PartyQueueRow>("SELECT * FROM party_queue WHERE lobby_id = ? ORDER BY queued_at ASC", lobbyId)
       .toArray();
@@ -1757,6 +1825,8 @@ export class Hub extends DurableObject {
       roundDuration: 10,
       players: allPlayers,
     };
+    const questions = this.gameQuestions(seed, base.rounds * base.questionsPerRound, ["all"], Math.trunc(allPlayers.reduce((sum, p) => sum + p.elo, 0) / allPlayers.length));
+    this.saveRoomTicket(lobbyId, "party", { ...base, questions });
     const now = Date.now();
     for (const row of realRows) {
       const you = allPlayers.find((p) => p.id === row.user_id);
@@ -1807,7 +1877,13 @@ export class Hub extends DurableObject {
       mode?: string;
       results?: Array<{ userId: string; score: number; team?: string; isBot?: boolean }>;
       leftMidGame?: string[];
+      voluntaryLeaveIds?: string[];
     };
+    const hasTicket = payload.partyId && this.ctx.storage.sql.exec("SELECT id FROM room_tickets WHERE id = ? AND kind = 'party'", payload.partyId).toArray().length > 0;
+    if ((!hasTicket && Date.now() >= LEGACY_DEADLINE_MS)
+        || (payload.leftMidGame ?? []).some(id => !payload.voluntaryLeaveIds?.includes(id))) {
+      return Response.json({ ok: true, noResult: true, pointsChanges: {}, reputationChanges: {} });
+    }
     const results = (payload.results ?? []).filter((r) => typeof r.userId === "string");
     const leftMidGame = new Set(payload.leftMidGame ?? []);
     const pointsChanges: Record<string, number> = {};
@@ -1880,7 +1956,12 @@ export class Hub extends DurableObject {
       matchId?: string;
       results?: { userId: string; score: number }[];
       forfeitBy?: string;
+      voluntaryLeave?: boolean;
     };
+    const hasTicket = payload.matchId && this.ctx.storage.sql.exec("SELECT id FROM room_tickets WHERE id = ? AND kind = 'duel'", payload.matchId).toArray().length > 0;
+    if ((!hasTicket && Date.now() >= LEGACY_DEADLINE_MS) || (payload.forfeitBy && !payload.voluntaryLeave)) {
+      return Response.json({ ok: true, noResult: true, eloChanges: {}, newElos: {} });
+    }
     const results = payload.results ?? [];
     if (results.length !== 2) {
       return Response.json({ error: "invalid results" }, { status: 400 });
@@ -2544,6 +2625,7 @@ type PartyLobbyRow = {
   room_code: string | null;
   host_user_id: string | null;
   force_start: number | null;
+  protocol_version: number;
 };
 
 export type PartyPlayer = {

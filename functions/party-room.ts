@@ -6,8 +6,10 @@
 // game ends.
 
 import { DurableObject } from "cloudflare:workers";
+import { flagAnswer, verifyAnswer, type GameQuestion } from "./game-security";
+import { isLegacyExpired, legacyAnswer, LEGACY_DEADLINE_MS } from "./security-rollout";
 
-type Env = { DO: Fetcher };
+type Env = { DO: Fetcher & { setAlarm(className: string, id: string, time: number): Promise<void> } };
 
 // "team10" (10v10), "solo" (1v19), "oneVsTen" (1v10), or a free-form
 // `custom:<allies>:<opponents>` room.
@@ -36,6 +38,8 @@ type PartyState = {
   partyId: string;
   mode: PartyMode;
   seed: string;
+  questions?: GameQuestion[];
+  roundStartedAt?: number;
   rounds: number;
   questionsPerRound: number;
   roundDuration: number;
@@ -46,7 +50,9 @@ type PartyState = {
   answers: Record<string, RoundAnswer>[];
   /** Real players who disconnected after the game had already started. */
   leftMidGame: string[];
+  voluntaryLeaves?: string[];
   settled: boolean;
+  noResult?: boolean;
 };
 
 type Attachment = { userId: string };
@@ -63,8 +69,12 @@ export class PartyRoom extends DurableObject<Env> {
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
   private waitTimer: ReturnType<typeof setTimeout> | null = null;
   private botTimers: ReturnType<typeof setTimeout>[] = [];
+  private legacyTimer: ReturnType<typeof setTimeout> | null = null;
 
   override async fetch(request: Request): Promise<Response> {
+    if (new URL(request.url).pathname === "/internal/initialize" && request.method === "POST") {
+      return Response.json({ ok: await this.initialize(request) });
+    }
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("expected websocket", { status: 426 });
     }
@@ -75,12 +85,7 @@ export class PartyRoom extends DurableObject<Env> {
     }
 
     const state = await this.loadState();
-    if (!state) {
-      const initialized = await this.initFromParams(url);
-      if (!initialized) {
-        return new Response("party not initialized", { status: 400 });
-      }
-    }
+    if (!state) return Response.json({ error: "Partie renouvelée. Relance une recherche.", code: "match_unavailable" }, { status: 400 });
 
     const current = await this.loadState();
     const me = current?.players.find((p) => p.id === userId);
@@ -97,11 +102,10 @@ export class PartyRoom extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private async initFromParams(url: URL): Promise<boolean> {
-    const raw = url.searchParams.get("init");
-    if (!raw) return false;
+  private async initialize(request: Request): Promise<boolean> {
     try {
-      const ticket = JSON.parse(raw) as {
+      const ticket = await request.json() as {
+        questions: GameQuestion[];
         partyId?: string;
         mode?: PartyMode;
         seed?: string;
@@ -115,6 +119,7 @@ export class PartyRoom extends DurableObject<Env> {
         partyId: ticket.partyId,
         mode: ticket.mode ?? "solo",
         seed: ticket.seed,
+        questions: ticket.questions,
         rounds: ticket.rounds ?? 3,
         questionsPerRound: ticket.questionsPerRound ?? 20,
         roundDuration: ticket.roundDuration ?? 10,
@@ -140,6 +145,22 @@ export class PartyRoom extends DurableObject<Env> {
     if (this.state) return this.state;
     const stored = await this.ctx.storage.get<PartyState>("state");
     this.state = stored ?? null;
+    if (this.state && isLegacyExpired(this.state)) {
+      this.cancelWithoutResult("security_transition_expired");
+    } else if (this.state && !this.state.questions && this.state.phase !== "finished") {
+      this.legacyTimer = setTimeout(() => this.cancelWithoutResult("security_transition_expired"), Math.max(0, LEGACY_DEADLINE_MS - Date.now()));
+      this.ctx.waitUntil(this.env.DO.setAlarm("PartyRoom", this.ctx.id.name ?? "", LEGACY_DEADLINE_MS));
+    }
+    if (this.state && this.ctx.getWebSockets().length > 0) {
+      const s = this.state;
+      if (s.phase === "playing") {
+        if (s.globalIndex < 0) this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
+        else {
+          const remaining = Math.max(0, (s.roundStartedAt ?? Date.now()) + s.roundDuration * 1000 + GRACE_MS - Date.now());
+          this.armTimer(remaining, () => this.closeRound(s.globalIndex));
+        }
+      } else if (s.phase === "reveal") this.armTimer(REVEAL_MS, () => this.startRound(s.globalIndex + 1));
+    }
     return this.state;
   }
 
@@ -161,6 +182,7 @@ export class PartyRoom extends DurableObject<Env> {
     const state = await this.loadState();
     if (!state) return;
 
+    if (state.noResult) { this.sendTo(userId, { type: "cancelled", reason: "server_interruption", noResult: true }); return; }
     if (state.phase === "finished") {
       this.sendTo(userId, { type: "finish", scores: state.scores, alreadyOver: true });
       return;
@@ -187,7 +209,8 @@ export class PartyRoom extends DurableObject<Env> {
     const connected = new Set(this.connectedUserIds());
     for (const p of this.realPlayers(state)) {
       if (!connected.has(p.id) && !state.leftMidGame.includes(p.id)) {
-        state.leftMidGame.push(p.id);
+        this.cancelWithoutResult("participant_connection_unavailable");
+        return;
       }
     }
     this.startGame();
@@ -205,6 +228,7 @@ export class PartyRoom extends DurableObject<Env> {
     this.broadcast({
       type: "start",
       seed: state.seed,
+      questions: state.questions,
       mode: state.mode,
       rounds: state.rounds,
       questionsPerRound: state.questionsPerRound,
@@ -217,12 +241,14 @@ export class PartyRoom extends DurableObject<Env> {
   private startRound(globalIndex: number): void {
     const state = this.state;
     if (!state || state.phase === "finished") return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     if (globalIndex >= this.totalQuestions(state)) {
       this.ctx.waitUntil(this.finishMatch());
       return;
     }
     state.phase = "playing";
     state.globalIndex = globalIndex;
+    state.roundStartedAt = Date.now();
     while (state.answers.length <= globalIndex) state.answers.push({});
     this.persist();
 
@@ -257,13 +283,15 @@ export class PartyRoom extends DurableObject<Env> {
   }
 
   override async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+    const receivedAt = Date.now();
     if (typeof raw !== "string") return;
     const attachment = ws.deserializeAttachment() as Attachment | null;
     if (!attachment) return;
 
-    let msg: { type?: string; index?: number; correct?: boolean; timeMs?: number; emote?: string };
+    let msg: { type?: string; index?: number; answer?: string; correct?: boolean; timeMs?: number; emote?: string };
     try {
       msg = JSON.parse(raw);
+      if (!msg || typeof msg !== "object") return;
     } catch {
       return;
     }
@@ -281,21 +309,36 @@ export class PartyRoom extends DurableObject<Env> {
       }
       return;
     }
+    const loaded = await this.loadState();
+    if (!loaded || loaded.phase === "finished") return;
+    if (isLegacyExpired(loaded)) { this.cancelWithoutResult("security_transition_expired"); return; }
+    if (msg.type === "leave") {
+      if (loaded.phase === "waiting") { this.cancelWithoutResult("player_left_before_start"); return; }
+      if (!loaded.leftMidGame.includes(attachment.userId)) loaded.leftMidGame.push(attachment.userId);
+      loaded.voluntaryLeaves ??= [];
+      if (!loaded.voluntaryLeaves.includes(attachment.userId)) loaded.voluntaryLeaves.push(attachment.userId);
+      this.persist();
+      if (!this.realPlayers(loaded).some(p => !loaded.leftMidGame.includes(p.id))) await this.finishMatch();
+      return;
+    }
     if (msg.type === "answer" && typeof msg.index === "number") {
-      const state = this.state;
+      const state = loaded;
       if (!state || state.phase !== "playing" || msg.index !== state.globalIndex) return;
-      this.recordAnswer(
-        attachment.userId,
-        msg.index,
-        msg.correct === true,
-        clamp(msg.timeMs ?? state.roundDuration * 1000, 0, state.roundDuration * 1000),
-      );
+      if (!state.answers[msg.index] || state.answers[msg.index]?.[attachment.userId]) return;
+      if (state.leftMidGame.includes(attachment.userId)) return;
+      const verdict = state.questions
+        ? verifyAnswer(state.questions[msg.index], msg.answer, state.roundStartedAt, receivedAt, state.roundDuration * 1000)
+        : legacyAnswer(msg.correct, msg.timeMs, state.roundDuration * 1000);
+      const reason = verdict.reason ?? (msg.correct === true && !verdict.correct ? "false_correct_claim" : undefined);
+      if (reason) this.ctx.waitUntil(flagAnswer(this.env, attachment.userId, state.partyId, msg.index, reason));
+      this.recordAnswer(attachment.userId, msg.index, verdict.correct, verdict.timeMs);
     }
   }
 
   private recordAnswer(userId: string, globalIndex: number, correct: boolean, timeMs: number): void {
     const state = this.state;
     if (!state || state.phase !== "playing" || state.globalIndex !== globalIndex) return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     const roundAnswers = state.answers[globalIndex];
     if (!roundAnswers || roundAnswers[userId]) return;
 
@@ -313,6 +356,7 @@ export class PartyRoom extends DurableObject<Env> {
   private closeRound(globalIndex: number): void {
     const state = this.state;
     if (!state || state.phase !== "playing" || state.globalIndex !== globalIndex) return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     this.clearRoundTimer();
     this.clearBotTimers();
 
@@ -344,6 +388,7 @@ export class PartyRoom extends DurableObject<Env> {
       globalIndex,
       correctCount,
       totalAnswered: Object.keys(roundAnswers).length,
+      answers: roundAnswers,
       scores: state.scores,
       teamScores,
     });
@@ -359,8 +404,10 @@ export class PartyRoom extends DurableObject<Env> {
   private async finishMatch(): Promise<void> {
     const state = this.state;
     if (!state || state.phase === "finished" || state.settled) return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     state.phase = "finished";
     state.settled = true;
+    if (this.legacyTimer) clearTimeout(this.legacyTimer);
     this.clearRoundTimer();
     this.clearBotTimers();
     this.persist();
@@ -387,6 +434,7 @@ export class PartyRoom extends DurableObject<Env> {
           mode: state.mode,
           results,
           leftMidGame: state.leftMidGame,
+          voluntaryLeaveIds: state.voluntaryLeaves ?? [],
         }),
       });
       const response = await this.env.DO.fetch(request);
@@ -394,14 +442,20 @@ export class PartyRoom extends DurableObject<Env> {
         const settled = (await response.json()) as {
           pointsChanges?: Record<string, number>;
           reputationChanges?: Record<string, number>;
+          noResult?: boolean;
         };
+        if (settled.noResult) { this.cancelWithoutResult("server_interruption", true); return; }
         pointsChanges = settled.pointsChanges ?? {};
         reputationChanges = settled.reputationChanges ?? {};
       } else {
         console.error("party settlement failed", response.status);
+        this.cancelWithoutResult("settlement_unavailable", true);
+        return;
       }
     } catch (err) {
-      console.error("party settlement error", err);
+      console.error("party settlement unavailable");
+      this.cancelWithoutResult("settlement_unavailable", true);
+      return;
     }
 
     this.broadcast({
@@ -431,29 +485,34 @@ export class PartyRoom extends DurableObject<Env> {
   }
 
   override async webSocketClose(ws: WebSocket): Promise<void> {
-    const attachment = ws.deserializeAttachment() as Attachment | null;
     const state = await this.loadState();
-    if (!state || !attachment) return;
-    if (state.phase === "finished") return;
+    const attachment = ws.deserializeAttachment() as Attachment | null;
+    if (attachment && state?.voluntaryLeaves?.includes(attachment.userId)) return; // Explicit leave already received.
+    this.cancelWithoutResult("server_interruption");
+  }
 
-    if (state.phase === "waiting") {
-      // A drop before kickoff is not penalised — everyone is still loading.
-      this.broadcast({ type: "lobby", connected: this.connectedUserIds(), players: state.players });
-      return;
-    }
+  override async webSocketError(ws: WebSocket, _error: unknown): Promise<void> {
+    await this.webSocketClose(ws);
+  }
 
-    // Mid-game disconnect: the game keeps going for everyone else. The
-    // leaver's remaining answers are forced timeouts and they take the
-    // reputation hit when the party settles.
-    if (!state.leftMidGame.includes(attachment.userId)) {
-      state.leftMidGame.push(attachment.userId);
-      this.persist();
-    }
+  async onAlarm(): Promise<void> {
+    await this.loadState();
+    if (this.state && isLegacyExpired(this.state)) this.cancelWithoutResult("security_transition_expired");
+  }
 
-    const anyoneLeft = this.realPlayers(state).some((p) => !state.leftMidGame.includes(p.id));
-    if (!anyoneLeft) {
-      this.ctx.waitUntil(this.finishMatch());
-    }
+  private cancelWithoutResult(reason: string, allowFinished = false): void {
+    const state = this.state;
+    if (!state || (state.phase === "finished" && !allowFinished)) return;
+    state.phase = "finished";
+    state.noResult = true;
+    state.settled = true;
+    this.clearRoundTimer();
+    this.clearBotTimers();
+    if (this.waitTimer) clearTimeout(this.waitTimer);
+    if (this.legacyTimer) clearTimeout(this.legacyTimer);
+    this.persist();
+    this.broadcast({ type: "cancelled", reason, noResult: true });
+    for (const peer of this.ctx.getWebSockets()) { try { peer.close(1000, "no result"); } catch { /* closed */ } }
   }
 
   private connectedUserIds(): string[] {

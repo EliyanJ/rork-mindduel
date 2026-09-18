@@ -14,7 +14,7 @@ struct OnlineMatchView: View {
             switch session.phase {
             case .searching, .found:
                 OnlineSearchStage(session: session) {
-                    session.cancel()
+                    session.cancel(voluntary: true)
                     dismiss()
                 }
             case .countdown:
@@ -23,12 +23,12 @@ struct OnlineMatchView: View {
                 OnlineQuestionStage(session: session)
             case .finished:
                 OnlineResultsView(session: session) {
-                    session.cancel()
+                    session.cancel(voluntary: true)
                     dismiss()
                 }
             case .cancelled(let reason), .failed(let reason):
                 OnlineErrorStage(message: reason) {
-                    session.cancel()
+                    session.cancel(voluntary: true)
                     dismiss()
                 }
             }

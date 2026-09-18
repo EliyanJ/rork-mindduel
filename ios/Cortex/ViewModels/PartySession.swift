@@ -76,6 +76,7 @@ final class PartySession {
     /// Whether this device created the custom room and can force-start it.
     private(set) var isHost: Bool = false
     private(set) var startError: String?
+    private(set) var requiresUpdate: Bool = false
     private(set) var questions: [Question] = []
     private(set) var roundDuration: Double = 10
     private(set) var totalQuestions: Int = 60
@@ -164,16 +165,23 @@ final class PartySession {
 
     /// Leaves the lobby (before start) or disconnects mid-game — the server
     /// applies the matching reputation penalty either way.
-    func cancel() {
+    func cancel(voluntary: Bool = false) {
         queueTask?.cancel()
         receiveTask?.cancel()
         timerTask?.cancel()
         surgeTask?.cancel()
         voteProgressTask?.cancel()
         SoundManager.shared.stopAmbience()
-        socket?.cancel(with: .goingAway, reason: nil)
+        let closingSocket = socket
         socket = nil
-        guard !leftBeforeStart, ticket == nil else { return }
+        if voluntary, let closingSocket, phase == .question || phase == .reveal || phase == .countdown {
+            closingSocket.send(.string("{\"type\":\"leave\"}")) { _ in
+                closingSocket.cancel(with: .normalClosure, reason: nil)
+            }
+        } else {
+            closingSocket?.cancel(with: .goingAway, reason: nil)
+        }
+        guard voluntary, !requiresUpdate, !leftBeforeStart, ticket == nil else { return }
         leftBeforeStart = true
         Task { [online] in
             guard let token = await online.auth.validAccessToken() else { return }
@@ -184,6 +192,12 @@ final class PartySession {
     // MARK: lobby
 
     private func runLobby() async {
+        await AppUpdateService.shared.refresh()
+        if AppUpdateService.shared.requiresPartyUpdate {
+            requiresUpdate = true
+            phase = .failed("Mets à jour Minduel pour jouer en groupe.")
+            return
+        }
         guard let token = await online.auth.validAccessToken() else {
             phase = .failed("Connecte-toi pour jouer en multijoueur")
             return
@@ -219,6 +233,9 @@ final class PartySession {
             }
         } catch is CancellationError {
             // user cancelled
+        } catch MultiplayerService.ServiceError.partyUpdateRequired {
+            requiresUpdate = true
+            phase = .failed("Mets à jour Minduel pour jouer en groupe.")
         } catch {
             phase = .failed(error.localizedDescription)
         }
@@ -277,7 +294,7 @@ final class PartySession {
                 if !Task.isCancelled {
                     switch phase {
                     case .finished, .cancelled, .failed: return
-                    default: phase = .failed("Connexion à la partie perdue")
+                    default: phase = .cancelled("Connexion interrompue. Partie sans résultat, sans perte de points ni pénalité.")
                     }
                 }
                 return
@@ -290,6 +307,12 @@ final class PartySession {
               let type = raw["type"] as? String else { return }
         switch type {
         case "start":
+            if let payload = raw["questions"],
+               let encoded = try? JSONSerialization.data(withJSONObject: payload),
+               let authoritative = try? JSONDecoder().decode([Question].self, from: encoded),
+               authoritative.count == totalQuestions {
+                questions = authoritative
+            }
             phase = .countdown
             Haptics.medium()
             SoundManager.shared.startAmbience()
@@ -301,7 +324,13 @@ final class PartySession {
         case "finish":
             handleFinish(raw)
         case "cancelled":
-            phase = .cancelled("La partie a été annulée")
+            phase = .cancelled(raw["noResult"] as? Bool == true
+                ? "Partie interrompue sans résultat. Aucun point perdu ni pénalité."
+                : "La partie a été annulée")
+            timerTask?.cancel()
+            showLeaderboard = false
+            SoundManager.shared.stopAmbience()
+            SoundManager.shared.stopLeaderboardMusic()
             socket?.cancel(with: .goingAway, reason: nil)
         case "emote":
             if let emoteRaw = raw["emote"] as? String, let emote = QuizEmote(rawValue: emoteRaw), let senderId = raw["from"] as? String {
@@ -396,6 +425,7 @@ final class PartySession {
         send([
             "type": "answer",
             "index": currentGlobalIndex,
+            "answer": option,
             "correct": correct,
             "timeMs": Int(min(elapsed, roundDuration) * 1000)
         ])
@@ -413,12 +443,14 @@ final class PartySession {
             teamScores = (a: teams["A"] ?? 0, b: teams["B"] ?? 0)
         }
         if let youId = you?.id {
+            if let answers = raw["answers"] as? [String: [String: Any]],
+               let verdict = answers[youId] {
+                lastPlayerCorrect = verdict["correct"] as? Bool ?? false
+            }
             lastPlayerPoints = (scores[youId] ?? 0) - (scoresAtRoundStart[youId] ?? 0)
         }
 
-        // The server only reports how many people answered correctly, not
-        // which wrong option each of them picked (it never sees question
-        // content) — so wrong votes are distributed evenly across the wrong
+        // Individual wrong options are not broadcast; distribute those votes across the wrong
         // options while the player's own pick is always exact.
         let correctCount = raw["correctCount"] as? Int ?? (lastPlayerCorrect ? 1 : 0)
         let totalAnswered = raw["totalAnswered"] as? Int ?? 1
@@ -550,6 +582,10 @@ final class PartySession {
     }
 
     private func handleFinish(_ raw: [String: Any]) {
+        if raw["noResult"] as? Bool == true {
+            phase = .cancelled("Partie sans résultat. Aucun point perdu ni pénalité.")
+            return
+        }
         guard !finishedHandled, let ticket else {
             phase = .finished
             return

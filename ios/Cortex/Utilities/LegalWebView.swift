@@ -11,7 +11,7 @@ struct LegalWebContent: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        webView.load(URLRequest(url: url))
+        webView.load(AppVersion.request(url: url))
     }
 }
 

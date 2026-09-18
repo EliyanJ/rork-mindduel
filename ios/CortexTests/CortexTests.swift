@@ -9,6 +9,7 @@ import Testing
 import Foundation
 @testable import Cortex
 
+@Suite(.serialized)
 struct CortexTests {
 
     // MARK: - Helpers
@@ -114,14 +115,14 @@ struct CortexTests {
             "questionId": "migrate_q1",
             "disciplineId": "hist",
             "intervalDays": 16,
-            "dueDate": ISO8601DateFormatter().string(from: testDate),
+            "dueDate": testDate.timeIntervalSinceReferenceDate,
             "strength": 0.8,
             "lapses": 0
         ]
         let progressDict: [String: Any] = [
             "xp": 100,
             "streak": 3,
-            "lastActiveDay": ISO8601DateFormatter().string(from: testDate),
+            "lastActiveDay": testDate.timeIntervalSinceReferenceDate,
             "activeDays": [],
             "chapterRecords": [:] as [String: Any],
             "reviewItems": ["migrate_q1": oldItemJson],
@@ -148,7 +149,7 @@ struct CortexTests {
             "questionId": "migrate_q2",
             "disciplineId": "sci",
             "intervalDays": 0,
-            "dueDate": ISO8601DateFormatter().string(from: testDate),
+            "dueDate": testDate.timeIntervalSinceReferenceDate,
             "strength": 0.1,
             "lapses": 2
         ]

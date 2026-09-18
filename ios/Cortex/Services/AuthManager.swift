@@ -142,7 +142,7 @@ final class AuthManager {
                 return
             }
 
-            var request = URLRequest(url: url)
+            var request = AppVersion.request(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             var initiateBody: [String: String] = [
@@ -197,7 +197,7 @@ final class AuthManager {
         while Date() < deadline {
             try await Task.sleep(for: .milliseconds(1500))
 
-            var request = URLRequest(url: url)
+            var request = AppVersion.request(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONEncoder().encode(["app_key": appKey, "state": state])
@@ -262,7 +262,7 @@ final class AuthManager {
 
         guard let url = URL(string: "\(authURL)/oauth/token") else { return }
 
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONEncoder().encode([
@@ -302,7 +302,7 @@ final class AuthManager {
 
         guard let url = URL(string: "\(authURL)/oauth/refresh") else { return }
 
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONEncoder().encode([

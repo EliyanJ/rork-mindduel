@@ -5,6 +5,7 @@ import Foundation
 enum WebLinks {
     private static let base = "https://pqvvji2o1xg9ygfbwj3m1-web.rork.live"
 
+    static let appStore = URL(string: "https://apps.apple.com/app/id6788570245")!
     static let privacy = URL(string: "\(base)/privacy")!
     static let terms = URL(string: "\(base)/terms")!
     static let support = URL(string: "\(base)/support")!

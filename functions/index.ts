@@ -24,6 +24,10 @@ export default {
       return corsResponse(Response.json({ ok: true, now: new Date().toISOString() }));
     }
 
+    if (url.pathname === "/api/app/config" && request.method === "GET") {
+      return withCors(await dispatchToDo(env, "Hub", "global", request));
+    }
+
     // Content delivery routes — public GET (app fetches latest content),
     // password-protected POST (admin pushes from generator panel).
     // Both need CORS headers for cross-origin browser access.
@@ -102,6 +106,7 @@ export default {
         return Response.json({ error: "authentification requise" }, { status: 401 });
       }
       url.searchParams.set("userId", userId);
+      await prepareRoom(env, "MatchRoom", "duel", matchRoute[1]!, userId);
       return dispatchToDo(env, "MatchRoom", matchRoute[1]!, new Request(url.toString(), request));
     }
 
@@ -113,12 +118,26 @@ export default {
         return Response.json({ error: "authentification requise" }, { status: 401 });
       }
       url.searchParams.set("userId", userId);
+      await prepareRoom(env, "PartyRoom", "party", partyRoute[1]!, userId);
       return dispatchToDo(env, "PartyRoom", partyRoute[1]!, new Request(url.toString(), request));
     }
 
     return Response.json({ error: "not found" }, { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
+
+/** Provision before the WebSocket dispatch: never perform a cross-DO call inside a 101 handler. */
+async function prepareRoom(env: Env, roomClass: string, kind: string, id: string, userId: string): Promise<void> {
+  const ticket = await dispatchToDo(env, "Hub", "global", new Request("https://internal/internal/room-ticket", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, kind, userId }),
+  }));
+  if (ticket.status === 404 || ticket.status === 403) return; // Only an existing room can accept a reconnect without a fresh ticket.
+  if (!ticket.ok) throw new Error("Room admission unavailable");
+  const initialized = await dispatchToDo(env, roomClass, id, new Request("https://internal/internal/initialize", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: await ticket.text(),
+  }));
+  if (!initialized.ok) throw new Error("Room initialization unavailable");
+}
 
 function dispatchToDo(env: Env, className: string, id: string, request: Request): Promise<Response> {
   const wrapped = new Request(request.url, request);
@@ -139,7 +158,7 @@ function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-App-Version",
     "Access-Control-Max-Age": "86400",
   };
 }

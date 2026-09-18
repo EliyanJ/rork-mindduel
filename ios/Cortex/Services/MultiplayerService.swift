@@ -7,6 +7,7 @@ nonisolated struct MultiplayerService {
         case notSignedIn
         case badURL
         case server(String)
+        case partyUpdateRequired
         case http(Int)
 
         var errorDescription: String? {
@@ -14,6 +15,7 @@ nonisolated struct MultiplayerService {
             case .notSignedIn: return "Connecte-toi pour jouer en ligne"
             case .badURL: return "URL invalide"
             case .server(let message): return message
+            case .partyUpdateRequired: return "Mets à jour Minduel pour jouer en groupe."
             case .http(let code): return "Erreur réseau (\(code))"
             }
         }
@@ -27,7 +29,7 @@ nonisolated struct MultiplayerService {
         guard let url = URL(string: "\(Self.baseURL)\(path)") else {
             throw ServiceError.badURL
         }
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let body {
@@ -37,6 +39,11 @@ nonisolated struct MultiplayerService {
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         guard (200...299).contains(status) else {
+            if status == 426,
+               let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               body["code"] as? String == "party_update_required" {
+                throw ServiceError.partyUpdateRequired
+            }
             if let serverError = try? JSONDecoder().decode(ServerError.self, from: data) {
                 throw ServiceError.server(serverError.error)
             }
@@ -207,7 +214,7 @@ nonisolated struct MultiplayerService {
             URLQueryItem(name: "init", value: String(data: initData, encoding: .utf8))
         ]
         guard let url = components.url else { throw ServiceError.badURL }
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         return request
     }
@@ -270,7 +277,7 @@ nonisolated struct MultiplayerService {
             URLQueryItem(name: "init", value: String(data: initData, encoding: .utf8))
         ]
         guard let url = components.url else { throw ServiceError.badURL }
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         return request
     }

@@ -30,7 +30,7 @@ enum ContentService {
 
         // Never serve a cached response: it could keep questions whose
         // moderation decisions have since been published.
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 6
 

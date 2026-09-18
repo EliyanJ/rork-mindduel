@@ -4,8 +4,10 @@
 // settles ELO via the Hub DO when the match ends.
 
 import { DurableObject } from "cloudflare:workers";
+import { flagAnswer, verifyAnswer, type GameQuestion } from "./game-security";
+import { isLegacyExpired, legacyAnswer, LEGACY_DEADLINE_MS } from "./security-rollout";
 
-type Env = { DO: Fetcher };
+type Env = { DO: Fetcher & { setAlarm(className: string, id: string, time: number): Promise<void> } };
 
 type PlayerInfo = {
   id: string;
@@ -23,6 +25,8 @@ type RoundAnswer = {
 
 type MatchState = {
   seed: string;
+  questions?: GameQuestion[];
+  roundStartedAt?: number;
   questionCount: number;
   roundDuration: number;
   players: PlayerInfo[];
@@ -31,6 +35,7 @@ type MatchState = {
   scores: Record<string, number>;
   answers: Record<string, RoundAnswer>[];
   settled: boolean;
+  noResult?: boolean;
 };
 
 type Attachment = { userId: string };
@@ -42,8 +47,12 @@ const GRACE_MS = 1_200;
 export class MatchRoom extends DurableObject<Env> {
   private state: MatchState | null = null;
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
+  private legacyTimer: ReturnType<typeof setTimeout> | null = null;
 
   override async fetch(request: Request): Promise<Response> {
+    if (new URL(request.url).pathname === "/internal/initialize" && request.method === "POST") {
+      return Response.json({ ok: await this.initialize(request) });
+    }
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("expected websocket", { status: 426 });
     }
@@ -54,13 +63,7 @@ export class MatchRoom extends DurableObject<Env> {
     }
 
     const state = await this.loadState();
-    if (!state) {
-      // Lazy init from the first connector's matched ticket.
-      const initialized = await this.initFromParams(url);
-      if (!initialized) {
-        return new Response("match not initialized", { status: 400 });
-      }
-    }
+    if (!state) return Response.json({ error: "Partie renouvelée. Relance une recherche.", code: "match_unavailable" }, { status: 400 });
 
     const current = await this.loadState();
     if (!current || !current.players.some((p) => p.id === userId)) {
@@ -76,26 +79,20 @@ export class MatchRoom extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private async initFromParams(url: URL): Promise<boolean> {
-    const raw = url.searchParams.get("init");
-    if (!raw) return false;
+  private async initialize(request: Request): Promise<boolean> {
     try {
-      const ticket = JSON.parse(raw) as {
-        seed?: string;
-        questionCount?: number;
-        roundDuration?: number;
-        you?: PlayerInfo;
-        opponent?: PlayerInfo;
-      };
-      if (!ticket.seed || !ticket.you || !ticket.opponent) return false;
+      const ticket = await request.json() as { seed: string; questionCount: number; roundDuration: number; players: PlayerInfo[]; questions: GameQuestion[] };
+      const [you, opponent] = ticket.players;
+      if (!you || !opponent) return false;
       const state: MatchState = {
         seed: ticket.seed,
+        questions: ticket.questions,
         questionCount: ticket.questionCount ?? 15,
         roundDuration: ticket.roundDuration ?? 15,
-        players: [ticket.you, ticket.opponent],
+        players: [you, opponent],
         phase: "waiting",
         round: -1,
-        scores: { [ticket.you.id]: 0, [ticket.opponent.id]: 0 },
+        scores: { [you.id]: 0, [opponent.id]: 0 },
         answers: [],
         settled: false,
       };
@@ -114,6 +111,20 @@ export class MatchRoom extends DurableObject<Env> {
     if (this.state) return this.state;
     const stored = await this.ctx.storage.get<MatchState>("state");
     this.state = stored ?? null;
+    if (this.state && isLegacyExpired(this.state)) {
+      this.cancelWithoutResult("security_transition_expired");
+    } else if (this.state && !this.state.questions && this.state.phase !== "finished") {
+      this.legacyTimer = setTimeout(() => this.cancelWithoutResult("security_transition_expired"), Math.max(0, LEGACY_DEADLINE_MS - Date.now()));
+      this.ctx.waitUntil(this.env.DO.setAlarm("MatchRoom", this.ctx.id.name ?? "", LEGACY_DEADLINE_MS));
+    }
+    // Timers are volatile across redeployments. Resume only attached live sockets.
+    if (this.state && this.ctx.getWebSockets().length > 0) {
+      const s = this.state;
+      if (s.phase === "playing") {
+        if (s.round < 0) this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
+        else this.armTimer(Math.max(0, (s.roundStartedAt ?? Date.now()) + s.roundDuration * 1000 + GRACE_MS - Date.now()), () => this.closeRound(s.round));
+      } else if (s.phase === "reveal") this.armTimer(REVEAL_MS, () => this.startRound(s.round + 1));
+    }
     return this.state;
   }
 
@@ -127,6 +138,7 @@ export class MatchRoom extends DurableObject<Env> {
     const state = await this.loadState();
     if (!state) return;
 
+    if (state.noResult) { this.sendTo(userId, { type: "cancelled", reason: "server_interruption", noResult: true }); return; }
     if (state.phase === "finished") {
       this.sendTo(userId, { type: "finish", scores: state.scores, alreadyOver: true });
       return;
@@ -143,6 +155,7 @@ export class MatchRoom extends DurableObject<Env> {
       this.broadcast({
         type: "start",
         seed: state.seed,
+        questions: state.questions,
         questionCount: state.questionCount,
         roundDuration: state.roundDuration,
         players: state.players,
@@ -154,11 +167,14 @@ export class MatchRoom extends DurableObject<Env> {
   private startRound(index: number): void {
     const state = this.state;
     if (!state || state.phase === "finished") return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     if (index >= state.questionCount) {
       this.ctx.waitUntil(this.finishMatch(null));
       return;
     }
+    state.phase = "playing";
     state.round = index;
+    state.roundStartedAt = Date.now();
     while (state.answers.length <= index) state.answers.push({});
     this.persist();
     const endsInMs = state.roundDuration * 1000;
@@ -167,6 +183,7 @@ export class MatchRoom extends DurableObject<Env> {
   }
 
   override async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+    const receivedAt = Date.now();
     if (typeof raw !== "string") return;
     const attachment = ws.deserializeAttachment() as Attachment | null;
     if (!attachment) return;
@@ -174,6 +191,7 @@ export class MatchRoom extends DurableObject<Env> {
     let msg: { type?: string; index?: number; answer?: string; correct?: boolean; timeMs?: number; emote?: string };
     try {
       msg = JSON.parse(raw);
+      if (!msg || typeof msg !== "object") return;
     } catch {
       return;
     }
@@ -189,15 +207,25 @@ export class MatchRoom extends DurableObject<Env> {
     }
 
     const state = await this.loadState();
-    if (!state) return;
+    if (!state || state.phase === "finished") return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
+    if (msg.type === "leave") {
+      if (state.phase === "waiting") this.cancelWithoutResult("player_left_before_start");
+      else await this.finishMatch(attachment.userId);
+      return;
+    }
 
     if (msg.type === "answer" && typeof msg.index === "number") {
       if (state.phase !== "playing" || msg.index !== state.round) return;
       const roundAnswers = state.answers[msg.index];
       if (!roundAnswers || roundAnswers[attachment.userId]) return;
 
-      const timeMs = clamp(msg.timeMs ?? state.roundDuration * 1000, 0, state.roundDuration * 1000);
-      const correct = msg.correct === true;
+      const verdict = state.questions
+        ? verifyAnswer(state.questions[msg.index], msg.answer, state.roundStartedAt, receivedAt, state.roundDuration * 1000)
+        : legacyAnswer(msg.correct, msg.timeMs, state.roundDuration * 1000);
+      const { timeMs, correct } = verdict;
+      const reason = verdict.reason ?? (msg.correct === true && !correct ? "false_correct_claim" : undefined);
+      if (reason) this.ctx.waitUntil(flagAnswer(this.env, attachment.userId, this.ctx.id.name ?? this.ctx.id.toString(), msg.index, reason));
       const fraction = 1 - timeMs / (state.roundDuration * 1000);
       const points = correct ? 100 + Math.round(fraction * 100) : 0;
       roundAnswers[attachment.userId] = {
@@ -226,6 +254,7 @@ export class MatchRoom extends DurableObject<Env> {
   private closeRound(index: number): void {
     const state = this.state;
     if (!state || state.phase !== "playing" || state.round !== index) return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     this.clearTimer();
 
     const roundAnswers = state.answers[index] ?? {};
@@ -257,8 +286,10 @@ export class MatchRoom extends DurableObject<Env> {
   private async finishMatch(forfeitBy: string | null): Promise<void> {
     const state = this.state;
     if (!state || state.phase === "finished" || state.settled) return;
+    if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     state.phase = "finished";
     state.settled = true;
+    if (this.legacyTimer) clearTimeout(this.legacyTimer);
     this.clearTimer();
     this.persist();
 
@@ -281,6 +312,7 @@ export class MatchRoom extends DurableObject<Env> {
           matchId: this.ctx.id.name ?? "",
           results,
           forfeitBy: forfeitBy ?? undefined,
+          voluntaryLeave: forfeitBy !== null,
         }),
       });
       const response = await this.env.DO.fetch(request);
@@ -288,14 +320,20 @@ export class MatchRoom extends DurableObject<Env> {
         const settled = (await response.json()) as {
           eloChanges?: Record<string, number>;
           newElos?: Record<string, number>;
+          noResult?: boolean;
         };
+        if (settled.noResult) { this.cancelWithoutResult("server_interruption", true); return; }
         eloChanges = settled.eloChanges ?? {};
         newElos = settled.newElos ?? {};
       } else {
         console.error("elo settlement failed", response.status);
+        this.cancelWithoutResult("settlement_unavailable", true);
+        return;
       }
     } catch (err) {
-      console.error("elo settlement error", err);
+      console.error("elo settlement unavailable");
+      this.cancelWithoutResult("settlement_unavailable", true);
+      return;
     }
 
     this.broadcast({
@@ -315,27 +353,33 @@ export class MatchRoom extends DurableObject<Env> {
     }
   }
 
-  override async webSocketClose(ws: WebSocket): Promise<void> {
-    const attachment = ws.deserializeAttachment() as Attachment | null;
-    const state = await this.loadState();
-    if (!state || !attachment) return;
+  override async webSocketClose(_ws: WebSocket): Promise<void> {
+    await this.loadState();
+    this.cancelWithoutResult("server_interruption");
+  }
 
-    const stillConnected = this.connectedUserIds();
-    if (state.phase === "finished") return;
+  override async webSocketError(_ws: WebSocket, _error: unknown): Promise<void> {
+    await this.loadState();
+    this.cancelWithoutResult("server_interruption");
+  }
 
-    if (stillConnected.length === 0) {
-      // Everyone left — nothing to do; state stays for a late reconnect.
-      this.clearTimer();
-      return;
-    }
+  async onAlarm(): Promise<void> {
+    await this.loadState();
+    if (this.state && isLegacyExpired(this.state)) this.cancelWithoutResult("security_transition_expired");
+  }
 
-    if (state.phase === "waiting") {
-      this.broadcast({ type: "cancelled", reason: "opponent_left" });
-      return;
-    }
-
-    // Mid-match disconnect = forfeit for the leaver.
-    this.ctx.waitUntil(this.finishMatch(attachment.userId));
+  private cancelWithoutResult(reason: string, allowFinished = false): void {
+    const state = this.state;
+    if (!state || (state.phase === "finished" && !allowFinished)) return;
+    state.phase = "finished";
+    state.noResult = true;
+    state.settled = true;
+    this.clearTimer();
+    if (this.legacyTimer) clearTimeout(this.legacyTimer);
+    this.persist();
+    // No Hub settlement: no rating, reputation, win/loss or forfeit write for anyone.
+    this.broadcast({ type: "cancelled", reason, noResult: true });
+    for (const peer of this.ctx.getWebSockets()) { try { peer.close(1000, "no result"); } catch { /* closed */ } }
   }
 
   private connectedUserIds(): string[] {
@@ -393,6 +437,3 @@ function trySend(ws: WebSocket, msg: unknown): void {
   }
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}

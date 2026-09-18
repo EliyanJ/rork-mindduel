@@ -18,7 +18,9 @@ struct PartyLobbyView: View {
     var body: some View {
         ZStack {
             Theme.quizBackground.ignoresSafeArea()
-            if let session {
+            if let session, session.requiresUpdate {
+                UpdateRequiredView(isPartyOnly: true, onDismiss: { dismiss() })
+            } else if let session {
                 content(session)
             } else {
                 ProgressView().tint(Theme.duelAccent)
@@ -63,6 +65,7 @@ struct PartyLobbyView: View {
             HStack {
                 Button {
                     Haptics.tap()
+                    session.cancel(voluntary: true)
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")

@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import {
   clearAdminApiKey,
   clearAdminSession,
-  isEmailAllowed,
+  checkAdminAccess,
   loadAdminApiKey,
-  loadAdminSession,
   saveAdminApiKey,
   saveAdminSession,
   type AdminSession,
@@ -18,6 +18,8 @@ interface AdminAuthContextType {
   isRestoring: boolean;
   /** Non-null when a Google account signed in but is not on the allow-list. */
   rejectedEmail: string | null;
+  accessError: string | null;
+  retryAccess: () => void;
   /** The backend admin API key stored in this browser, if any. */
   apiKey: string;
   setApiKey: (key: string) => void;
@@ -27,22 +29,29 @@ interface AdminAuthContextType {
 const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const { user, signOut: signOutRork } = useAuth();
+  const { user, isLoading: authLoading, signOut: signOutRork } = useAuth();
+  const access = useQuery({
+    queryKey: ["admin-access", user?.id],
+    queryFn: ({ signal }) => checkAdminAccess(signal),
+    enabled: !!user,
+    retry: 1,
+    staleTime: 0,
+  });
   const [session, setSession] = useState<AdminSession | null>(null);
   const [isRestoring, setIsRestoring] = useState<boolean>(true);
   const [rejectedEmail, setRejectedEmail] = useState<string | null>(null);
   const [apiKey, setApiKeyState] = useState<string>("");
 
   useEffect(() => {
-    setSession(loadAdminSession());
+    clearAdminSession();
     setApiKeyState(loadAdminApiKey());
     setIsRestoring(false);
   }, []);
 
   // A Google sign-in only becomes an admin session if the e-mail is allowed.
   useEffect(() => {
-    if (!user) return;
-    if (isEmailAllowed(user.email)) {
+    if (!user || access.data === undefined || access.isError) { setSession(null); return; }
+    if (access.data) {
       setRejectedEmail(null);
       setSession((prev) => {
         if (prev?.method === "google" && prev.label === user.email) return prev;
@@ -56,7 +65,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       signOutRork();
     }
-  }, [user, signOutRork]);
+  }, [user, signOutRork, access.data, access.isError]);
 
   const setApiKey = useCallback((key: string) => {
     saveAdminApiKey(key);
@@ -73,8 +82,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, [signOutRork]);
 
   const value = useMemo<AdminAuthContextType>(
-    () => ({ session, isRestoring, rejectedEmail, apiKey, setApiKey, signOutAdmin }),
-    [session, isRestoring, rejectedEmail, apiKey, setApiKey, signOutAdmin],
+    () => ({ session: user && access.data === true && !access.isError ? session : null,
+      isRestoring: isRestoring || authLoading || (!!user && access.isLoading), rejectedEmail,
+      accessError: access.isError ? "Impossible de vérifier l’accès administrateur. Réessaie." : null,
+      retryAccess: () => { void access.refetch(); }, apiKey, setApiKey, signOutAdmin }),
+    [session, user, access.data, access.isError, access.isLoading, access.refetch, authLoading, isRestoring, rejectedEmail, apiKey, setApiKey, signOutAdmin],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

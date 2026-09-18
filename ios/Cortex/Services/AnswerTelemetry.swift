@@ -125,7 +125,7 @@ nonisolated final class AnswerTelemetry: @unchecked Sendable {
         guard let url = URL(string: "\(MultiplayerService.baseURL)/api/hub/answers") else {
             return true
         }
-        var request = URLRequest(url: url)
+        var request = AppVersion.request(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

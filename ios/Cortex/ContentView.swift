@@ -7,6 +7,7 @@ private enum AppTab: Hashable {
 }
 
 struct ContentView: View {
+    @State private var updates: AppUpdateService = .shared
     @State private var model = AppModel()
     @State private var onboardingStore = OnboardingStore()
     @State private var showSplash = true
@@ -17,7 +18,9 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             Group {
-                if onboardingStore.isCompleted {
+                if updates.requiresUpdate {
+                    UpdateRequiredView(isPartyOnly: false, onDismiss: nil)
+                } else if onboardingStore.isCompleted {
                     mainTabs
                         .transition(.opacity)
                 } else {
@@ -39,6 +42,8 @@ struct ContentView: View {
         // questions published from the admin panel arrive in the background
         // and rebuild the path without ever blocking the launch.
         .task {
+            await updates.refresh()
+            guard !updates.requiresUpdate else { return }
             await model.refreshFromBackend()
         }
         // Reminders are rebuilt every time the app comes forward: that is what
@@ -47,6 +52,9 @@ struct ContentView: View {
             // Leaving the foreground is the last safe moment to push whatever
             // answers are still buffered; iOS may kill the app afterwards.
             if phase != .active { AnswerTelemetry.shared.flush() }
+            if phase == .active {
+                Task { await updates.refresh() }
+            }
             guard phase == .active, onboardingStore.isCompleted else { return }
             Task { await refreshReminders() }
         }

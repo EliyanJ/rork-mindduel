@@ -1,7 +1,7 @@
 /**
  * Admin access rules.
  *
- * Signing in (Google, restricted to the e-mail addresses listed below) only
+ * Signing in (Google, allowed accounts checked server-side) only
  * unlocks the admin *pages* in this browser. Talking to the backend admin API
  * additionally requires the `ADMIN_API_KEY` secret, entered once and stored
  * locally on this machine (see `adminAuthHeaders` below) — the web bundle
@@ -9,12 +9,19 @@
  */
 export const ADMIN_USERNAME = "Tiliyan";
 
-/** Google accounts allowed to open the admin tools. Lowercase only. */
-export const ALLOWED_ADMIN_EMAILS: readonly string[] = ["eliyanjacquet99@gmail.com"];
-
-export function isEmailAllowed(email: string | undefined | null): boolean {
-  if (!email) return false;
-  return ALLOWED_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+/** The allow-list lives exclusively in the server's ADMIN_ALLOWED_EMAILS environment variable. */
+export async function checkAdminAccess(signal?: AbortSignal): Promise<boolean> {
+  const base = (import.meta.env.VITE_RORK_FUNCTIONS_URL as string | undefined)
+    ?? (import.meta.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL as string | undefined)
+    ?? "https://mindduel-kqfozex-backend.rork.app";
+  const token = localStorage.getItem("rork:access_token");
+  if (!token) return false;
+  const response = await fetch(`${base}/api/admin/access`, {
+    headers: { Authorization: `Bearer ${token}` }, signal,
+  });
+  if (!response.ok) throw new Error("Impossible de vérifier l’accès administrateur. Réessaie.");
+  const body = await response.json() as { allowed?: boolean };
+  return body.allowed === true;
 }
 
 export type AdminSessionMethod = "google";

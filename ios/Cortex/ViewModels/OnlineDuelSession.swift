@@ -115,12 +115,20 @@ final class OnlineDuelSession {
         queueTask = Task { await runQueue() }
     }
 
-    func cancel() {
+    /// Lifecycle cleanup is never reported as a voluntary forfeit.
+    func cancel(voluntary: Bool = false) {
         queueTask?.cancel()
         receiveTask?.cancel()
         timerTask?.cancel()
-        socket?.cancel(with: .goingAway, reason: nil)
+        let closingSocket = socket
         socket = nil
+        if voluntary, let closingSocket, phase == .question || phase == .reveal || phase == .countdown {
+            closingSocket.send(.string("{\"type\":\"leave\"}")) { _ in
+                closingSocket.cancel(with: .normalClosure, reason: nil)
+            }
+        } else {
+            closingSocket?.cancel(with: .goingAway, reason: nil)
+        }
         Task { [online] in
             guard let token = await online.auth.validAccessToken() else { return }
             try? await MultiplayerService(token: token).leaveQueue()
@@ -194,7 +202,7 @@ final class OnlineDuelSession {
                 if !Task.isCancelled && phase != .finished {
                     if case .cancelled = phase { return }
                     if case .failed = phase { return }
-                    phase = .failed("Connexion au match perdue")
+                    phase = .cancelled("Connexion interrompue. Partie sans résultat, sans perte de points.")
                 }
                 return
             }
@@ -207,6 +215,12 @@ final class OnlineDuelSession {
 
         switch type {
         case "start":
+            if let payload = raw["questions"],
+               let encoded = try? JSONSerialization.data(withJSONObject: payload),
+               let authoritative = try? JSONDecoder().decode([Question].self, from: encoded),
+               authoritative.count == ticket?.questionCount {
+                questions = authoritative
+            }
             phase = .countdown
             Haptics.medium()
             SoundManager.shared.startAmbience()
@@ -223,7 +237,13 @@ final class OnlineDuelSession {
         case "finish":
             handleFinish(raw)
         case "cancelled":
-            phase = .cancelled("Ton adversaire a quitté avant le début")
+            phase = .cancelled(raw["noResult"] as? Bool == true
+                ? "Partie interrompue sans résultat. Aucun point perdu ni pénalité."
+                : "Ton adversaire a quitté avant le début")
+            timerTask?.cancel()
+            showScoreboard = false
+            SoundManager.shared.stopAmbience()
+            SoundManager.shared.stopLeaderboardMusic()
             socket?.cancel(with: .goingAway, reason: nil)
         case "emote":
             if let raw = raw["emote"] as? String, let emote = QuizEmote(rawValue: raw) {
@@ -397,6 +417,10 @@ final class OnlineDuelSession {
     }
 
     private func handleFinish(_ raw: [String: Any]) {
+        if raw["noResult"] as? Bool == true {
+            phase = .cancelled("Partie sans résultat. Aucun point perdu ni pénalité.")
+            return
+        }
         guard !finishedHandled, let you = ticket?.you, let opp = ticket?.opponent else {
             phase = .finished
             return
