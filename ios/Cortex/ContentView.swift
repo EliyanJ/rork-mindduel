@@ -59,7 +59,7 @@ struct ContentView: View {
             Task { await refreshReminders() }
         }
 
-            if !showSplash && !updates.requiresUpdate {
+            if onboardingStore.isCompleted && !showSplash && !updates.requiresUpdate {
                 FeedbackBubble()
             }
 
