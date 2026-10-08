@@ -24,6 +24,10 @@ export default {
       return corsResponse(Response.json({ ok: true, now: new Date().toISOString() }));
     }
 
+    if (url.pathname === "/api/feedback" && request.method === "POST") {
+      return withCors(await dispatchToDo(env, "Hub", "global", request));
+    }
+
     if (url.pathname === "/api/app/config" && request.method === "GET") {
       return withCors(await dispatchToDo(env, "Hub", "global", request));
     }

@@ -564,6 +564,10 @@ export class Hub extends DurableObject {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    if (path === "/api/feedback" && request.method === "POST") {
+      return this.sendFeedback(request);
+    }
+
     if (path === "/api/app/config" && request.method === "GET") {
       return Response.json(appConfig(this.env as VersionEnvironment), { headers: { "Cache-Control": "no-store" } });
     }
@@ -938,6 +942,51 @@ export class Hub extends DurableObject {
       .exec<{ n: number }>("SELECT COUNT(*) AS n FROM players")
       .toArray();
     return rows[0]?.n ?? 0;
+  }
+
+  // MARK: feedback
+
+  private async sendFeedback(request: Request): Promise<Response> {
+    const env = this.env as { RESEND_API_KEY?: string; FEEDBACK_FROM?: string; FEEDBACK_TO?: string };
+    if (!env.RESEND_API_KEY || !env.FEEDBACK_FROM || !env.FEEDBACK_TO) {
+      return Response.json({ error: "Le formulaire sera disponible prochainement." }, { status: 503 });
+    }
+    const text = await request.text();
+    if (text.length > 20000) return Response.json({ error: "Message trop long" }, { status: 413 });
+    let body: { message?: unknown; replyEmail?: unknown; category?: unknown };
+    try { body = JSON.parse(text); } catch { return Response.json({ error: "Message invalide" }, { status: 400 }); }
+    if (!body || typeof body !== "object") return Response.json({ error: "Message invalide" }, { status: 400 });
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    const replyEmail = typeof body.replyEmail === "string" ? body.replyEmail.trim() : "";
+    const categories = ["Suggestion", "Bug", "Question", "Autre"];
+    if (message.length < 10 || message.length > 4000 || !categories.includes(String(body.category))
+        || (replyEmail && (replyEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyEmail)))) {
+      return Response.json({ error: "Vérifie ton message et ton adresse email." }, { status: 400 });
+    }
+    // A durable global hourly ceiling prevents uncontrolled email costs without storing player identity.
+    this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS feedback_limits (hour INTEGER PRIMARY KEY, count INTEGER NOT NULL)");
+    const hour = Math.floor(Date.now() / 3600000);
+    this.ctx.storage.sql.exec("DELETE FROM feedback_limits WHERE hour < ?", hour - 24);
+    const count = this.ctx.storage.sql.exec<{ count: number }>("SELECT count FROM feedback_limits WHERE hour = ?", hour).toArray()[0]?.count ?? 0;
+    if (count >= 30) return Response.json({ error: "Trop de retours, réessaie plus tard." }, { status: 429 });
+    this.ctx.storage.sql.exec("INSERT INTO feedback_limits (hour, count) VALUES (?, 1) ON CONFLICT(hour) DO UPDATE SET count = count + 1", hour);
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: env.FEEDBACK_FROM, to: [env.FEEDBACK_TO],
+          subject: `Minduel — ${body.category}`,
+          text: message,
+          ...(replyEmail ? { reply_to: replyEmail } : {}),
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) return Response.json({ error: "L’envoi n’a pas abouti." }, { status: 502 });
+      return Response.json({ ok: true });
+    } catch {
+      return Response.json({ error: "L’envoi n’a pas abouti." }, { status: 502 });
+    }
   }
 
   // MARK: account

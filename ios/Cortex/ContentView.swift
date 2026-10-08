@@ -59,6 +59,10 @@ struct ContentView: View {
             Task { await refreshReminders() }
         }
 
+            if !showSplash && !updates.requiresUpdate {
+                FeedbackBubble()
+            }
+
             if showSplash {
                 SplashView {
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -88,10 +92,9 @@ struct ContentView: View {
             await NotificationService.shared.requestAuthorization()
             await refreshReminders()
         }
-        // Same reasoning for App Tracking Transparency: only ask once the
-        // player has seen the app's value, and only once ever per install.
-        Task {
-            await TrackingManager.requestAuthorizationIfNeeded()
+        // No tracking permission is requested in the free, advertising-free version.
+        if Monetization.isEnabled {
+            Task { await TrackingManager.requestAuthorizationIfNeeded() }
         }
     }
 

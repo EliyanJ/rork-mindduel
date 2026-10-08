@@ -38,19 +38,21 @@ final class AdsManager: NSObject {
     /// form if required (EU users), then starts the Mobile Ads SDK and
     /// preloads both ad formats.
     func start() {
+        guard Monetization.isEnabled else { return }
         Task {
             let parameters = RequestParameters()
             do {
                 try await ConsentInformation.shared.requestConsentInfoUpdate(with: parameters)
                 try await ConsentForm.loadAndPresentIfRequired(from: TopViewControllerFinder.topViewController())
             } catch {
-                // Network or config issue — proceed with non-personalized ads.
+                // Never infer consent from a failed consent request.
             }
             finishConsentAndInitialize()
         }
     }
 
     private func finishConsentAndInitialize() {
+        guard Monetization.isEnabled, ConsentInformation.shared.canRequestAds else { return }
         isConsentReady = true
         MobileAds.shared.start { [weak self] _ in
             Task { @MainActor in
@@ -63,7 +65,7 @@ final class AdsManager: NSObject {
     // MARK: - Forced interstitial (ranked duels / bot training)
 
     private func preloadInterstitial() {
-        guard interstitialAd == nil, !isLoadingInterstitial else { return }
+        guard Monetization.isEnabled, isConsentReady, ConsentInformation.shared.canRequestAds, interstitialAd == nil, !isLoadingInterstitial else { return }
         isLoadingInterstitial = true
         Task {
             do {
@@ -94,7 +96,7 @@ final class AdsManager: NSObject {
     // MARK: - Rewarded video (opt-in, +2 livres)
 
     private func preloadRewarded() {
-        guard rewardedAd == nil, !isLoadingRewarded else { return }
+        guard Monetization.isEnabled, isConsentReady, ConsentInformation.shared.canRequestAds, rewardedAd == nil, !isLoadingRewarded else { return }
         isLoadingRewarded = true
         Task {
             do {
