@@ -114,6 +114,8 @@ private final class FlashSession {
     private(set) var answeredCount: Int = 0
     private(set) var wasFastestCorrect: Bool = false
     private(set) var floatingEmotes: [FloatingEmote] = []
+    /// Bonus granted when finishing first (empty otherwise).
+    private(set) var winRewards: [Reward] = []
 
     static let readingBeat: Double = 8
 
@@ -389,8 +391,12 @@ private final class FlashSession {
         entries.append(FinalEntry(name: "Toi", emoji: "🧠", score: score, isYou: true))
         finalEntries = entries.sorted { $0.score > $1.score }
         phase = .finished
-        store.recordCasualDuel(won: finalEntries.first?.isYou == true)
-        if finalEntries.first?.isYou == true { Haptics.success() }
+        let won = finalEntries.first?.isYou == true
+        store.recordCasualDuel(won: won)
+        if won {
+            winRewards = store.grantDuelWin(xp: nil, rankPoints: nil)
+            Haptics.success()
+        }
     }
 
     private static func randomName() -> String {
@@ -651,6 +657,7 @@ private struct FlashResultsBody: View {
                 .background(Theme.quizBackground.opacity(0.95))
         }
         .background(Theme.quizBackground)
+        .rewardReveal(eyebrow: "Victoire Flash", title: "Le plus rapide !", rewards: session.winRewards)
     }
 
     private func rankLabel(_ rank: Int) -> String {

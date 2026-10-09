@@ -34,6 +34,7 @@ struct DuelResultsView: View {
                 .background(Theme.quizBackground.opacity(0.95))
         }
         .background(Theme.quizBackground)
+        .rewardReveal(eyebrow: "Victoire", title: "Bien joué !", rewards: session.winRewards)
     }
 
     private var scoreBoard: some View {

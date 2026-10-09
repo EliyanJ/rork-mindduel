@@ -177,6 +177,7 @@ struct LessonView: View {
     /// finally released back to the app: streak celebration, then any
     /// content-unlock celebration.
     private enum PostLessonScreen {
+        case rewards
         case streak
         case unlock(UnlockCelebrationView.Kind)
     }
@@ -184,6 +185,14 @@ struct LessonView: View {
     @ViewBuilder
     private func postScreenView(_ screen: PostLessonScreen) -> some View {
         switch screen {
+        case .rewards:
+            RewardRevealView(
+                eyebrow: "Leçon terminée",
+                title: session.accuracy == 1 ? "Sans faute !" : "Bien joué !",
+                rewards: session.earnedRewards,
+                tint: Theme.primary,
+                onDone: advancePostLesson
+            )
         case .streak:
             StreakCelebrationView(
                 streak: session.streakAfterCompletion,
@@ -206,6 +215,9 @@ struct LessonView: View {
     private func buildPostLessonQueueIfNeeded() {
         guard postScreenQueue.isEmpty, currentPostScreen == nil else { return }
         var queue: [PostLessonScreen] = []
+        if !session.earnedRewards.isEmpty {
+            queue.append(.rewards)
+        }
         if session.isFirstLessonToday {
             queue.append(.streak)
         }

@@ -55,6 +55,8 @@ final class DuelSession {
     private(set) var lastBotPoints: Int = 0
     private(set) var results: [RoundResult] = []
     private(set) var eloChange: Int = 0
+    /// Bonus granted for a win (empty on a loss or draw).
+    private(set) var winRewards: [Reward] = []
     private(set) var showScoreboard: Bool = false
     private(set) var botAnswer: String?
     private(set) var voteCounts: [Int] = []
@@ -277,6 +279,7 @@ final class DuelSession {
         let draw = playerScore == botScore
         eloChange = draw ? 4 : (won ? 18 : -12)
         store.finalizeDuel(won: won, draw: draw, score: playerScore, eloChange: eloChange)
+        if won { winRewards = store.grantDuelWin(xp: max(5, playerScore / 10), rankPoints: nil) }
         phase = .finished
         if won { Haptics.success() }
     }

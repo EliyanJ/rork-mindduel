@@ -7,22 +7,27 @@ import SwiftUI
 struct MissionsView: View {
     @Environment(AppModel.self) private var model
     @State private var appeared: Bool = false
-    @State private var celebratedReward: Int?
+    @State private var reveal: RewardRevealItem?
 
     private var missions: [DailyMission] {
         let usage = model.store.dailyUsage
         let practicedToday = model.store.progress.lastActiveDay.map { Calendar.current.isDateInToday($0) } ?? false
         let list: [DailyMission] = [
             DailyMission(id: "rings", icon: "star.fill", color: Theme.primary,
-                         title: "Termine 2 épreuves", progress: usage.ringsCompleted, goal: 2, reward: 10),
+                         title: "Termine 2 épreuves", progress: usage.ringsCompleted, goal: 2,
+                         rewards: [Reward(kind: .lessonBolt, amount: 1)]),
             DailyMission(id: "answers", icon: "checkmark.seal.fill", color: Theme.success,
-                         title: "Donne 15 bonnes réponses", progress: usage.correctAnswers, goal: 15, reward: 10),
+                         title: "Donne 15 bonnes réponses", progress: usage.correctAnswers, goal: 15,
+                         rewards: [Reward(kind: .diamonds, amount: 5)]),
             DailyMission(id: "duel", icon: "bolt.fill", color: Theme.duelAccent,
-                         title: "Joue 1 duel", progress: usage.duelsPlayed, goal: 1, reward: 15),
+                         title: "Joue 1 duel", progress: usage.duelsPlayed, goal: 1,
+                         rewards: [Reward(kind: .duelBolt, amount: 1)]),
             DailyMission(id: "win", icon: "trophy.fill", color: Theme.gold,
-                         title: "Gagne 1 duel", progress: usage.duelsWon, goal: 1, reward: 20),
+                         title: "Gagne 1 duel", progress: usage.duelsWon, goal: 1,
+                         rewards: [Reward(kind: .heart, amount: 1)]),
             DailyMission(id: "streak", icon: "flame.fill", color: Color(hex: "FF4B4B"),
-                         title: "Entretiens ta série", progress: practicedToday ? 1 : 0, goal: 1, reward: 5)
+                         title: "Entretiens ta série", progress: practicedToday ? 1 : 0, goal: 1,
+                         rewards: [Reward(kind: .diamonds, amount: 3)])
         ]
         return list
     }
@@ -95,10 +100,9 @@ struct MissionsView: View {
             .scrollIndicators(.hidden)
         }
         .background(Theme.background.ignoresSafeArea())
-        .overlay {
-            if let reward = celebratedReward {
-                RewardToast(amount: reward)
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+        .fullScreenCover(item: $reveal) { item in
+            RewardRevealView(eyebrow: item.eyebrow, title: item.title, rewards: item.rewards, tint: item.tint) {
+                reveal = nil
             }
         }
         .onAppear { appeared = true }
@@ -107,7 +111,7 @@ struct MissionsView: View {
     private var banner: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(doneCount == missions.count ? "Bravo, tout est bouclé !" : "Gagne des diamants chaque jour")
+                Text(doneCount == missions.count ? "Bravo, tout est bouclé !" : "Gagne des cœurs, des éclairs et des diamants")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
@@ -149,14 +153,14 @@ struct MissionsView: View {
                     Text("Termine toutes les missions")
                         .font(.system(.headline, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.ink)
-                    Text(claimed ? "Coffre ouvert, à demain !" : "+\(Self.bonusReward) diamants en bonus")
+                    Text(claimed ? "Coffre ouvert, à demain !" : "Cœur, éclair de duel et diamants")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.inkMuted)
                 }
                 Spacer(minLength: 0)
                 if allDone && !claimed {
                     Button("OUVRIR") {
-                        claim(DailyMission(id: Self.bonusId, icon: "", color: Theme.gold, title: "", progress: 1, goal: 1, reward: Self.bonusReward))
+                        claim(DailyMission(id: Self.bonusId, icon: "", color: Theme.gold, title: "", progress: 1, goal: 1, rewards: Self.bonusRewards))
                     }
                     .buttonStyle(ClaimButtonStyle())
                 }
@@ -168,17 +172,23 @@ struct MissionsView: View {
     }
 
     private static let bonusId = "bonus"
-    private static let bonusReward = 30
+    private static let bonusRewards: [Reward] = [
+        Reward(kind: .heart, amount: 1),
+        Reward(kind: .duelBolt, amount: 1),
+        Reward(kind: .diamonds, amount: 10)
+    ]
 
     private func claim(_ mission: DailyMission) {
-        guard model.store.claimMission(mission.id, reward: mission.reward) else { return }
-        Haptics.success()
+        guard let granted = model.store.claimMission(mission.id, rewards: mission.rewards) else { return }
+        Haptics.medium()
         Analytics.capture("mission_claimed", ["mission": mission.id])
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { celebratedReward = mission.reward }
-        Task {
-            try? await Task.sleep(for: .seconds(1.4))
-            withAnimation(.easeOut(duration: 0.25)) { celebratedReward = nil }
-        }
+        let isBonus = mission.id == Self.bonusId
+        reveal = RewardRevealItem(
+            eyebrow: isBonus ? "Coffre du jour" : "Mission terminée",
+            title: isBonus ? "Coffre ouvert !" : "Tu as gagné",
+            rewards: granted,
+            tint: isBonus ? Theme.gold : mission.color
+        )
     }
 
     private static func timeLeft(from date: Date) -> String {
@@ -197,7 +207,7 @@ private struct DailyMission: Identifiable {
     let title: String
     let progress: Int
     let goal: Int
-    let reward: Int
+    let rewards: [Reward]
 
     var isDone: Bool { progress >= goal }
     var ratio: Double { min(1, Double(progress) / Double(max(goal, 1))) }
@@ -231,15 +241,17 @@ private struct MissionRow: View {
     @ViewBuilder
     private var reward: some View {
         if mission.isDone && !isClaimed {
-            Button("+\(mission.reward)", action: onClaim)
+            Button("OUVRIR", action: onClaim)
                 .buttonStyle(ClaimButtonStyle())
-                .accessibilityLabel("Récupérer \(mission.reward) diamants")
-        } else {
-            Image(systemName: isClaimed ? "checkmark.circle.fill" : "shippingbox.fill")
+                .accessibilityLabel("Ouvrir la récompense")
+        } else if isClaimed {
+            Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(isClaimed ? Theme.success : Theme.gold)
+                .foregroundStyle(Theme.success)
                 .frame(width: 44, height: 32)
-                .accessibilityLabel(isClaimed ? "Récompense récupérée" : "\(mission.reward) diamants à gagner")
+                .accessibilityLabel("Récompense récupérée")
+        } else {
+            RewardPreview(rewards: mission.rewards)
         }
     }
 }
@@ -289,24 +301,29 @@ private struct ClaimButtonStyle: ButtonStyle {
     }
 }
 
-private struct RewardToast: View {
-    let amount: Int
+/// Small "+1 ♥" style tag showing what a mission will give.
+private struct RewardPreview: View {
+    let rewards: [Reward]
 
     var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "diamond.fill")
-                .font(.system(size: 44, weight: .bold))
-                .foregroundStyle(Theme.livres)
-                .symbolEffect(.bounce, value: amount)
-            Text("+\(amount) diamants")
-                .font(.system(.title2, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.ink)
+        HStack(spacing: 6) {
+            ForEach(rewards) { reward in
+                HStack(spacing: 2) {
+                    Text("+\(reward.amount)")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                    Image(systemName: reward.kind.icon)
+                        .font(.system(size: 12, weight: .bold))
+                }
+                .foregroundStyle(reward.kind.color)
+            }
         }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 22)
-        .background(RoundedRectangle(cornerRadius: 24).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Theme.line, lineWidth: 2))
-        .shadow(color: .black.opacity(0.15), radius: 20, y: 8)
-        .allowsHitTesting(false)
+        .padding(.horizontal, 8)
+        .frame(minHeight: 28)
+        .background(Capsule().fill(Theme.raised))
+        .overlay(Capsule().stroke(Theme.line, lineWidth: 1.5))
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("À gagner : " + rewards.map { "\($0.amount) \($0.kind.label($0.amount))" }.joined(separator: ", "))
     }
 }

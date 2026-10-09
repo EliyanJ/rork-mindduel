@@ -31,6 +31,11 @@ struct PartyResultsView: View {
                 .background(Theme.quizBackground.opacity(0.95))
         }
         .background(Theme.quizBackground)
+        .rewardReveal(
+            eyebrow: mode.isCustom ? "Victoire entre amis" : "Victoire classée",
+            title: mode.isTeam ? "Ton équipe gagne !" : "Sur le podium !",
+            rewards: session.winRewards
+        )
     }
 
     private var didWin: Bool {

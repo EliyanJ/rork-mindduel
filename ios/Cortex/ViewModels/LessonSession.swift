@@ -44,6 +44,8 @@ final class LessonSession {
     private(set) var correctCount: Int = 0
     private(set) var xpEarned: Int = 0
     private(set) var streakAfterCompletion: Int = 0
+    /// What the finished lesson earned, for the reward reveal screen.
+    private(set) var earnedRewards: [Reward] = []
     private(set) var wrongAnswers: [WrongAnswer] = []
     /// True when this lesson was the first one completed today (before it,
     /// the player hadn't registered any activity today). Drives the streak
@@ -163,6 +165,27 @@ final class LessonSession {
         }
     }
 
+    /// Small, fair rewards: the XP and first-pass diamonds already earned,
+    /// plus +1 heart for a perfect lesson (diamonds instead when hearts are
+    /// full) and +1 diamond for a good one.
+    private static func lessonRewards(store: ProgressStore, xp: Int, ringDiamonds: Int, isPerfect: Bool, accuracy: Double) -> [Reward] {
+        var bonus: [Reward] = []
+        if isPerfect {
+            bonus.append(Reward(kind: .heart, amount: 1))
+        } else if accuracy >= 0.8 {
+            bonus.append(Reward(kind: .diamonds, amount: 1))
+        }
+        var granted = store.grant(bonus)
+        if ringDiamonds > 0 {
+            if let index = granted.firstIndex(where: { $0.kind == .diamonds }) {
+                granted[index] = Reward(kind: .diamonds, amount: granted[index].amount + ringDiamonds)
+            } else {
+                granted.append(Reward(kind: .diamonds, amount: ringDiamonds))
+            }
+        }
+        return [Reward(kind: .xp, amount: xp)] + granted
+    }
+
     private func complete() {
         // Push the tail of the batch now rather than stranding it until the next
         // session — a 10-question lesson never reaches the flush threshold.
@@ -170,6 +193,7 @@ final class LessonSession {
         let wasActiveToday = Self.isActiveToday(store: store)
         let streakBefore = store.currentStreak
         if correctCount == items.count { xpEarned += 20 }
+        var ringDiamonds = 0
         store.addXP(xpEarned)
         store.registerActivity()
         isFirstLessonToday = !wasActiveToday
@@ -177,7 +201,7 @@ final class LessonSession {
         if let chapterId {
             if let ringKind {
                 // Ring path: also arms the 24h cool-down when a recap is failed.
-                store.recordRingResult(ringId: chapterId, kind: ringKind, score: accuracy)
+                ringDiamonds = store.recordRingResult(ringId: chapterId, kind: ringKind, score: accuracy)
             } else {
                 store.recordChapterResult(chapterId: chapterId, score: accuracy)
             }
@@ -201,6 +225,7 @@ final class LessonSession {
             }
         }
         streakAfterCompletion = store.currentStreak
+        earnedRewards = Self.lessonRewards(store: store, xp: xpEarned, ringDiamonds: ringDiamonds, isPerfect: correctCount == items.count, accuracy: accuracy)
         Analytics.capture("round_completed", [
             "discipline": disciplineId ?? "mixte",
             "chapitre": chapterIdRaw ?? chapterId ?? "",

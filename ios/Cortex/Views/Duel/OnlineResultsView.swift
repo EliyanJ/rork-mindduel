@@ -39,6 +39,11 @@ struct OnlineResultsView: View {
                 .background(Theme.quizBackground.opacity(0.95))
         }
         .background(Theme.quizBackground)
+        .rewardReveal(
+            eyebrow: session.isRanked ? "Victoire classée" : "Victoire",
+            title: session.isRanked ? "Tu grimpes au classement !" : "Bien joué !",
+            rewards: session.winRewards
+        )
     }
 
     private var scoreBoard: some View {

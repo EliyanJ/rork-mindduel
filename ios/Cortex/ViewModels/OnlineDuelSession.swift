@@ -52,6 +52,8 @@ final class OnlineDuelSession {
     private(set) var eloChange: Int = 0
     private(set) var newElo: Int?
     private(set) var wonByForfeit: Bool = false
+    /// Bonus granted for a win (empty on a loss or draw).
+    private(set) var winRewards: [Reward] = []
     private(set) var searchSeconds: Int = 0
     private(set) var isPreviewing: Bool = false
     private(set) var showScoreboard: Bool = false
@@ -463,6 +465,9 @@ final class OnlineDuelSession {
         store.finalizeDuel(won: won, draw: draw, score: playerScore, eloChange: 0)
         if isRanked {
             online.applyRankedResult(newElo: newElo, won: won, draw: draw)
+        }
+        if won {
+            winRewards = store.grantDuelWin(xp: max(5, playerScore / 10), rankPoints: isRanked ? eloChange : nil)
         }
 
         phase = .finished

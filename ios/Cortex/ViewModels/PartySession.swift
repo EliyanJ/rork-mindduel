@@ -101,6 +101,8 @@ final class PartySession {
     private(set) var answeredCount: Int = 0
     private(set) var wasFastestCorrect: Bool = false
     private(set) var floatingEmotes: [FloatingEmote] = []
+    /// Bonus granted for a win (empty otherwise).
+    private(set) var winRewards: [Reward] = []
 
     static let readingBeat: Double = 8
 
@@ -639,7 +641,10 @@ final class PartySession {
         phase = .finished
         let won = mode.isTeam ? (winningTeam != nil && winningTeam == you?.team) : myRank <= 3
         store.recordCasualDuel(won: won)
-        if won { Haptics.success() }
+        if won {
+            winRewards = store.grantDuelWin(xp: nil, rankPoints: mode.isCustom ? nil : pointsDelta)
+            Haptics.success()
+        }
     }
 
     private func send(_ payload: [String: Any]) {

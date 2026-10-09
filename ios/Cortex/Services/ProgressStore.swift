@@ -346,15 +346,83 @@ final class ProgressStore {
         dailyUsage.claimedMissionIds.contains(id)
     }
 
-    /// Credits a finished mission's rubis once per day.
-    @discardableResult
-    func claimMission(_ id: String, reward: Int) -> Bool {
+    /// Credits a finished mission's rewards once per day. Returns what was
+    /// actually granted (nil when already claimed).
+    func claimMission(_ id: String, rewards: [Reward]) -> [Reward]? {
         rolloverIfNeeded()
-        guard !progress.dailyUsage.claimedMissionIds.contains(id) else { return false }
+        guard !progress.dailyUsage.claimedMissionIds.contains(id) else { return nil }
         progress.dailyUsage.claimedMissionIds.append(id)
-        progress.livresBalance += reward
         save()
-        return true
+        return grant(rewards)
+    }
+
+    // MARK: - Rewards
+
+    /// Diamonds given instead of a heart / bolt the player can't use
+    /// (hearts already full, or Premium where everything is unlimited).
+    static let rewardConversionDiamonds = 5
+    /// Small bonus for winning any duel.
+    static let duelWinDiamonds = 3
+
+    /// Applies rewards and returns what the player really received, so the
+    /// reveal screen never promises something that was silently dropped.
+    /// Display-only kinds (`xp`, `rankPoints`) pass through untouched.
+    @discardableResult
+    func grant(_ rewards: [Reward]) -> [Reward] {
+        rolloverIfNeeded()
+        var applied: [Reward] = []
+        var converted = 0
+        for reward in rewards where reward.amount > 0 {
+            switch reward.kind {
+            case .diamonds:
+                progress.livresBalance += reward.amount
+                applied.append(reward)
+            case .heart:
+                let room = hasUnlimitedDuels ? 0 : max(0, Self.energyMax - min(progress.energy, Self.energyMax))
+                let added = min(room, reward.amount)
+                if added > 0 {
+                    progress.energy = min(Self.energyMax, progress.energy + added)
+                    if progress.energy >= Self.energyMax { progress.energyRegenAt = nil }
+                    applied.append(Reward(kind: .heart, amount: added))
+                }
+                converted += (reward.amount - added) * Self.rewardConversionDiamonds
+            case .duelBolt:
+                if hasUnlimitedDuels {
+                    converted += reward.amount * Self.rewardConversionDiamonds
+                } else {
+                    progress.duelPoints = max(0, progress.duelPoints) + reward.amount
+                    applied.append(reward)
+                }
+            case .lessonBolt:
+                if hasUnlimitedDuels {
+                    converted += reward.amount * Self.rewardConversionDiamonds
+                } else {
+                    progress.dailyUsage.extraLessonsUnlocked += reward.amount
+                    applied.append(reward)
+                }
+            case .xp, .rankPoints:
+                applied.append(reward)
+            }
+        }
+        if converted > 0 {
+            progress.livresBalance += converted
+            if let index = applied.firstIndex(where: { $0.kind == .diamonds }) {
+                applied[index] = Reward(kind: .diamonds, amount: applied[index].amount + converted)
+            } else {
+                applied.append(Reward(kind: .diamonds, amount: converted))
+            }
+        }
+        save()
+        return applied
+    }
+
+    /// Bonus for a won duel. `xp` was already credited by the match;
+    /// `rankPoints` is shown only for ranked games.
+    func grantDuelWin(xp: Int?, rankPoints: Int?) -> [Reward] {
+        var display: [Reward] = []
+        if let rankPoints, rankPoints > 0 { display.append(Reward(kind: .rankPoints, amount: rankPoints)) }
+        if let xp, xp > 0 { display.append(Reward(kind: .xp, amount: xp)) }
+        return display + grant([Reward(kind: .diamonds, amount: Self.duelWinDiamonds)])
     }
 
     func addXP(_ amount: Int) {
@@ -419,14 +487,17 @@ final class ProgressStore {
     /// next calendar day so the player revises before retrying, exactly like
     /// the chapter-level cooldown but expressed in days rather than hours.
     /// The first successful pass of a ring awards rubis.
-    func recordRingResult(ringId: String, kind: RingKind, score: Double, reference: Date = .now) {
+    @discardableResult
+    func recordRingResult(ringId: String, kind: RingKind, score: Double, reference: Date = .now) -> Int {
+        var diamondsEarned = 0
         var record = progress.chapterRecords[ringId] ?? ChapterRecord(bestScore: 0, attempts: 0)
         record.attempts += 1
         let previousBest = record.bestScore
         record.bestScore = max(previousBest, score)
         let passThreshold = kind == .recap ? Self.ringMasteryScore : Self.ringPassScore
         if previousBest < passThreshold, score >= passThreshold {
-            progress.livresBalance += kind == .recap ? Self.recapRubisReward : Self.ringRubisReward
+            diamondsEarned = kind == .recap ? Self.recapRubisReward : Self.ringRubisReward
+            progress.livresBalance += diamondsEarned
         }
         rolloverIfNeeded()
         progress.dailyUsage.ringsCompleted += 1
@@ -435,6 +506,7 @@ final class ProgressStore {
         }
         progress.chapterRecords[ringId] = record
         save()
+        return diamondsEarned
     }
 
     private static func startOfNextDay(after date: Date) -> Date {
