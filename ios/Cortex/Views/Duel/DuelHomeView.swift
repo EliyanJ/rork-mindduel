@@ -62,16 +62,23 @@ struct DuelHomeView: View {
                     .opacity(appeared ? 1 : 0)
                     .offset(y: appeared ? 0 : 16)
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(section == .ranked ? "Modes Premium" : "Autres modes")
+                        Text(section == .ranked ? "Modes classés" : "Modes non classés")
                             .font(.system(.title2, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
-                        ForEach(Array(otherModes.enumerated()), id: \.element.id) { index, mode in
-                            DuelModeTile(mode: mode, isLocked: mode.isPremium && !store.isPremium) {
-                                open(mode.kind)
+                        modeTiles(otherModes, startIndex: 0)
+                    }
+                    if section == .casual {
+                        VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("D'autres choses")
+                                    .font(.system(.title2, design: .rounded, weight: .heavy))
+                                    .foregroundStyle(Theme.ink)
+                                Text("Crée une partie comme tu veux et invite tes amis à jouer avec toi.")
+                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                    .foregroundStyle(Theme.inkMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            .opacity(appeared ? 1 : 0)
-                            .offset(y: appeared ? 0 : 16)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.08 + Double(index) * 0.06), value: appeared)
+                            modeTiles(extraModes, startIndex: otherModes.count)
                         }
                     }
                 }
@@ -314,11 +321,7 @@ struct DuelHomeView: View {
             }
             Button {
                 Haptics.medium()
-                guard online.isSignedIn else {
-                    isSignInPresented = true
-                    return
-                }
-                guardedAction { presentCasualOnline() }
+                startCasualOneVsOne()
             } label: {
                 Text(!online.isSignedIn ? "SE CONNECTER" : (!isPremium && points == 0 ? "RECHARGER" : "JOUER"))
             }
@@ -388,14 +391,7 @@ struct DuelHomeView: View {
             }
             Button {
                 Haptics.medium()
-                if !online.isSignedIn {
-                    isSignInPresented = true
-                } else if store.isPremium {
-                    presentRankedDuel()
-                } else {
-                    Analytics.capture("ranked_daily_sheet_shown", ["remaining": model.store.remainingFreeRanked()])
-                    isRankedDailyPresented = true
-                }
+                startRankedOneVsOne()
             } label: {
                 HStack(spacing: 8) {
                     if !store.isPremium && model.store.remainingFreeRanked() == 0 {
@@ -421,24 +417,64 @@ struct DuelHomeView: View {
         .padding(.bottom, 5)
     }
 
+    private func modeTiles(_ modes: [DuelModeInfo], startIndex: Int) -> some View {
+        ForEach(Array(modes.enumerated()), id: \.element.id) { index, mode in
+            DuelModeTile(mode: mode, isLocked: mode.isPremium && !store.isPremium) {
+                open(mode.kind)
+            }
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 16)
+            .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.08 + Double(startIndex + index) * 0.06), value: appeared)
+        }
+    }
+
+    /// "D'autres choses" (unranked tab only): games made with friends.
+    private var extraModes: [DuelModeInfo] {
+        [DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Ta partie, tes règles, tes amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: true)]
+    }
+
     private var otherModes: [DuelModeInfo] {
         switch section {
         case .casual:
             return [
+                DuelModeInfo(kind: .casualOneVsOne, title: "1 contre 1", subtitle: "Un vrai joueur, sans classement", icon: "person.2.fill", color: Color(hex: "3A8BFF"), isPremium: false),
                 DuelModeInfo(kind: .flash, title: "Flash", subtitle: "Questions éclair en solo", icon: "bolt.fill", color: Color(hex: "FF9600"), isPremium: false),
                 DuelModeInfo(kind: .offline, title: "Hors ligne", subtitle: "Contre un robot, sans connexion", icon: "wifi.slash", color: Color(hex: "A560FF"), isPremium: false)
             ]
         case .ranked:
             return [
+                DuelModeInfo(kind: .rankedOneVsOne, title: "1 contre 1", subtitle: store.isPremium ? "Fais grimper ta ligue" : "1 partie par jour en gratuit", icon: "trophy.fill", color: Color(hex: "1CC9BC"), isPremium: false),
                 DuelModeInfo(kind: .oneVsNine, title: "1 contre 9", subtitle: "Seul face à une équipe", icon: "flame.fill", color: Color(hex: "FF4B4B"), isPremium: true),
-                DuelModeInfo(kind: .teamFlash, title: "Flash 2 contre 2", subtitle: "Questions éclair en équipe", icon: "bolt.horizontal.fill", color: Color(hex: "FF9600"), isPremium: true),
-                DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Crée ta partie entre amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: true)
+                DuelModeInfo(kind: .teamFlash, title: "Flash 2 contre 2", subtitle: "Questions éclair en équipe", icon: "bolt.horizontal.fill", color: Color(hex: "FF9600"), isPremium: true)
             ]
+        }
+    }
+
+    private func startCasualOneVsOne() {
+        guard online.isSignedIn else {
+            isSignInPresented = true
+            return
+        }
+        guardedAction { presentCasualOnline() }
+    }
+
+    private func startRankedOneVsOne() {
+        if !online.isSignedIn {
+            isSignInPresented = true
+        } else if store.isPremium {
+            presentRankedDuel()
+        } else {
+            Analytics.capture("ranked_daily_sheet_shown", ["remaining": model.store.remainingFreeRanked()])
+            isRankedDailyPresented = true
         }
     }
 
     private func open(_ kind: DuelModeInfo.Kind) {
         switch kind {
+        case .casualOneVsOne:
+            startCasualOneVsOne()
+        case .rankedOneVsOne:
+            startRankedOneVsOne()
         case .oneVsNine:
             guard store.isPremium else { return openPaywall(source: "one_vs_nine") }
             joinParty(.oneVsTen)
@@ -559,7 +595,7 @@ struct DuelHomeView: View {
 /// One secondary duel format shown in the "Autres modes" list.
 private struct DuelModeInfo: Identifiable {
     enum Kind: String {
-        case oneVsNine, flash, teamFlash, custom, offline
+        case casualOneVsOne, rankedOneVsOne, oneVsNine, flash, teamFlash, custom, offline
     }
 
     let kind: Kind
