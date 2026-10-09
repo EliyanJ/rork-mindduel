@@ -86,16 +86,25 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $isMenuPresented) {
             if let lesson = visibleLesson,
                let discipline = model.discipline(withId: lesson.disciplineId) {
-                LessonsMenuView(
+                ChaptersMenuView(
                     discipline: discipline,
-                    lessons: model.lessons(inDiscipline: discipline.id),
                     currentLessonId: currentLessonId(inDiscipline: discipline.id),
-                    focusedLessonId: focusedLessonId,
-                    lessonProgress: { model.lessonRingCounts($0) }
-                ) { picked in
-                    focusedLessonId = picked.id
-                    isMenuPresented = false
-                }
+                    onPick: { picked in
+                        focusedLessonId = picked.id
+                        isMenuPresented = false
+                    },
+                    onAdvance: { next in
+                        isMenuPresented = false
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(450))
+                            requestAdvance(to: next)
+                        }
+                    },
+                    onSelectDiscipline: { picked in
+                        selectDiscipline(picked)
+                    },
+                    onClose: { isMenuPresented = false }
+                )
             }
         }
         .fullScreenCover(item: $placementLesson) { next in
@@ -140,6 +149,11 @@ struct HomeView: View {
             // The journey moved on — stop showing an older, menu-picked lesson.
             focusedLessonId = nil
         }
+        .onChange(of: model.isChaptersMenuRequested, initial: true) { _, isRequested in
+            guard isRequested else { return }
+            model.isChaptersMenuRequested = false
+            if visibleLesson != nil { isMenuPresented = true }
+        }
         .onChange(of: model.selectedDisciplineId) { _, _ in
             // Switched theme (or came back to the general journey) — always
             // start from that path's own current lesson.
@@ -154,6 +168,37 @@ struct HomeView: View {
             return model.currentLesson(inDiscipline: themeId)?.id
         }
         return model.currentLesson?.id
+    }
+
+    /// Premium players take the placement test straight away; free players
+    /// first see the "finish your path or watch a video" choice.
+    private func requestAdvance(to next: PathLesson) {
+        if store.isPremium {
+            placementLesson = next
+        } else {
+            advanceChoiceLesson = next
+        }
+    }
+
+    /// Theme switcher of the chapters page: Premium switches the Parcours,
+    /// free players (theme imposed) are shown the paywall.
+    private func selectDiscipline(_ discipline: Discipline?) {
+        let activeId = visibleLesson?.disciplineId
+        if let discipline, discipline.id == activeId {
+            isMenuPresented = false
+            return
+        }
+        guard store.isPremium else {
+            isMenuPresented = false
+            Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                isPaywallPresented = true
+            }
+            return
+        }
+        Analytics.capture("theme_switched", ["theme": discipline?.id ?? "journey"])
+        model.selectedDisciplineId = discipline?.id
+        isMenuPresented = false
     }
 
     // MARK: - Headers
@@ -182,50 +227,52 @@ struct HomeView: View {
         let counts = model.lessonRingCounts(lesson)
         let progress = counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
         let isReplaying = focusedLessonId != nil && visibleLesson?.id == focusedLessonId
-        return HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("\(discipline?.name.uppercased() ?? "") · CHAPITRE \(model.lessonIndex(lesson))")
-                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .tracking(0.8)
-                    .foregroundStyle(color)
-                HStack(spacing: 6) {
-                    Text(lesson.title)
-                        .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                    if isReplaying {
-                        Text("RELECTURE")
-                            .font(.system(size: 9, weight: .heavy, design: .rounded))
-                            .tracking(0.6)
-                            .foregroundStyle(Theme.inkMuted)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(Theme.lockedFill.opacity(0.6)))
+        return Button {
+            Haptics.tap()
+            isMenuPresented = true
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(discipline?.name.uppercased() ?? "") · CHAPITRE \(model.lessonIndex(lesson))")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(0.8)
+                        .foregroundStyle(color)
+                    HStack(spacing: 6) {
+                        Text(lesson.title)
+                            .font(.system(.title3, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .multilineTextAlignment(.leading)
+                        if isReplaying {
+                            Text("RELECTURE")
+                                .font(.system(size: 9, weight: .heavy, design: .rounded))
+                                .tracking(0.6)
+                                .foregroundStyle(Theme.inkMuted)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(Theme.lockedFill.opacity(0.6)))
+                        }
                     }
                 }
+                Spacer(minLength: 6)
+                CircularProgressGauge(progress: progress, color: color)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 15, weight: .heavy))
+                    .foregroundStyle(Theme.inkMuted)
+                    .frame(width: 36, height: 46)
             }
-            Spacer(minLength: 6)
-            CircularProgressGauge(progress: progress, color: color)
-            Button {
-                Haptics.tap()
-                isMenuPresented = true
-            } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 46, height: 46)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Theme.card))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.line, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Theme.card)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Theme.card)
+        .buttonStyle(PressDownStyle())
+        .accessibilityHint("Ouvre la liste des chapitres et des thèmes")
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.line).frame(height: 1)
         }
+        .zIndex(1)
     }
 
     // MARK: - Path body
@@ -344,10 +391,8 @@ struct HomeView: View {
                 if isUnlocked {
                     focusedLessonId = next.id
                     onShow()
-                } else if store.isPremium {
-                    placementLesson = next
                 } else {
-                    advanceChoiceLesson = next
+                    requestAdvance(to: next)
                 }
             }
             .buttonStyle(OutlineChunkyButtonStyle())
@@ -439,174 +484,6 @@ private struct FactIntro: Identifiable {
     let discipline: Discipline
     let cards: [StudyCard]
     let items: [LessonItem]
-}
-
-/// Dedicated full page opened from the sticky banner's hamburger: the
-/// current theme's period as a header (back arrow + name, completion donut
-/// top-right), then every lesson of that theme as a big illustrated card,
-/// stacked one below the other.
-private struct LessonsMenuView: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
-    let discipline: Discipline
-    let lessons: [PathLesson]
-    let currentLessonId: String?
-    let focusedLessonId: String?
-    let lessonProgress: (PathLesson) -> (done: Int, total: Int)
-    let onPick: (PathLesson) -> Void
-
-    private var overallProgress: Double {
-        let counts = lessons.reduce(into: (done: 0, total: 0)) { partial, lesson in
-            let count = lessonProgress(lesson)
-            partial.done += count.done
-            partial.total += count.total
-        }
-        return counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(lessons) { lesson in
-                        card(for: lesson)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-                .padding(.bottom, 32)
-            }
-        }
-        .background(Theme.canvas.ignoresSafeArea())
-    }
-
-    private var header: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Button {
-                Haptics.tap()
-                dismiss()
-            } label: {
-                Image(systemName: "arrow.left")
-                    .font(.system(size: 20, weight: .heavy))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 40, height: 40)
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 2)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("THÈME ACTUEL :")
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
-                    .tracking(0.6)
-                    .foregroundStyle(Theme.inkMuted)
-                Text(discipline.name.uppercased())
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 8)
-            CircularProgressGauge(progress: overallProgress, color: discipline.color)
-                .padding(.top, 2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 18)
-    }
-
-    @ViewBuilder
-    private func card(for lesson: PathLesson) -> some View {
-        let color = discipline.color
-        let counts = lessonProgress(lesson)
-        let progress = counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
-        let done = model.isLessonDone(lesson)
-        let unlocked = model.isLessonUnlocked(lesson)
-        let isCurrent = lesson.id == currentLessonId
-        let isFocused = lesson.id == focusedLessonId
-
-        Button {
-            guard unlocked else {
-                Haptics.error()
-                return
-            }
-            Haptics.tap()
-            onPick(lesson)
-        } label: {
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(
-                        LinearGradient(
-                            colors: unlocked
-                                ? [color.mix(with: .white, by: 0.15), color.mix(with: .black, by: 0.12)]
-                                : [Theme.lockedFill, Theme.lockedFill.mix(with: .black, by: 0.08)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(lesson.title.uppercased())
-                        .font(.system(size: 21, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                    Text("\(counts.done)/\(counts.total) épreuves")
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                .padding(18)
-
-                VStack {
-                    HStack {
-                        Spacer()
-                        statusBadge(done: done, unlocked: unlocked, isCurrent: isCurrent, progress: progress, color: color)
-                            .padding(12)
-                    }
-                    Spacer()
-                }
-            }
-            .frame(height: 132)
-            .clipShape(RoundedRectangle(cornerRadius: 24))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(isFocused ? Color.white : Color.clear, lineWidth: 3)
-            )
-            .shadow(color: .black.opacity(unlocked ? 0.14 : 0.05), radius: 10, y: 6)
-        }
-        .buttonStyle(.plain)
-        .disabled(!unlocked)
-    }
-
-    @ViewBuilder
-    private func statusBadge(done: Bool, unlocked: Bool, isCurrent: Bool, progress: Double, color: Color) -> some View {
-        if isCurrent {
-            Text("EN COURS")
-                .font(.system(size: 10, weight: .heavy, design: .rounded))
-                .tracking(0.6)
-                .foregroundStyle(color)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(.white))
-        } else if done {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 26, weight: .bold))
-                .foregroundStyle(.white, Theme.success)
-        } else if !unlocked {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(Circle().fill(.white.opacity(0.25)))
-        } else {
-            Text("\(Int((progress * 100).rounded()))%")
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
-                .foregroundStyle(color)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(.white))
-        }
-    }
 }
 
 /// The app's wordmark: "Min" in ink, "duel" in the brand orange, set tight

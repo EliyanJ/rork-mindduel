@@ -3,14 +3,13 @@ import SwiftUI
 /// Every destination reachable from the fixed bottom bar. `.plus` hosts the
 /// profile and opens the "more" menu (profile, friends, settings…).
 enum AppTab: String, CaseIterable, Identifiable, Hashable {
-    case parcours, themes, duel, classement, actus, premium, plus
+    case parcours, duel, classement, actus, premium, plus
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .parcours: return "house.fill"
-        case .themes: return "square.grid.2x2.fill"
         case .duel: return "bolt.fill"
         case .classement: return "trophy.fill"
         case .actus: return "newspaper.fill"
@@ -22,7 +21,6 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
     var color: Color {
         switch self {
         case .parcours: return Theme.primary
-        case .themes: return Color(hex: "1CB0F6")
         case .duel: return Color(hex: "14B8AB")
         case .classement: return Color(hex: "C68A4A")
         case .actus: return Color(hex: "FF3D8A")
@@ -34,7 +32,6 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
     var accessibilityName: String {
         switch self {
         case .parcours: return "Parcours"
-        case .themes: return "Thèmes"
         case .duel: return "Duel"
         case .classement: return "Classement"
         case .actus: return "Fil d'actualité"

@@ -12,7 +12,7 @@ struct PaywallView: View {
 
     @Environment(StoreViewModel.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedPackageId: String?
+    @State private var purchasingPackageId: String?
     @State private var legalLink: LegalLink?
     @State private var isMascotUp: Bool = false
 
@@ -27,28 +27,22 @@ struct PaywallView: View {
         [store.annualPackage, store.monthlyPackage].compactMap { $0 }
     }
 
-    private var selectedPackage: Package? {
-        packages.first { $0.identifier == selectedPackageId } ?? store.annualPackage ?? packages.first
-    }
-
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            background
+        VStack(spacing: 0) {
+            titleBar
             ScrollView {
-                VStack(spacing: 22) {
+                VStack(spacing: 18) {
                     hero
-                    benefits
                     plans
+                    legalFooter
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 28)
-                .padding(.bottom, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 32)
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .safeAreaInset(edge: .bottom) { footer }
-
-            if !isEmbedded { closeButton }
+            .scrollIndicators(.hidden)
         }
+        .background(Theme.background.ignoresSafeArea())
         .task {
             Analytics.capture("paywall_viewed", ["source": source])
             if store.offering == nil { await store.loadOfferings() }
@@ -81,231 +75,174 @@ struct PaywallView: View {
 
     // MARK: - Sections
 
-    private var background: some View {
-        ZStack {
-            Theme.background
-            RadialGradient(
-                colors: [Theme.primary.opacity(0.22), Theme.primary.opacity(0)],
-                center: .top,
-                startRadius: 10,
-                endRadius: 420
-            )
-            RadialGradient(
-                colors: [Theme.gold.opacity(0.18), Theme.gold.opacity(0)],
-                center: .topTrailing,
-                startRadius: 10,
-                endRadius: 260
-            )
+    /// Fixed title bar, like Duolingo's "Abonnement" header.
+    private var titleBar: some View {
+        HStack {
+            Text("Abonnement")
+                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
+            Spacer()
+            if !isEmbedded {
+                Button {
+                    Haptics.tap()
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18, weight: .heavy))
+                        .foregroundStyle(Theme.inkMuted)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Fermer")
+            }
         }
-        .ignoresSafeArea()
-    }
-
-    private var closeButton: some View {
-        Button {
-            Haptics.tap()
-            dismiss()
-        } label: {
-            Image(systemName: "xmark")
-                .font(.system(size: 15, weight: .heavy))
-                .foregroundStyle(Theme.inkMuted)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Theme.card.opacity(0.9)))
+        .padding(.leading, 20)
+        .padding(.trailing, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.line).frame(height: 1.5)
         }
-        .accessibilityLabel("Fermer")
-        .padding(.trailing, 14)
-        .padding(.top, 8)
     }
 
     private var hero: some View {
-        VStack(spacing: 10) {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("MINDUEL PREMIUM", systemImage: "crown.fill")
+                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                    .tracking(1)
+                    .foregroundStyle(Theme.primary)
+                Text("Choisis ta formule")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                Text("Joue sans aucune limite, ou reste en gratuit.")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(Theme.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
             Image("MascotTrophy")
                 .resizable()
                 .scaledToFit()
-                .frame(height: 128)
-                .offset(y: isMascotUp ? -6 : 4)
+                .frame(width: 96, height: 96)
+                .offset(y: isMascotUp ? -4 : 3)
                 .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: isMascotUp)
                 .onAppear { isMascotUp = true }
                 .accessibilityHidden(true)
-            HStack(spacing: 6) {
-                Image(systemName: "crown.fill")
-                    .foregroundStyle(Theme.gold)
-                Text("MINDUEL PREMIUM")
-                    .tracking(1.2)
-                    .foregroundStyle(Theme.primary)
-            }
-            .font(.system(.caption, design: .rounded, weight: .heavy))
-            Text("Joue sans aucune limite")
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.ink)
-                .multilineTextAlignment(.center)
         }
     }
 
-    private var benefits: some View {
-        VStack(spacing: 10) {
-            benefitRow(icon: "infinity", color: Theme.primary, title: "Leçons illimitées", detail: "Fini la limite de 2 leçons par jour")
-            benefitRow(icon: "square.grid.2x2.fill", color: Color(hex: "1CB0F6"), title: "Choix libre des thèmes", detail: "Choisis tes thèmes en leçon et en duel")
-            benefitRow(icon: "globe", color: Color(hex: "9B4DFF"), title: "Mode classé", detail: "Matchs 1V1 classés et classement mondial")
-            benefitRow(icon: "bolt.fill", color: Theme.duelAccent, title: "Duels illimités", detail: "Fini les points de duel à recharger")
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 22)
-                .fill(Theme.card)
-                .shadow(color: .black.opacity(0.06), radius: 14, y: 6)
-        )
-    }
+    private static let premiumPerks: [String] = [
+        "Leçons illimitées, chaque jour",
+        "Choix libre des thèmes et des chapitres",
+        "Mode classé et classement mondial",
+        "Duels illimités, sans points à recharger",
+        "Tests de passage sans vidéo"
+    ]
 
-    private func benefitRow(icon: String, color: Color, title: String, detail: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .heavy))
-                .foregroundStyle(.white)
-                .frame(width: 42, height: 42)
-                .background(RoundedRectangle(cornerRadius: 13).fill(color))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(.headline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.ink)
-                Text(detail)
-                    .font(.system(.caption, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Theme.inkMuted)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 20))
-                .foregroundStyle(Theme.success)
-        }
-    }
+    private static let freePerks: [String] = [
+        "2 leçons par jour",
+        "Parcours général (thème imposé)",
+        "3 points de duel, rechargeables en vidéo",
+        "Classement entre amis"
+    ]
 
     @ViewBuilder
     private var plans: some View {
-        if packages.isEmpty {
-            VStack(spacing: 12) {
-                if store.isLoading {
-                    ProgressView().tint(Theme.primary)
-                    Text("Chargement des offres…")
-                } else {
-                    Text("Les offres ne sont pas disponibles pour le moment.")
-                    Button("Réessayer") {
-                        Task { await store.loadOfferings() }
-                    }
-                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.primary)
-                }
+        VStack(spacing: 16) {
+            if packages.isEmpty {
+                loadingCard
+            } else {
+                if let annual = store.annualPackage { premiumCard(annual) }
+                if let monthly = store.monthlyPackage { premiumCard(monthly) }
             }
-            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-            .foregroundStyle(Theme.inkMuted)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-        } else {
-            VStack(spacing: 12) {
-                ForEach(packages, id: \.identifier) { package in
-                    planCard(package)
-                }
-            }
+            freeCard
         }
     }
 
-    private func planCard(_ package: Package) -> some View {
-        let isSelected = package.identifier == selectedPackage?.identifier
+    private var loadingCard: some View {
+        VStack(spacing: 12) {
+            if store.isLoading {
+                ProgressView().tint(Theme.primary)
+                Text("Chargement des offres…")
+            } else {
+                Text("Les offres Premium ne sont pas disponibles pour le moment.")
+                    .multilineTextAlignment(.center)
+                Button("Réessayer") {
+                    Task { await store.loadOfferings() }
+                }
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.link)
+                .frame(minHeight: 44)
+            }
+        }
+        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+        .foregroundStyle(Theme.inkMuted)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 2))
+    }
+
+    private func premiumCard(_ package: Package) -> some View {
         let isAnnual = package.identifier == store.annualPackage?.identifier
         let trial = store.freeTrial(for: package)
-        return Button {
-            Haptics.tap()
-            withAnimation(.spring(duration: 0.3)) { selectedPackageId = package.identifier }
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(isSelected ? Theme.primary : Theme.inkMuted.opacity(0.35))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(isAnnual ? "Annuel" : "Mensuel")
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    if let trial {
-                        Text("\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(priceLine(package))")
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(Theme.success)
-                    } else if isAnnual, let perMonth = package.storeProduct.localizedPricePerMonth {
-                        Text("Soit \(perMonth) par mois")
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(Theme.inkMuted)
-                    }
-                }
-                Spacer(minLength: 6)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(package.storeProduct.localizedPriceString)
-                        .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    Text(isAnnual ? "par an" : "par mois")
-                        .font(.system(.caption2, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Theme.primary.opacity(0.07) : Theme.card)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 2.5 : 1.5)
-            )
-            .overlay(alignment: .topTrailing) {
-                if isAnnual { annualBadge(trial: trial) }
-            }
+        let isCurrent = store.isPremium && store.activeProductId == package.storeProduct.productIdentifier
+        let subtitle: String
+        if let trial {
+            subtitle = "\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(priceLine(package))"
+        } else if isAnnual, let perMonth = package.storeProduct.localizedPricePerMonth {
+            subtitle = "\(priceLine(package)), soit \(perMonth) par mois"
+        } else {
+            subtitle = priceLine(package)
         }
-        .buttonStyle(.plain)
-        .padding(.top, isAnnual ? 10 : 0)
+        let title: String
+        if isCurrent {
+            title = "FORMULE ACTUELLE"
+        } else if let trial {
+            title = "ESSAIE \(Self.durationText(trial.subscriptionPeriod).uppercased()) GRATUITS"
+        } else {
+            title = "S'ABONNER"
+        }
+        return PlanCard(
+            title: isAnnual ? "Premium annuel" : "Premium mensuel",
+            subtitle: subtitle,
+            perks: Self.premiumPerks,
+            image: isAnnual ? "MascotTrophy" : "MascotGift",
+            highlight: isAnnual ? Theme.primary : nil,
+            badge: isAnnual ? annualBadgeText : nil,
+            disclosure: disclosure(for: package),
+            buttonTitle: title,
+            isButtonEnabled: !isCurrent && !store.isPurchasing && !store.isRestoring,
+            isBusy: store.isPurchasing && purchasingPackageId == package.identifier
+        ) {
+            Haptics.medium()
+            purchasingPackageId = package.identifier
+            Analytics.capture("paywall_plan_tapped", ["plan": isAnnual ? "annual" : "monthly", "source": source])
+            Task { await store.purchase(package) }
+        }
     }
 
-    private func annualBadge(trial: StoreProductDiscount?) -> some View {
-        HStack(spacing: 6) {
-            if let trial {
-                Text("\(Self.durationText(trial.subscriptionPeriod).uppercased()) GRATUITS")
-            } else {
-                Text("LE PLUS AVANTAGEUX")
-            }
-            if let savings = savingsPercent {
-                Text("−\(savings) %")
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(.white.opacity(0.25)))
-            }
-        }
-        .font(.system(size: 11, weight: .heavy, design: .rounded))
-        .foregroundStyle(.white)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(Capsule().fill(Theme.primary))
-        .offset(x: -14, y: -11)
+    private var freeCard: some View {
+        PlanCard(
+            title: "Gratuit",
+            subtitle: "Pour découvrir Minduel à ton rythme",
+            perks: Self.freePerks,
+            image: "book_mascot_sitting",
+            highlight: nil,
+            badge: nil,
+            disclosure: nil,
+            buttonTitle: store.isPremium ? "INCLUS DANS PREMIUM" : "FORMULE ACTUELLE",
+            isButtonEnabled: false,
+            isBusy: false
+        ) {}
     }
 
-    private var footer: some View {
-        VStack(spacing: 10) {
-            Button {
-                Haptics.medium()
-                guard let package = selectedPackage else { return }
-                Task { await store.purchase(package) }
-            } label: {
-                if store.isPurchasing {
-                    ProgressView().tint(.white)
-                } else {
-                    Text(ctaTitle)
-                }
-            }
-            .buttonStyle(ChunkyButtonStyle())
-            .disabled(selectedPackage == nil || store.isPurchasing || store.isRestoring)
-            .opacity(selectedPackage == nil ? 0.5 : 1)
+    private var annualBadgeText: String {
+        if let savings = savingsPercent { return "MEILLEURE OFFRE · −\(savings) %" }
+        return "MEILLEURE OFFRE"
+    }
 
-            Text(disclosure)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(Theme.inkMuted)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
+    private var legalFooter: some View {
+        VStack(spacing: 8) {
             HStack(spacing: 6) {
                 Button {
                     Haptics.tap()
@@ -314,7 +251,7 @@ struct PaywallView: View {
                     if store.isRestoring {
                         ProgressView().controlSize(.mini)
                     } else {
-                        Text("Restaurer les achats")
+                        Text("Restaurer mes achats")
                     }
                 }
                 .disabled(store.isRestoring || store.isPurchasing)
@@ -327,37 +264,30 @@ struct PaywallView: View {
             .foregroundStyle(Theme.inkMuted)
             .buttonStyle(.plain)
             .frame(minHeight: 44)
+            Text("Abonnements à renouvellement automatique, résiliables à tout moment dans les réglages de ton compte Apple au moins 24 h avant la fin de la période en cours.")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(Theme.inkMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .background(Theme.background.opacity(0.96).ignoresSafeArea(edges: .bottom))
+        .padding(.top, 6)
     }
 
     // MARK: - Copy
-
-    private var ctaTitle: String {
-        guard let package = selectedPackage else { return "Continuer" }
-        if let trial = store.freeTrial(for: package) {
-            return "Essayer \(Self.durationText(trial.subscriptionPeriod)) gratuits"
-        }
-        return "S'abonner"
-    }
 
     private func priceLine(_ package: Package) -> String {
         let isAnnual = package.identifier == store.annualPackage?.identifier
         return "\(package.storeProduct.localizedPriceString)/\(isAnnual ? "an" : "mois")"
     }
 
-    private var disclosure: String {
-        guard let package = selectedPackage else { return "" }
+    private func disclosure(for package: Package) -> String {
         let isAnnual = package.identifier == store.annualPackage?.identifier
         let period = isAnnual ? "par an" : "par mois"
         let price = package.storeProduct.localizedPriceString
-        let renewal = "Renouvellement automatique, résiliable à tout moment dans les réglages de ton compte Apple au moins 24 h avant la fin de la période en cours."
         if let trial = store.freeTrial(for: package) {
-            return "\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(price) \(period). \(renewal)"
+            return "\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(price) \(period), renouvellement automatique."
         }
-        return "\(price) \(period). \(renewal)"
+        return "\(price) \(period), renouvellement automatique."
     }
 
     /// Annual saving versus twelve monthly payments, from the store prices.
@@ -386,5 +316,114 @@ struct PaywallView: View {
         @unknown default:
             return "\(period.value)"
         }
+    }
+}
+
+/// One subscription formula, Duolingo-style: title, one line, blue checks,
+/// an illustration on the right and its own outlined button.
+private struct PlanCard: View {
+    let title: String
+    let subtitle: String
+    let perks: [String]
+    let image: String
+    let highlight: Color?
+    let badge: String?
+    let disclosure: String?
+    let buttonTitle: String
+    let isButtonEnabled: Bool
+    let isBusy: Bool
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Text(subtitle)
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 76, height: 76)
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(perks, id: \.self) { perk in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundStyle(Theme.link)
+                        Text(perk)
+                            .font(.system(.body, design: .rounded, weight: .medium))
+                            .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            Button(action: action) {
+                ZStack {
+                    if isBusy {
+                        ProgressView().tint(Theme.link)
+                    } else {
+                        Text(buttonTitle)
+                    }
+                }
+            }
+            .buttonStyle(PlanButtonStyle(isActive: isButtonEnabled || isBusy))
+            .disabled(!isButtonEnabled)
+            .padding(.top, 4)
+            if let disclosure {
+                Text(disclosure)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(Theme.inkMuted)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.background))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(highlight ?? Theme.line, lineWidth: highlight == nil ? 2 : 2.5)
+        )
+        .overlay(alignment: .topLeading) {
+            if let badge, let highlight {
+                Text(badge)
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .tracking(0.4)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(highlight))
+                    .offset(x: 18, y: -11)
+            }
+        }
+        .padding(.top, badge == nil ? 0 : 8)
+    }
+}
+
+/// Outlined, chunky button of a plan card: blue label when tappable,
+/// muted when it marks the current formula.
+private struct PlanButtonStyle: ButtonStyle {
+    let isActive: Bool
+
+    func makeBody(configuration: ButtonStyleConfiguration) -> some View {
+        configuration.label
+            .font(.system(.headline, design: .rounded, weight: .heavy))
+            .tracking(0.4)
+            .foregroundStyle(isActive ? Theme.link : Theme.inkMuted)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Theme.background))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 2))
+            .offset(y: configuration.isPressed ? 4 : 0)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Theme.line).offset(y: 4))
+            .padding(.bottom, 4)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }

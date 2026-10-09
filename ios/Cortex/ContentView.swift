@@ -7,7 +7,6 @@ struct ContentView: View {
     @State private var onboardingStore = OnboardingStore()
     @State private var showSplash = true
     @State private var selectedTab: AppTab = .parcours
-    @State private var isPaywallPresented: Bool = false
     @State private var isMoreMenuOpen: Bool = false
     @State private var moreSheet: MoreSheet?
     @State private var isWelcomeBackPresented: Bool = false
@@ -174,26 +173,19 @@ struct ContentView: View {
         switch selectedTab {
         case .parcours:
             HomeView()
-        case .themes:
-            ThemesView { discipline in
-                // Free players follow the imposed mixed journey; picking a
-                // theme is a Premium perk.
-                guard store.isPremium else {
-                    isPaywallPresented = true
-                    return
-                }
-                // Jump straight to Parcours, showing that theme's own
-                // dedicated ring path instead of the mixed journey.
-                model.selectedDisciplineId = discipline.id
-                selectedTab = .parcours
-            }
         case .duel:
             DuelHomeView()
         case .classement:
             LeaguesView()
         case .actus:
             NewsFeedView { destination in
-                selectedTab = destination
+                switch destination {
+                case .tab(let tab):
+                    selectedTab = tab
+                case .chapters:
+                    selectedTab = .parcours
+                    model.isChaptersMenuRequested = true
+                }
             }
         case .premium:
             if store.isPremium {
@@ -231,9 +223,6 @@ struct ContentView: View {
                 )
             }
             .environment(model)
-            .sheet(isPresented: $isPaywallPresented) {
-                PaywallView(source: "themes")
-            }
             .sheet(item: $moreSheet) { sheet in
                 Group {
                     switch sheet {

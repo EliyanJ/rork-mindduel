@@ -31,14 +31,20 @@ private struct NewsItem: Identifiable {
     let isSystemImage: Bool
     let background: Color
     let cta: String?
-    let destination: AppTab?
+    let destination: NewsDestination?
+}
+
+/// Where a news card's button leads.
+enum NewsDestination {
+    case tab(AppTab)
+    case chapters
 }
 
 /// "Fil d'actualité" tab: latest releases, newly added content and tips,
 /// each with an illustrated banner and an optional shortcut into the app.
 struct NewsFeedView: View {
     @Environment(AppModel.self) private var model
-    let onOpen: (AppTab) -> Void
+    let onOpen: (NewsDestination) -> Void
 
     @State private var appeared: Bool = false
 
@@ -58,7 +64,7 @@ struct NewsFeedView: View {
                 isSystemImage: false,
                 background: Theme.pastel(Theme.primary, strength: 0.78),
                 cta: "VOIR MA LIGUE",
-                destination: .classement
+                destination: .tab(.classement)
             ),
             NewsItem(
                 id: "premium",
@@ -70,7 +76,7 @@ struct NewsFeedView: View {
                 isSystemImage: false,
                 background: Theme.pastel(Theme.gold, strength: 0.7),
                 cta: "DÉCOUVRIR",
-                destination: .premium
+                destination: .tab(.premium)
             )
         ]
         let disciplines = model.catalog.disciplines
@@ -87,7 +93,7 @@ struct NewsFeedView: View {
                     isSystemImage: discipline.illustratedIconName == nil,
                     background: Theme.pastel(discipline.color, strength: 0.75),
                     cta: "TESTE TES CONNAISSANCES",
-                    destination: .themes
+                    destination: .chapters
                 )
             )
         }
@@ -116,7 +122,7 @@ struct NewsFeedView: View {
                 isSystemImage: false,
                 background: Theme.pastel(Color(hex: "00D1B2"), strength: 0.8),
                 cta: "JOUER UN DUEL",
-                destination: .duel
+                destination: .tab(.duel)
             )
         )
         return list.sorted { $0.date > $1.date }

@@ -129,6 +129,9 @@ final class AppModel {
     /// Currently selected theme; nil means the default journey across themes.
     var selectedDisciplineId: String?
 
+    /// Set from elsewhere (news feed) to open the Parcours chapters page.
+    var isChaptersMenuRequested: Bool = false
+
     func rings(for disciplineId: String) -> [PathRing] {
         ringsByDiscipline[disciplineId] ?? []
     }

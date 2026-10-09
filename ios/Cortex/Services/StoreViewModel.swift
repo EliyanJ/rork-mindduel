@@ -23,6 +23,9 @@ final class StoreViewModel {
 
     private var isEntitledToPremium = false
 
+    /// App Store product behind the active Premium entitlement, if any.
+    private(set) var activeProductId: String?
+
     /// Whether the player gets the Premium perks.
     var isPremium: Bool {
         Monetization.isEnabled ? isEntitledToPremium : true
@@ -64,7 +67,9 @@ final class StoreViewModel {
     }
 
     private func apply(_ info: CustomerInfo) {
-        isEntitledToPremium = info.entitlements[Self.entitlementId]?.isActive == true
+        let entitlement = info.entitlements[Self.entitlementId]
+        isEntitledToPremium = entitlement?.isActive == true
+        activeProductId = entitlement?.isActive == true ? entitlement?.productIdentifier : nil
     }
 
     func loadOfferings() async {
