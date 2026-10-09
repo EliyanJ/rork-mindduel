@@ -45,7 +45,7 @@ struct RenameNicknameSheet: View {
                     .padding(.horizontal, 24)
 
                 if cost > 0 && !canAfford {
-                    Text("Solde insuffisant — gagne des rubis en jouant ou en maintenant ta série.")
+                    Text("Solde insuffisant — gagne des diamants en jouant ou en maintenant ta série.")
                         .font(.system(.footnote, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.danger)
                         .multilineTextAlignment(.center)
@@ -62,7 +62,7 @@ struct RenameNicknameSheet: View {
                     Haptics.success()
                     onSave(trimmed)
                 } label: {
-                    Text(cost > 0 ? "Valider (\(cost) rubis)" : "Valider")
+                    Text(cost > 0 ? "Valider (\(cost) diamants)" : "Valider")
                 }
                 .buttonStyle(ChunkyButtonStyle(color: Theme.primary, textColor: .white))
                 .padding(.horizontal, 24)
@@ -85,6 +85,6 @@ struct RenameNicknameSheet: View {
         if cost == 0 {
             return "\(remainingFree) changement\(remainingFree > 1 ? "s" : "") gratuit\(remainingFree > 1 ? "s" : "") restant\(remainingFree > 1 ? "s" : "")"
         }
-        return "Coûte \(cost) rubis (tu as \(store.livresBalance) rubis)"
+        return "Coûte \(cost) diamants (tu as \(store.livresBalance) diamants)"
     }
 }

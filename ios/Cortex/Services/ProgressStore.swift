@@ -16,7 +16,7 @@ final class ProgressStore {
     static let streakLivreReward = 1
     static let ringRubisReward = 5
     static let recapRubisReward = 10
-    /// Duel tokens for free players; one rewarded video refills all of them.
+    /// Duel bolts a free player starts with; each rewarded video adds 2.
     static let duelPointsMax = 3
     /// Free nickname changes before rubis are required (the very first pick
     /// during onboarding doesn't count against this).
@@ -24,8 +24,7 @@ final class ProgressStore {
     static let nicknameChangeCost = 50
 
     // MARK: - Energy (hearts) tuning
-    static let energyMax = 5
-    static let energyRegenMinutes = 120
+    static let energyMax = 3
     static let energyRefillCost = 15
 
     // MARK: - Spaced repetition (ease-factor / SM-2 inspired)
@@ -44,7 +43,8 @@ final class ProgressStore {
 
     private(set) var progress: UserProgress
 
-    /// Mirrors the Premium entitlement (set by `ContentView`). Not persisted:
+    /// Mirrors the Premium entitlement (set by `ContentView`); also lifts the
+    /// lesson hearts limit. Not persisted:
     /// RevenueCat stays the only source of truth for access.
     var hasUnlimitedDuels = false
 
@@ -131,6 +131,8 @@ final class ProgressStore {
         let today = Calendar.current.startOfDay(for: reference)
         if !Calendar.current.isDate(progress.dailyUsage.day, inSameDayAs: today) {
             progress.dailyUsage = .empty(day: today)
+            progress.energy = Self.energyMax
+            progress.energyRegenAt = nil
             save()
         }
     }
@@ -201,30 +203,29 @@ final class ProgressStore {
 
     // MARK: - Energy (hearts)
 
-    /// Current energy with any elapsed regen applied. One heart every
-    /// `energyRegenMinutes` while below the cap; nil timer at full energy.
+    /// Hearts left today (3 per day, shared by every lesson). At zero no
+    /// lesson can start, even with lesson bolts left.
     var energy: Int {
+        rolloverIfNeeded()
         regenEnergyIfNeeded()
-        return progress.energy
+        return min(progress.energy, Self.energyMax)
     }
 
+    /// Hearts no longer refill over time: they come back in full at
+    /// midnight (see `rolloverIfNeeded`), or sooner with diamonds / a video.
+    /// Only clears a stale timer left by older builds.
     private func regenEnergyIfNeeded(reference: Date = .now) {
-        guard progress.energy < Self.energyMax, let since = progress.energyRegenAt else { return }
-        let gained = Int(reference.timeIntervalSince(since) / 60) / Self.energyRegenMinutes
-        guard gained > 0 else { return }
-        progress.energy = min(Self.energyMax, progress.energy + gained)
-        if progress.energy >= Self.energyMax {
-            progress.energyRegenAt = nil
-        } else {
-            progress.energyRegenAt = since.addingTimeInterval(TimeInterval(gained * Self.energyRegenMinutes * 60))
-        }
+        guard progress.energyRegenAt != nil, progress.energy >= Self.energyMax else { return }
+        progress.energyRegenAt = nil
         save()
     }
 
     /// Spends one heart (wrong answer in a lesson). Starts the regen timer
     /// when dropping below the cap.
     func consumeEnergy(reference: Date = .now) {
+        guard !hasUnlimitedDuels else { return }
         regenEnergyIfNeeded(reference: reference)
+        progress.energy = min(progress.energy, Self.energyMax)
         guard progress.energy > 0 else { return }
         if progress.energy == Self.energyMax { progress.energyRegenAt = reference }
         progress.energy -= 1
@@ -276,7 +277,11 @@ final class ProgressStore {
 
     // MARK: - Duel points (free tier)
 
-    var duelPoints: Int { min(progress.duelPoints, Self.duelPointsMax) }
+    /// Duel bolts left. Starts at `duelPointsMax`; videos stack on top.
+    var duelPoints: Int { max(0, progress.duelPoints) }
+
+    /// Duel bolts granted by one rewarded video.
+    static let duelPointsPerAd = 2
 
     /// Whether a new duel may start right now.
     func canStartDuel() -> Bool {
@@ -290,9 +295,13 @@ final class ProgressStore {
         save()
     }
 
-    /// Rewarded-video refill: always back to the full allowance.
-    func refillDuelPoints() {
-        progress.duelPoints = Self.duelPointsMax
+    /// Rewarded video: +2 duel bolts (two more duels). Shares the daily
+    /// rewarded-ad cap.
+    func grantDuelPointsFromAd() {
+        rolloverIfNeeded()
+        guard canWatchRewardedAd() else { return }
+        progress.dailyUsage.rewardedAdsWatched += 1
+        progress.duelPoints = max(0, progress.duelPoints) + Self.duelPointsPerAd
         save()
     }
 

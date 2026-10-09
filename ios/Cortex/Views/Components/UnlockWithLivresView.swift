@@ -6,10 +6,10 @@ struct UnlockWithLivresView: View {
     enum Kind {
         case lesson
 
-        var title: String { "Leçons du jour terminées" }
-        var message: String { "Tu as utilisé tes \(ProgressStore.freeLessonDailyLimit) leçons gratuites d'aujourd'hui. Débloque-en une de plus avec des rubis, passe à Premium pour des leçons illimitées, ou reviens demain." }
+        var title: String { "Plus d'éclairs de leçon" }
+        var message: String { "Chaque leçon coûte 1 éclair, et tu en reçois \(ProgressStore.freeLessonDailyLimit) par jour. Achète-en un avec tes diamants, passe à Premium pour des leçons illimitées, ou reviens demain." }
         var cost: Int { ProgressStore.extraLessonCost }
-        var unlockLabel: String { "Débloquer cette leçon" }
+        var unlockLabel: String { "Acheter 1 éclair" }
     }
 
     let kind: Kind
@@ -25,8 +25,10 @@ struct UnlockWithLivresView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer(minLength: 8)
-                Text("♦️")
-                    .font(.system(size: 56))
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 54, weight: .heavy))
+                    .foregroundStyle(Theme.lessonBolt)
+                    .symbolEffect(.pulse)
                 VStack(spacing: 8) {
                     Text(kind.title)
                         .font(.system(.title2, design: .rounded, weight: .heavy))
@@ -40,9 +42,7 @@ struct UnlockWithLivresView: View {
                 }
                 .padding(.horizontal, 12)
 
-                Text("Solde : \(progressStore.livresBalance) ♦️")
-                    .font(.system(.headline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.livres)
+                DiamondBalance(amount: progressStore.livresBalance)
 
                 Spacer(minLength: 4)
 
@@ -51,7 +51,7 @@ struct UnlockWithLivresView: View {
                         Haptics.medium()
                         unlock()
                     } label: {
-                        Label("\(kind.unlockLabel) — \(kind.cost) ♦️", systemImage: "lock.open.fill")
+                        Label("\(kind.unlockLabel) — \(kind.cost) diamants", systemImage: "diamond.fill")
                     }
                     .buttonStyle(ChunkyButtonStyle(color: Theme.livres))
                     .disabled(progressStore.livresBalance < kind.cost)
@@ -107,7 +107,7 @@ struct UnlockWithLivresView: View {
                 if isWatchingAd {
                     ProgressView().tint(.white)
                 } else {
-                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) ♦️)", systemImage: "play.rectangle.fill")
+                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) diamants)", systemImage: "play.rectangle.fill")
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))

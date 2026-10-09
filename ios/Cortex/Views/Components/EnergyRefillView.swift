@@ -22,16 +22,14 @@ struct EnergyRefillView: View {
                 Text("Plus d'énergie !")
                     .font(.system(.title2, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.ink)
-                Text("Tes cœurs sont vides. Recharge-les avec des rubis ou regarde une pub pour continuer.")
+                Text("Tu as perdu tes \(ProgressStore.energyMax) cœurs du jour. Recharge-les avec des diamants, regarde une pub, ou reviens demain : ils reviennent à minuit.")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(Theme.inkMuted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text("Solde : \(progressStore.livresBalance) ♦️")
-                .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.livres)
+            DiamondBalance(amount: progressStore.livresBalance)
 
             VStack(spacing: 12) {
                 Button {
@@ -41,7 +39,7 @@ struct EnergyRefillView: View {
                         onQuit()
                     }
                 } label: {
-                    Label("Recharger tout — \(ProgressStore.energyRefillCost) ♦️", systemImage: "bolt.heart.fill")
+                    Label("Recharger tout — \(ProgressStore.energyRefillCost) diamants", systemImage: "diamond.fill")
                 }
                 .buttonStyle(ChunkyButtonStyle(color: Theme.livres))
                 .disabled(progressStore.livresBalance < ProgressStore.energyRefillCost)

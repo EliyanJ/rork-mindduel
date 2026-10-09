@@ -131,7 +131,7 @@ struct LessonView: View {
             }
 
             // Out of hearts mid-lesson: the player must refill to continue.
-            if model.store.energy <= 0, session.phase != .completed, !isWatchingAd {
+            if !store.isPremium, model.store.energy <= 0, session.phase != .completed, !isWatchingAd {
                 Color.black.opacity(0.45)
                     .ignoresSafeArea()
                     .overlay {

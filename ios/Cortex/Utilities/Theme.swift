@@ -36,8 +36,11 @@ enum Theme {
     /// Black in light mode, white in dark: used to deepen/lighten accents
     /// so they stay readable on their pastel tint.
     static let deepen = adaptive(light: "000000", dark: "FFFFFF")
-    /// Distinct accent for the rubis currency.
-    static let livres = Color(hex: "D81E3A")
+    /// Diamonds, the soft currency (spent on lesson bolts and hearts).
+    static let livres = Color(hex: "1CB0F6")
+    /// Lesson bolts: how many lessons are left today. Warm yellow so they
+    /// never get confused with the turquoise duel bolts.
+    static let lessonBolt = Color(hex: "FFB800")
 
     /// Soft tinted surface for a theme/accent color, light or dark.
     static func pastel(_ color: Color, strength: Double = 0.72) -> Color {

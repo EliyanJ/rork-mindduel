@@ -174,7 +174,7 @@ struct DuelHomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(points) points de duel sur \(ProgressStore.duelPointsMax)")
+        .accessibilityLabel("\(points) éclairs de duel")
     }
 
     private var rankedPoints: Int {

@@ -47,7 +47,7 @@ struct MissionsView: View {
                         .contentTransition(.numericText())
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(model.store.livresBalance) rubis")
+                .accessibilityLabel("\(model.store.livresBalance) diamants")
             }
             .padding(.horizontal, 20)
             .padding(.top, 10)
@@ -107,7 +107,7 @@ struct MissionsView: View {
     private var banner: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(doneCount == missions.count ? "Bravo, tout est bouclé !" : "Gagne des rubis chaque jour")
+                Text(doneCount == missions.count ? "Bravo, tout est bouclé !" : "Gagne des diamants chaque jour")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
@@ -149,7 +149,7 @@ struct MissionsView: View {
                     Text("Termine toutes les missions")
                         .font(.system(.headline, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.ink)
-                    Text(claimed ? "Coffre ouvert, à demain !" : "+\(Self.bonusReward) rubis en bonus")
+                    Text(claimed ? "Coffre ouvert, à demain !" : "+\(Self.bonusReward) diamants en bonus")
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.inkMuted)
                 }
@@ -233,13 +233,13 @@ private struct MissionRow: View {
         if mission.isDone && !isClaimed {
             Button("+\(mission.reward)", action: onClaim)
                 .buttonStyle(ClaimButtonStyle())
-                .accessibilityLabel("Récupérer \(mission.reward) rubis")
+                .accessibilityLabel("Récupérer \(mission.reward) diamants")
         } else {
             Image(systemName: isClaimed ? "checkmark.circle.fill" : "shippingbox.fill")
                 .font(.system(size: 26, weight: .bold))
                 .foregroundStyle(isClaimed ? Theme.success : Theme.gold)
                 .frame(width: 44, height: 32)
-                .accessibilityLabel(isClaimed ? "Récompense récupérée" : "\(mission.reward) rubis à gagner")
+                .accessibilityLabel(isClaimed ? "Récompense récupérée" : "\(mission.reward) diamants à gagner")
         }
     }
 }
@@ -298,7 +298,7 @@ private struct RewardToast: View {
                 .font(.system(size: 44, weight: .bold))
                 .foregroundStyle(Theme.livres)
                 .symbolEffect(.bounce, value: amount)
-            Text("+\(amount) rubis")
+            Text("+\(amount) diamants")
                 .font(.system(.title2, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.ink)
         }

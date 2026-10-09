@@ -132,17 +132,17 @@ struct PaywallView: View {
     }
 
     private static let premiumPerks: [String] = [
-        "Leçons illimitées, chaque jour",
+        "Leçons et cœurs illimités, chaque jour",
         "Choix libre des thèmes et des chapitres",
         "Mode classé et classement mondial",
-        "Duels illimités, sans points à recharger",
+        "Duels illimités, sans éclairs à recharger",
         "Tests de passage sans vidéo"
     ]
 
     private static let freePerks: [String] = [
-        "2 leçons par jour",
+        "2 éclairs de leçon et 3 cœurs par jour",
         "Parcours général (thème imposé)",
-        "3 points de duel, rechargeables en vidéo",
+        "3 éclairs de duel, +2 par vidéo",
         "Classement entre amis"
     ]
 

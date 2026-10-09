@@ -7,6 +7,7 @@ struct HomeView: View {
     @State private var lockedRingPending: PathRing?
     @State private var cooldownRing: PathRing?
     @State private var isEnergyOutPresented = false
+    @State private var isBoltsSheetPresented = false
     @State private var isMenuPresented = false
     @State private var isPathScrolledToBottom = false
     @State private var factIntro: FactIntro?
@@ -76,6 +77,9 @@ struct HomeView: View {
                 unlockDate: model.store.ringLockedUntil(ring.id) ?? .now
             )
             .presentationDetents([.height(340)])
+        }
+        .sheet(isPresented: $isBoltsSheetPresented) {
+            UnlockWithLivresView(kind: .lesson, progressStore: model.store) {}
         }
         .sheet(isPresented: $isEnergyOutPresented) {
             EnergyRefillView(progressStore: model.store, quitTitle: "Fermer") {
@@ -203,13 +207,30 @@ struct HomeView: View {
 
     // MARK: - Headers
 
-    /// Duolingo-style top row: just the player's counters, evenly spread
-    /// and centered — no logo, no capsules.
+    /// Duolingo-style top row: diamonds, lesson bolts, hearts and streak,
+    /// evenly spread. Bolts and hearts open their refill sheet when tapped;
+    /// Premium shows them as unlimited.
     private var statsHeader: some View {
-        HStack(spacing: 0) {
-            HeaderStat(icon: "diamond.fill", color: Theme.livres, value: model.store.livresBalance, label: "Livres")
-            HeaderStat(icon: "heart.fill", color: Theme.danger, value: model.store.energy, label: "Énergie")
-            HeaderStat(icon: "flame.fill", color: Theme.primary, value: model.store.currentStreak, label: "Série")
+        let isPremium = store.isPremium
+        return HStack(spacing: 0) {
+            HeaderStat(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)", isEmpty: model.store.livresBalance == 0, label: "Diamants")
+            Button {
+                Haptics.tap()
+                if !isPremium { isBoltsSheetPresented = true }
+            } label: {
+                let bolts = model.store.remainingFreeLessons()
+                HeaderStat(icon: "bolt.fill", color: Theme.lessonBolt, value: isPremium ? "∞" : "\(bolts)", isEmpty: !isPremium && bolts == 0, label: "Éclairs de leçon")
+            }
+            .buttonStyle(.plain)
+            Button {
+                Haptics.tap()
+                if !isPremium { isEnergyOutPresented = true }
+            } label: {
+                let hearts = model.store.energy
+                HeaderStat(icon: "heart.fill", color: Theme.danger, value: isPremium ? "∞" : "\(hearts)", isEmpty: !isPremium && hearts == 0, label: "Cœurs")
+            }
+            .buttonStyle(.plain)
+            HeaderStat(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)", isEmpty: model.store.currentStreak == 0, label: "Série")
         }
         .padding(.horizontal, 24)
         .padding(.top, 6)
@@ -408,7 +429,7 @@ struct HomeView: View {
             Haptics.error()
             return
         }
-        if model.store.energy <= 0 {
+        if !store.isPremium, model.store.energy <= 0 {
             Haptics.error()
             isEnergyOutPresented = true
             return
@@ -493,7 +514,8 @@ struct MinduelWordmark: View {
 private struct HeaderStat: View {
     let icon: String
     let color: Color
-    let value: Int
+    let value: String
+    let isEmpty: Bool
     let label: String
 
     var body: some View {
@@ -501,12 +523,14 @@ private struct HeaderStat: View {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(color)
-            Text("\(value)")
+            Text(value)
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(value > 0 ? color : Theme.inkMuted)
+                .foregroundStyle(isEmpty ? Theme.inkMuted : color)
                 .monospacedDigit()
+                .contentTransition(.numericText())
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label) : \(value)")
     }
