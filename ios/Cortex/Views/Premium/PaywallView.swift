@@ -144,7 +144,7 @@ struct PaywallView: View {
             benefitRow(icon: "infinity", color: Theme.primary, title: "Leçons illimitées", detail: "Fini la limite de 2 leçons par jour")
             benefitRow(icon: "square.grid.2x2.fill", color: Color(hex: "1CB0F6"), title: "Choix libre des thèmes", detail: "Choisis tes thèmes en leçon et en duel")
             benefitRow(icon: "globe", color: Color(hex: "9B4DFF"), title: "Mode classé", detail: "Matchs 1V1 classés et classement mondial")
-            benefitRow(icon: "bolt.fill", color: Theme.duelAccent, title: "Duels illimités", detail: "Plus de points de duel à recharger")
+            benefitRow(icon: "bolt.fill", color: Theme.duelAccent, title: "Duels illimités", detail: "Fini les points de duel à recharger")
         }
         .padding(14)
         .background(

@@ -9,7 +9,7 @@
 		<string>fr</string>
 	</array>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-7718590117935313~6098833971</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Minduel utilise le réseau local pour trouver et rejoindre les duels avec d'autres joueurs à proximité.</string>
 	<key>NSBonjourServices</key>

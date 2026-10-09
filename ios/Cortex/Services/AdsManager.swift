@@ -6,16 +6,22 @@ import UIKit
 
 /// Central place for AdMob: UMP consent and rewarded video only. Minduel never
 /// shows a forced ad — every video is started by the player in exchange for a
-/// reward (rubis, hearts, duel points, a retry). Uses Google's official test
-/// ad unit IDs until a real AdMob account is configured.
+/// reward (rubis, hearts, duel points, a retry). Debug builds use Google's
+/// official test ad unit; Release builds (TestFlight / App Store) use Minduel's
+/// real AdMob unit.
 @Observable
 @MainActor
 final class AdsManager: NSObject {
     static let shared = AdsManager()
 
-    /// Google's public test ad unit IDs (safe to ship while waiting on a real AdMob account).
-    private enum TestUnit {
+    private enum AdUnit {
+        #if DEBUG
+        /// Google's public test rewarded unit — never serves real ads.
         static let rewarded = "ca-app-pub-3940256099942544/1712485313"
+        #else
+        /// Minduel's production rewarded video unit.
+        static let rewarded = "ca-app-pub-7718590117935313/1584873895"
+        #endif
     }
 
     private(set) var isConsentReady = false
@@ -68,7 +74,7 @@ final class AdsManager: NSObject {
         isLoadingRewarded = true
         Task {
             do {
-                let ad = try await RewardedAd.load(with: TestUnit.rewarded, request: Request())
+                let ad = try await RewardedAd.load(with: AdUnit.rewarded, request: Request())
                 ad.fullScreenContentDelegate = self
                 self.rewardedAd = ad
             } catch {
