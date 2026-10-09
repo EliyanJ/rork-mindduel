@@ -110,7 +110,6 @@ struct MoreMenuPanel: View {
     let onProfile: () -> Void
     let onNews: () -> Void
     let onFriends: () -> Void
-    let onQRCode: () -> Void
     let onSettings: () -> Void
     let onSupport: () -> Void
     let onClose: () -> Void
@@ -127,9 +126,7 @@ struct MoreMenuPanel: View {
                 divider
                 row(icon: "newspaper.fill", color: Color(hex: "FF9600"), title: "Fil d'actualité", action: onNews)
                 divider
-                row(icon: "person.2.fill", color: Theme.success, title: "Amis", badge: incomingRequests, action: onFriends)
-                divider
-                row(icon: "qrcode", color: Theme.ink, title: "Mon code ami", action: onQRCode)
+                row(icon: "person.2.fill", color: Theme.success, title: "Amis et QR code", badge: incomingRequests, action: onFriends)
                 divider
                 row(icon: "gearshape.fill", color: Theme.inkMuted, title: "Réglages", action: onSettings)
                 divider

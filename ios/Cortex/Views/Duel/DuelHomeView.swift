@@ -22,6 +22,7 @@ struct DuelHomeView: View {
     @State private var isFlashPresented: Bool = false
     @State private var isCustomSetupPresented: Bool = false
     @State private var isDuelPointsPresented: Bool = false
+    @State private var isRankedDailyPresented: Bool = false
     @State private var isPaywallPresented: Bool = false
     @State private var paywallSource: String = "duel"
     @State private var isLeaguePresented: Bool = false
@@ -133,6 +134,27 @@ struct DuelHomeView: View {
                 pendingPartyOrigin = origin
             }
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $isRankedDailyPresented) {
+            RankedDailySheet(
+                remaining: model.store.remainingFreeRanked(),
+                onPlay: {
+                    isRankedDailyPresented = false
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(350))
+                        startRanked()
+                    }
+                },
+                onPlayUnranked: {
+                    isRankedDailyPresented = false
+                    section = .casual
+                },
+                onUpgrade: {
+                    isRankedDailyPresented = false
+                    openPaywall(source: "ranked_daily")
+                }
+            )
+            .presentationDetents([.height(520)])
         }
         .sheet(isPresented: $isDuelPointsPresented) {
             DuelPointsSheet(progressStore: model.store) {
@@ -366,20 +388,22 @@ struct DuelHomeView: View {
             }
             Button {
                 Haptics.medium()
-                if !store.isPremium {
-                    openPaywall(source: "ranked")
-                } else if online.isSignedIn {
+                if !online.isSignedIn {
+                    isSignInPresented = true
+                } else if store.isPremium {
                     presentRankedDuel()
                 } else {
-                    isSignInPresented = true
+                    Analytics.capture("ranked_daily_sheet_shown", ["remaining": model.store.remainingFreeRanked()])
+                    isRankedDailyPresented = true
                 }
             } label: {
                 HStack(spacing: 8) {
-                    if !store.isPremium {
-                        Image(systemName: "crown.fill")
-                            .foregroundStyle(Theme.gold)
+                    if !store.isPremium && model.store.remainingFreeRanked() == 0 {
+                        Image(systemName: "lock.fill")
                     }
-                    Text(store.isPremium && !online.isSignedIn ? "SE CONNECTER" : "JOUER")
+                    Text(!online.isSignedIn ? "SE CONNECTER" : (store.isPremium ? "JOUER" : (model.store.remainingFreeRanked() > 0 ? "JOUER · 1 PAR JOUR" : "DÉJÀ JOUÉE AUJOURD'HUI")))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: .white, textColor: Color(hex: "0A7A72")))
@@ -457,7 +481,8 @@ struct DuelHomeView: View {
     }
 
     /// Ranked queue found nobody: hand over to an unranked bot match with the
-    /// same theme (Premium only, so it never costs a duel point).
+    /// same theme. The daily free ranked match is only spent once a real
+    /// opponent is found, so it stays available.
     private func playBotInstead() {
         isRankedPresented = false
         Task {
@@ -487,6 +512,14 @@ struct DuelHomeView: View {
     private func presentRankedDuel() {
         pendingMode = .ranked
         showThemePicker = true
+    }
+
+    /// Free player's daily ranked match: imposed theme mix, no picker.
+    private func startRanked() {
+        guard model.store.canPlayRanked(isPremium: store.isPremium) else { return }
+        pendingMode = .ranked
+        selectedDuelDisciplineId = nil
+        isRankedPresented = true
     }
 
     /// Free players get an imposed theme mix; choosing a theme is Premium.

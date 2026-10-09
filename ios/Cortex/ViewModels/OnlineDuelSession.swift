@@ -170,7 +170,11 @@ final class OnlineDuelSession {
 
     private func beginMatch(ticket matchTicket: MatchTicket, service: MultiplayerService) async {
         ticket = matchTicket
-        if !isRanked { store.consumeDuelPoint() }
+        if isRanked {
+            store.recordRankedStarted()
+        } else {
+            store.consumeDuelPoint()
+        }
         roundDuration = matchTicket.roundDuration
         let averageElo = (matchTicket.you.elo + matchTicket.opponent.elo) / 2
         questions = MatchQuestionPicker.questions(

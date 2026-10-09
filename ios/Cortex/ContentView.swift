@@ -149,7 +149,7 @@ struct ContentView: View {
     }
 
     private enum MoreSheet: String, Identifiable {
-        case news, friends, qrCode, settings, support
+        case news, friends, settings, support
         var id: String { rawValue }
     }
 
@@ -200,7 +200,6 @@ struct ContentView: View {
                         onProfile: { openFromMenu { selectedTab = .plus } },
                         onNews: { openFromMenu { moreSheet = .news } },
                         onFriends: { openFromMenu { moreSheet = .friends } },
-                        onQRCode: { openFromMenu { moreSheet = .qrCode } },
                         onSettings: { openFromMenu { moreSheet = .settings } },
                         onSupport: { openFromMenu { moreSheet = .support } },
                         onClose: { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isMoreMenuOpen = false } }
@@ -231,7 +230,6 @@ struct ContentView: View {
                             }
                         }
                     case .friends: FriendsView()
-                    case .qrCode: FriendQRView()
                     case .settings: SettingsView()
                     case .support: LegalWebView(title: "Aide et support", url: WebLinks.support)
                     }

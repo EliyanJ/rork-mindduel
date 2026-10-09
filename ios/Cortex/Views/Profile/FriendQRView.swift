@@ -10,13 +10,32 @@ struct FriendQRView: View {
     @State private var isScannerPresented = false
     @State private var isShareSheetPresented = false
     @State private var toastMessage: String?
+    /// Embedded inside the Friends page (no own navigation bar).
+    var isEmbedded: Bool = false
 
     private var deepLink: String {
         "minduel://friend/\(online.profile?.friendCode ?? "")"
     }
 
     var body: some View {
-        NavigationStack {
+        if isEmbedded {
+            content
+        } else {
+            NavigationStack {
+                content
+                    .navigationTitle("Mon QR code")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Fermer") { dismiss() }
+                                .foregroundStyle(Theme.primary)
+                        }
+                    }
+            }
+        }
+    }
+
+    private var content: some View {
             VStack(spacing: 22) {
                 if let profile = online.profile {
                     VStack(spacing: 16) {
@@ -85,14 +104,6 @@ struct FriendQRView: View {
             }
             .padding(20)
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("Mon QR code")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fermer") { dismiss() }
-                        .foregroundStyle(Theme.primary)
-                }
-            }
             .sheet(isPresented: $isScannerPresented) {
                 QRScannerView { scanned in
                     isScannerPresented = false
@@ -102,7 +113,6 @@ struct FriendQRView: View {
             .sheet(isPresented: $isShareSheetPresented) {
                 ShareLinkSheet(items: [deepLink])
             }
-        }
     }
 
     private func handle(from code: String) -> String {

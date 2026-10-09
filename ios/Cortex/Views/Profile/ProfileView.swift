@@ -39,7 +39,7 @@ struct ProfileView: View {
             FriendsView()
         }
         .sheet(isPresented: $isQRPresented) {
-            FriendQRView()
+            FriendsView(initialPage: .qrCode)
         }
         .sheet(isPresented: $isAvatarEditorPresented) {
             AvatarEditorView(store: avatarStore) { isAvatarEditorPresented = false }

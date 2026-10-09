@@ -305,6 +305,29 @@ final class ProgressStore {
         save()
     }
 
+    // MARK: - Free daily ranked match
+
+    /// Free players may play this many ranked matches per day. It cannot be
+    /// refilled with videos — only Premium removes the limit.
+    static let freeRankedPerDay = 1
+
+    /// Whether a ranked match may start right now.
+    func canPlayRanked(isPremium: Bool) -> Bool {
+        isPremium || remainingFreeRanked() > 0
+    }
+
+    /// Free ranked matches left today.
+    func remainingFreeRanked() -> Int {
+        max(0, Self.freeRankedPerDay - dailyUsage.rankedPlayed)
+    }
+
+    /// Spends today's free ranked match once a real opponent is found.
+    func recordRankedStarted() {
+        rolloverIfNeeded()
+        progress.dailyUsage.rankedPlayed += 1
+        save()
+    }
+
     // MARK: - Daily missions
 
     /// Counts a party or Flash game (they don't go through `finalizeDuel`)

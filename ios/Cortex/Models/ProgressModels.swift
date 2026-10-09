@@ -155,6 +155,8 @@ nonisolated struct DailyUsage: Codable {
     var duelsWon: Int
     var correctAnswers: Int
     var claimedMissionIds: [String]
+    /// Ranked matches started today (free players get one per day).
+    var rankedPlayed: Int = 0
 
     static func empty(day: Date) -> DailyUsage {
         DailyUsage(
@@ -212,6 +214,7 @@ nonisolated struct DailyUsage: Codable {
         duelsWon = try c.decodeIfPresent(Int.self, forKey: .duelsWon) ?? 0
         correctAnswers = try c.decodeIfPresent(Int.self, forKey: .correctAnswers) ?? 0
         claimedMissionIds = try c.decodeIfPresent([String].self, forKey: .claimedMissionIds) ?? []
+        rankedPlayed = try c.decodeIfPresent(Int.self, forKey: .rankedPlayed) ?? 0
     }
 }
 
