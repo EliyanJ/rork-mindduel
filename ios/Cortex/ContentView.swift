@@ -76,6 +76,7 @@ struct ContentView: View {
     }
 
     private func finishOnboarding() {
+        Analytics.capture("onboarding_completed")
         // If the user already signed in (via "I already have an account"), sync
         // their server-side profile so they land on the home screen up-to-date.
         if online.auth.user != nil {
@@ -130,6 +131,10 @@ struct ContentView: View {
         }
         .tint(Theme.primary)
         .environment(model)
+        .onAppear { Analytics.capture("screen_viewed", ["screen": "\(selectedTab)"]) }
+        .onChange(of: selectedTab) { _, tab in
+            Analytics.capture("screen_viewed", ["screen": "\(tab)"])
+        }
     }
 }
 

@@ -54,6 +54,14 @@ const Privacy = () => {
               connexion réseau nécessaires au fonctionnement des duels en temps réel.
             </li>
             <li>
+              <span className="text-white">Statistiques d'usage anonymisées</span> : avec PostHog
+              (hébergé dans l'Union européenne), nous mesurons les ouvertures de l'app, la durée des
+              sessions, les écrans consultés et les actions de jeu (manches, duels, objectifs), ainsi
+              que des enregistrements d'écran de l'utilisation dont les champs de saisie sont masqués.
+              Ils sont associés à un identifiant technique, jamais à ton email ni à ton nom, et ne
+              servent pas à la publicité. Tu peux les désactiver dans Réglages.
+            </li>
+            <li>
               <span className="text-white">Statut du compte</span> : un rôle administratif
               (standard, bêta-testeur, accès offert, suspendu) et, le cas échéant, l'état de ton
               abonnement et l'historique des remboursements accordés par Apple.
@@ -106,7 +114,8 @@ const Privacy = () => {
           <p>
             Nous ne vendons pas tes données. L'authentification est traitée par les services
             d'authentification de Google et Apple (selon le fournisseur choisi). L'hébergement de
-            notre backend (comptes, duels, classement) est assuré par Cloudflare. Ces prestataires
+            notre backend (comptes, duels, classement) est assuré par Cloudflare. Les statistiques
+            d'usage sont traitées par PostHog, hébergé dans l'Union européenne. Ces prestataires
             traitent les données uniquement pour permettre le fonctionnement du service.
           </p>
         </Section>

@@ -151,6 +151,13 @@ struct LessonView: View {
             }
         }
         .animation(.spring(duration: 0.3), value: model.store.energy <= 0)
+        .onAppear {
+            Analytics.capture("round_started", [
+                "discipline": launch.disciplineId ?? "mixte",
+                "chapitre": launch.chapterIdRaw ?? launch.chapterId ?? "",
+                "score": 0
+            ])
+        }
         .alert("Erreur", isPresented: .init(
             get: { AdsManager.shared.lastError != nil },
             set: { if !$0 { AdsManager.shared.lastError = nil } }

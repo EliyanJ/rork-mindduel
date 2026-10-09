@@ -164,6 +164,7 @@ struct PartyLobbyView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Theme.duelAccent)
             }
+            .simultaneousGesture(TapGesture().onEnded { Analytics.capture("share_tapped") })
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

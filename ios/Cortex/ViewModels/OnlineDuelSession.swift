@@ -112,6 +112,7 @@ final class OnlineDuelSession {
 
     func start() {
         guard queueTask == nil else { return }
+        Analytics.capture("duel_started", ["mode": "classe"])
         queueTask = Task { await runQueue() }
     }
 

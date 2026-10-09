@@ -103,6 +103,7 @@ final class DuelSession {
 
     func start() {
         guard runTask == nil else { return }
+        Analytics.capture("duel_started", ["mode": "bot"])
         runTask = Task { await run() }
     }
 

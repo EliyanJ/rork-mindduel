@@ -7,6 +7,7 @@ import CryptoKit
 @Observable
 final class AuthManager {
     var user: User?
+    private var lastProvider: String = "apple"
     var isLoading = true
     var isSigningIn = false
     var showError = false
@@ -120,6 +121,7 @@ final class AuthManager {
         if let accessToken = KeychainHelper.get("access_token"),
            let user = userFromToken(accessToken) {
             self.user = user
+            Analytics.identify(userId: user.id)
             return
         }
 
@@ -131,6 +133,7 @@ final class AuthManager {
     @MainActor
     func signIn(provider: String) async {
         isSigningIn = true
+        lastProvider = provider
         defer { isSigningIn = false }
         do {
             let verifier = generateCodeVerifier()
@@ -288,6 +291,8 @@ final class AuthManager {
             KeychainHelper.set("refresh_token", value: tokenResponse.refresh_token)
 
             user = tokenResponse.user
+            Analytics.identify(userId: tokenResponse.user.id)
+            Analytics.capture("signup_completed", ["provider": lastProvider])
         } catch {
             setError("Échec de la connexion : \(error.localizedDescription)")
         }
@@ -321,6 +326,7 @@ final class AuthManager {
             KeychainHelper.set("access_token", value: refreshResponse.access_token)
 
             user = userFromToken(refreshResponse.access_token)
+            if let id = user?.id { Analytics.identify(userId: id) }
         } catch {
             await signOut()
         }
@@ -332,6 +338,7 @@ final class AuthManager {
         KeychainHelper.delete("refresh_token")
         UserDefaults.standard.removeObject(forKey: "RORK_AUTH_REFRESH_TOKEN")
         user = nil
+        Analytics.reset()
     }
 
     private func setError(_ message: String) {

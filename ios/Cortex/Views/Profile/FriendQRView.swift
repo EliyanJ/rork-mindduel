@@ -57,6 +57,7 @@ struct FriendQRView: View {
 
                     Button {
                         Haptics.tap()
+                        Analytics.capture("share_tapped")
                         isShareSheetPresented = true
                     } label: {
                         Label("Partager mon code", systemImage: "square.and.arrow.up")

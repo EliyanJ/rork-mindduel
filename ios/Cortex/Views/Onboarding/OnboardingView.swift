@@ -130,6 +130,10 @@ struct OnboardingView: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { Analytics.capture("onboarding_step_viewed", ["step": "\(step)"]) }
+        .onChange(of: step) { _, newStep in
+            Analytics.capture("onboarding_step_viewed", ["step": "\(newStep)"])
+        }
         .overlay {
             if isSigningIn {
                 ZStack {

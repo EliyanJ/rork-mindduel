@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var isDeletingAccount = false
     @State private var legalSheet: LegalLink?
     @State private var didClearCache = false
+    @State private var analyticsEnabled: Bool = Analytics.isEnabled
 
     private enum LegalLink: Identifiable {
         case privacy, terms, support
@@ -70,6 +71,17 @@ struct SettingsView: View {
                     Text("Notifications")
                 } footer: {
                     Text(notificationsFooter)
+                }
+
+                Section {
+                    Toggle(isOn: $analyticsEnabled) {
+                        Label("Partager des statistiques d'usage anonymes", systemImage: "chart.bar")
+                            .foregroundStyle(Theme.ink)
+                    }
+                    .tint(Theme.primary)
+                    .onChange(of: analyticsEnabled) { _, value in Analytics.setEnabled(value) }
+                } footer: {
+                    Text("Aide à améliorer Minduel. Aucun e-mail ni nom n'est transmis.")
                 }
 
                 Section {

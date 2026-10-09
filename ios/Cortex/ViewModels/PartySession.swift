@@ -160,6 +160,7 @@ final class PartySession {
 
     func start() {
         guard queueTask == nil else { return }
+        Analytics.capture("duel_started", ["mode": mode.raw])
         queueTask = Task { await runLobby() }
     }
 

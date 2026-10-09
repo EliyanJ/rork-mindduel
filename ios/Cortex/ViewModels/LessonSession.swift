@@ -168,6 +168,7 @@ final class LessonSession {
         // session — a 10-question lesson never reaches the flush threshold.
         AnswerTelemetry.shared.flush()
         let wasActiveToday = Self.isActiveToday(store: store)
+        let streakBefore = store.currentStreak
         if correctCount == items.count { xpEarned += 20 }
         store.addXP(xpEarned)
         store.registerActivity()
@@ -200,6 +201,15 @@ final class LessonSession {
             }
         }
         streakAfterCompletion = store.currentStreak
+        Analytics.capture("round_completed", [
+            "discipline": disciplineId ?? "mixte",
+            "chapitre": chapterIdRaw ?? chapterId ?? "",
+            "score": correctCount
+        ])
+        if streakAfterCompletion > streakBefore {
+            Analytics.capture("streak_extended", ["jours": streakAfterCompletion])
+        }
+        Analytics.roundFinishedToday(dailyGoal: OnboardingStore().preferences.dailyGoal)
         phase = .completed
         Haptics.medium()
     }

@@ -15,6 +15,7 @@ struct CortexApp: App {
     @State private var avatarStore = AvatarStore()
 
     init() {
+        Analytics.setup()
         let auth = AuthManager()
         _authManager = State(initialValue: auth)
         _onlineModel = State(initialValue: OnlineModel(auth: auth))
