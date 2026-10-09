@@ -203,75 +203,61 @@ struct HomeView: View {
 
     // MARK: - Headers
 
+    /// Duolingo-style top row: just the player's counters, evenly spread
+    /// and centered — no logo, no capsules.
     private var statsHeader: some View {
-        HStack(spacing: 8) {
-            MinduelWordmark()
-            Spacer()
-            HStack(spacing: 6) {
-                StatPill(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)")
-                StatPill(icon: "heart.fill", color: Theme.danger, value: "\(model.store.energy)")
-                StatPill(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)")
-            }
+        HStack(spacing: 0) {
+            HeaderStat(icon: "diamond.fill", color: Theme.livres, value: model.store.livresBalance, label: "Livres")
+            HeaderStat(icon: "heart.fill", color: Theme.danger, value: model.store.energy, label: "Énergie")
+            HeaderStat(icon: "flame.fill", color: Theme.primary, value: model.store.currentStreak, label: "Série")
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.horizontal, 24)
+        .padding(.top, 6)
+        .padding(.bottom, 10)
     }
 
-    /// The sticky band that stays on top of the scroll: current theme and
-    /// chapter, its completion percentage, and the hamburger that lists every
-    /// sub-theme of this theme.
+    /// The sticky chapter card: one colored block with the chapter and its
+    /// title. Tapping anywhere opens the chapters page.
     private func lessonBanner(_ lesson: PathLesson) -> some View {
         let discipline = model.discipline(withId: lesson.disciplineId)
         let color = discipline?.color ?? Theme.primary
-        let counts = model.lessonRingCounts(lesson)
-        let progress = counts.total > 0 ? Double(counts.done) / Double(counts.total) : 0
         let isReplaying = focusedLessonId != nil && visibleLesson?.id == focusedLessonId
         return Button {
             Haptics.tap()
             isMenuPresented = true
         } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("\(discipline?.name.uppercased() ?? "") · CHAPITRE \(model.lessonIndex(lesson))")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .tracking(0.8)
-                        .foregroundStyle(color)
-                    HStack(spacing: 6) {
-                        Text(lesson.title)
-                            .font(.system(.title3, design: .rounded, weight: .heavy))
-                            .foregroundStyle(Theme.ink)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .multilineTextAlignment(.leading)
-                        if isReplaying {
-                            Text("RELECTURE")
-                                .font(.system(size: 9, weight: .heavy, design: .rounded))
-                                .tracking(0.6)
-                                .foregroundStyle(Theme.inkMuted)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(Capsule().fill(Theme.lockedFill.opacity(0.6)))
-                        }
-                    }
-                }
-                Spacer(minLength: 6)
-                CircularProgressGauge(progress: progress, color: color)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 15, weight: .heavy))
-                    .foregroundStyle(Theme.inkMuted)
-                    .frame(width: 36, height: 46)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(isReplaying
+                     ? "RELECTURE · CHAPITRE \(model.lessonIndex(lesson))"
+                     : "\(discipline?.name.uppercased() ?? "") · CHAPITRE \(model.lessonIndex(lesson))")
+                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(.white.opacity(0.75))
+                    .lineLimit(1)
+                Text(lesson.title)
+                    .font(.system(size: 21, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Theme.card)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(RoundedRectangle(cornerRadius: 16).fill(color))
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(color)
+                    .overlay(RoundedRectangle(cornerRadius: 16).fill(.black.opacity(0.22)))
+                    .offset(y: 4)
+            )
+            .padding(.bottom, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressDownStyle())
         .accessibilityHint("Ouvre la liste des chapitres et des thèmes")
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Theme.line).frame(height: 1)
-        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+        .background(Theme.background)
         .zIndex(1)
     }
 
@@ -503,25 +489,25 @@ struct MinduelWordmark: View {
     }
 }
 
-/// Small progress donut used in the sticky lesson banner.
-private struct CircularProgressGauge: View {
-    let progress: Double
+/// One counter of the top row: colored icon and its number, no background.
+private struct HeaderStat: View {
+    let icon: String
     let color: Color
+    let value: Int
+    let label: String
 
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(color.opacity(0.18), lineWidth: 5)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            Text("\(Int((progress * 100).rounded()))%")
-                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.ink)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(color)
+            Text("\(value)")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(value > 0 ? color : Theme.inkMuted)
+                .monospacedDigit()
         }
-        .frame(width: 46, height: 46)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label) : \(value)")
     }
 }
