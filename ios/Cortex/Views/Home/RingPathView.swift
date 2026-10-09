@@ -35,6 +35,7 @@ struct RingPathView: View {
                 }
                 .zIndex(1)
                 .offset(x: horizontalOffset(for: ring, width: pathWidth))
+                .tourAnchor(ring.id == firstPlayableRingId ? .ring : nil)
                 .background {
                     if let cameo = cameo(at: index) {
                         PathMascotCameo(imageName: cameo)
@@ -50,6 +51,11 @@ struct RingPathView: View {
         } action: { newWidth in
             pathWidth = newWidth
         }
+    }
+
+    /// The ring the tour points at: the first one still to play.
+    private var firstPlayableRingId: String? {
+        (rings.first { stateOf($0) == .available } ?? rings.first)?.id
     }
 
     /// Occasional mascot cameo beside the path: roughly one every 7 rings,

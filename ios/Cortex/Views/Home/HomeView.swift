@@ -232,6 +232,7 @@ struct HomeView: View {
             .buttonStyle(.plain)
             HeaderStat(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)", isEmpty: model.store.currentStreak == 0, label: "Série")
         }
+        .tourAnchor(.stats)
         .padding(.horizontal, 24)
         .padding(.top, 6)
         .padding(.bottom, 10)
@@ -275,6 +276,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressDownStyle())
+        .tourAnchor(.banner)
         .accessibilityHint("Ouvre la liste des chapitres et des thèmes")
         .padding(.horizontal, 16)
         .padding(.bottom, 6)

@@ -76,6 +76,7 @@ struct MainTabBar: View {
                 .foregroundStyle(tab.color)
                 .symbolEffect(.bounce, value: isActive)
                 .frame(width: 46, height: 42)
+                .tourAnchor(TourTarget(tab: tab))
                 .background {
                     RoundedRectangle(cornerRadius: 13)
                         .fill(isActive ? tab.color.opacity(0.12) : .clear)

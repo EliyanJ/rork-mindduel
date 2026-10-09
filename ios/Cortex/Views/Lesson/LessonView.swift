@@ -412,7 +412,7 @@ struct LessonView: View {
     private var footer: some View {
         switch session.phase {
         case .answering:
-            Button("Vérifier") {
+            Button("VALIDER") {
                 withAnimation(.spring(duration: 0.35)) {
                     session.submit()
                 }
@@ -441,51 +441,88 @@ struct LessonView: View {
     }
 }
 
+/// Result sheet under the question: "Correct !" or "Incorrect" with the
+/// right answer, an optional "Expliquer ma réponse" that unfolds the
+/// explanation, and the big Continue button in the result colour.
 private struct FeedbackPanel: View {
     let correct: Bool
     let question: Question
     let isLast: Bool
     let onContinue: () -> Void
 
+    @State private var isExplained: Bool = false
+
     private var tint: Color { correct ? Theme.success : Theme.danger }
+    private var deepTint: Color { tint.mix(with: .black, by: 0.25) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Image(systemName: correct ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(tint)
-                Text(correct ? "Excellent !" : "Pas tout à fait…")
-                    .font(.system(.title3, design: .rounded, weight: .heavy))
-                    .foregroundStyle(tint.mix(with: .black, by: 0.2))
+                    .symbolEffect(.bounce, value: correct)
+                Text(correct ? "Correct !" : "Incorrect")
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .foregroundStyle(deepTint)
             }
             if !correct {
-                Text("Bonne réponse : \(question.answer)")
-                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.ink)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bonne réponse :")
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                    Text(question.answer)
+                        .font(.system(.body, design: .rounded, weight: .semibold))
+                }
+                .foregroundStyle(deepTint)
             }
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Explication", systemImage: "lightbulb.fill")
-                    .font(.system(.caption, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.inkMuted)
+            if isExplained {
                 ScrollView {
                     Text(question.explanation)
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .font(.system(.body, design: .rounded, weight: .medium))
                         .foregroundStyle(Theme.ink)
+                        .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxHeight: 130)
+                .frame(maxHeight: 150)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            } else if !question.explanation.isEmpty {
+                Button("EXPLIQUER MA RÉPONSE") {
+                    Haptics.tap()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { isExplained = true }
+                }
+                .buttonStyle(ExplainButtonStyle(tint: tint))
             }
-            Button(isLast ? "Terminer" : "Continuer", action: onContinue)
+            Button(isLast ? "TERMINER" : "CONTINUER", action: onContinue)
                 .buttonStyle(ChunkyButtonStyle(color: tint))
         }
-        .padding(16)
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24)
-                .fill(tint.opacity(0.12))
+            tint.opacity(0.16)
+                .background(Theme.background)
                 .ignoresSafeArea(edges: .bottom)
         )
+    }
+}
+
+/// Outlined secondary button in the result colour.
+private struct ExplainButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+            .tracking(0.4)
+            .foregroundStyle(tint.mix(with: .black, by: 0.2))
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Theme.background.opacity(0.6)))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(tint.opacity(0.7), lineWidth: 2))
+            .offset(y: configuration.isPressed ? 3 : 0)
+            .background(RoundedRectangle(cornerRadius: 16).fill(tint.opacity(0.7)).offset(y: 3))
+            .padding(.bottom, 3)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }

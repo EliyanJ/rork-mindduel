@@ -19,115 +19,115 @@ private enum ThemeIllustration {
     }
 }
 
-/// Pre-quiz revision sheet: a themed illustration plus a handful of
-/// swipeable cards distilled from the ring's real questions, shown before
-/// the mini quiz starts. Matches the app's airy, light aesthetic — the
-/// accent color is the only thing that shifts per discipline.
+/// Pre-quiz reading: one single page that grows paragraph by paragraph.
+/// A gauge on top, the theme illustration, then each tap on "Continuer"
+/// reveals the next key fact under the previous ones (and scrolls to it),
+/// so the player reads at their own pace without facing a wall of text.
+/// Once everything is read, the button starts the quiz.
 struct FunFactIntroView: View {
     let discipline: Discipline
     let cards: [StudyCard]
     let onStart: () -> Void
     let onClose: () -> Void
 
-    @State private var hasAppeared = false
-    @State private var pageIndex = 0
+    @State private var revealedCount: Int = 1
+    @State private var hasAppeared: Bool = false
 
     private var accent: Color { discipline.color }
+    private var points: [StudyPoint] { cards.flatMap(\.points) }
+    private var isFullyRead: Bool { revealedCount >= points.count }
+    private var progress: Double {
+        guard !points.isEmpty else { return 1 }
+        return Double(revealedCount) / Double(points.count)
+    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            Theme.background.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                header
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 18)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(accent.opacity(0.16))
-
-                illustration
-                    .padding(.top, 20)
-                    .padding(.horizontal, 20)
-
-                Text("À retenir avant de jouer")
-                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(Theme.inkMuted)
-                    .padding(.top, 18)
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                TabView(selection: $pageIndex) {
-                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                        StudyCardView(card: card, accent: accent)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 12)
-                            .tag(index)
+        VStack(spacing: 0) {
+            topBar
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        illustration
+                        Text("À retenir avant le quiz")
+                            .font(.system(.title2, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.top, 22)
+                            .padding(.bottom, 6)
+                        Text(discipline.name)
+                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                            .foregroundStyle(accent)
+                            .padding(.bottom, 18)
+                        VStack(alignment: .leading, spacing: 18) {
+                            ForEach(Array(points.prefix(revealedCount).enumerated()), id: \.element.id) { index, point in
+                                FactParagraph(text: point.text, number: index + 1, accent: accent, isLatest: index == revealedCount - 1)
+                                    .id(point.id)
+                                    .transition(.asymmetric(
+                                        insertion: .opacity.combined(with: .offset(y: 14)),
+                                        removal: .opacity
+                                    ))
+                            }
+                        }
+                        Color.clear.frame(height: 24).id("bottom")
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.top, 12)
+                }
+                .scrollIndicators(.hidden)
+                .onChange(of: revealedCount) { _, _ in
+                    withAnimation(.easeOut(duration: 0.35)) {
+                        proxy.scrollTo("bottom", anchor: .bottom)
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .opacity(hasAppeared ? 1 : 0)
-                .offset(y: hasAppeared ? 0 : 10)
-
-                if cards.count > 1 {
-                    pageDots
-                        .padding(.top, 4)
-                        .padding(.bottom, 6)
-                }
-
-                actions
-                    .padding(.horizontal, 20)
-                    .padding(.top, 6)
-                    .padding(.bottom, 14)
             }
+            continueButton
         }
-        .overlay(alignment: .topTrailing) {
+        .background(Theme.background.ignoresSafeArea())
+        .opacity(hasAppeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.35)) { hasAppeared = true }
+        }
+    }
+
+    private var topBar: some View {
+        HStack(spacing: 14) {
             Button {
                 Haptics.tap()
                 onClose()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 34, height: 34)
-                    .background(Circle().fill(Theme.card))
-                    .overlay(Circle().stroke(Theme.line, lineWidth: 1.5))
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Theme.inkMuted)
+                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
-            .padding(.top, 8)
-            .padding(.trailing, 16)
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.5).delay(0.05)) {
-                hasAppeared = true
+            .accessibilityLabel("Fermer")
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.line)
+                    Capsule()
+                        .fill(Theme.success)
+                        .frame(width: max(16, geo.size.width * progress))
+                        .overlay(alignment: .top) {
+                            Capsule()
+                                .fill(.white.opacity(0.3))
+                                .frame(height: 4)
+                                .padding(.horizontal, 8)
+                                .padding(.top, 3)
+                        }
+                }
             }
+            .frame(height: 16)
+            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: progress)
+            .accessibilityLabel("Lecture \(revealedCount) sur \(points.count)")
         }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: "book.fill")
-                    .font(.system(size: 12, weight: .bold))
-                Text("Fiche de révision")
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
-                    .tracking(0.4)
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(Capsule().fill(accent))
-            .padding(.trailing, 40)
-
-            Text(discipline.name)
-                .font(.system(.title2, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.ink)
-        }
+        .padding(.leading, 8)
+        .padding(.trailing, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 6)
     }
 
     private var illustration: some View {
         Theme.canvas
-            .frame(height: 150)
+            .frame(height: 170)
             .overlay {
                 RemoteThemeImage(urlString: discipline.imageUrl) {
                     bundledIllustration
@@ -137,8 +137,6 @@ struct FunFactIntroView: View {
             }
             .clipShape(.rect(cornerRadius: 22))
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
-            .opacity(hasAppeared ? 1 : 0)
-            .scaleEffect(hasAppeared ? 1 : 0.96)
     }
 
     @ViewBuilder
@@ -155,63 +153,55 @@ struct FunFactIntroView: View {
         }
     }
 
-    private var pageDots: some View {
-        HStack(spacing: 7) {
-            ForEach(cards.indices, id: \.self) { index in
-                Circle()
-                    .fill(index == pageIndex ? accent : Theme.line)
-                    .frame(width: index == pageIndex ? 8 : 6, height: index == pageIndex ? 8 : 6)
-                    .animation(.easeOut(duration: 0.2), value: pageIndex)
+    private var continueButton: some View {
+        Button(isFullyRead ? "C'EST PARTI POUR LE QUIZ" : "CONTINUER") {
+            if isFullyRead {
+                Haptics.medium()
+                onStart()
+            } else {
+                Haptics.tap()
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                    revealedCount += 1
+                }
             }
         }
-    }
-
-    private var actions: some View {
-        Button {
-            Haptics.medium()
-            onStart()
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "questionmark.circle.fill")
-                Text("Mini quiz")
-            }
-            .font(.system(.headline, design: .rounded, weight: .heavy))
-            .foregroundStyle(Theme.ink)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(RoundedRectangle(cornerRadius: 18).fill(Theme.gold))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.ink.opacity(0.08), lineWidth: 1))
+        .buttonStyle(ChunkyButtonStyle(color: isFullyRead ? Theme.success : Theme.link, textColor: .white))
+        .animation(.easeOut(duration: 0.2), value: isFullyRead)
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(Theme.background)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.line).frame(height: 1.5)
         }
-        .buttonStyle(.plain)
     }
 }
 
-/// One page of the revision carousel: a short bullet list of hints drawn
-/// from the ring's actual question explanations.
-private struct StudyCardView: View {
-    let card: StudyCard
+/// One key fact of the reading: a numbered dot and roomy body text. The
+/// newest paragraph is fully inked, earlier ones soften slightly so the eye
+/// lands on what just appeared.
+private struct FactParagraph: View {
+    let text: String
+    let number: Int
     let accent: Color
+    let isLatest: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach(card.points) { point in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(accent)
-                        .padding(.top, 1)
-                    Text(point.text)
-                        .font(.system(.body, design: .rounded, weight: .medium))
-                        .foregroundStyle(Theme.ink)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Spacer(minLength: 0)
+        HStack(alignment: .top, spacing: 14) {
+            Text("\(number)")
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(accent))
+                .padding(.top, 1)
+            Text(text)
+                .font(.system(size: 19, weight: .medium, design: .rounded))
+                .foregroundStyle(Theme.ink)
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 1.5))
+        .opacity(isLatest ? 1 : 0.72)
+        .animation(.easeOut(duration: 0.3), value: isLatest)
     }
 }

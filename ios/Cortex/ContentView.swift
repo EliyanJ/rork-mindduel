@@ -10,6 +10,8 @@ struct ContentView: View {
     @State private var isMoreMenuOpen: Bool = false
     @State private var moreSheet: MoreSheet?
     @State private var isWelcomeBackPresented: Bool = false
+    @State private var isTourPresented: Bool = false
+    @AppStorage("hasSeenAppTour") private var hasSeenAppTour: Bool = false
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
     @Environment(\.scenePhase) private var scenePhase
@@ -117,6 +119,17 @@ struct ContentView: View {
         }
         // The tracking permission is asked later, right before the first
         // rewarded video the player chooses to watch.
+    }
+
+    /// Shows the guided tour once, on the Parcours, right after the
+    /// onboarding (never over the splash or the welcome-back screen).
+    private func presentTourIfNeeded() async {
+        guard !hasSeenAppTour, !showSplash, !isWelcomeBackPresented else { return }
+        try? await Task.sleep(for: .milliseconds(900))
+        guard !Task.isCancelled, !hasSeenAppTour, onboardingStore.isCompleted else { return }
+        selectedTab = .parcours
+        isMoreMenuOpen = false
+        withAnimation(.easeIn(duration: 0.3)) { isTourPresented = true }
     }
 
     private func refreshReminders() async {
@@ -236,6 +249,16 @@ struct ContentView: View {
                 }
                 .environment(model)
             }
+            .overlayPreferenceValue(TourAnchorKey.self) { anchors in
+                if isTourPresented {
+                    AppTourView(anchors: anchors) {
+                        hasSeenAppTour = true
+                        withAnimation(.easeOut(duration: 0.3)) { isTourPresented = false }
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .task(id: showSplash) { await presentTourIfNeeded() }
             .onAppear { Analytics.capture("screen_viewed", ["screen": selectedTab.rawValue]) }
             .onChange(of: selectedTab) { _, tab in
                 Analytics.capture("screen_viewed", ["screen": tab.rawValue])
