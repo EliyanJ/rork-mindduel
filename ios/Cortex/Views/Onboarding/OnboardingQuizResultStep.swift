@@ -84,7 +84,7 @@ struct OnboardingQuizResultStep: View {
                     Haptics.success()
                     onFinished()
                 }
-                .buttonStyle(ChunkyButtonStyle(color: Theme.ink, textColor: Theme.gold))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.contrastButton, textColor: Theme.gold))
                 .opacity(captionVisible ? 1 : 0)
             }
             .padding(.horizontal, 24)

@@ -33,7 +33,7 @@ struct ThemeDetailView: View {
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
     /// Soft full-bleed tint of the theme colour.
-    private var background: Color { discipline.color.mix(with: .white, by: 0.72) }
+    private var background: Color { Theme.pastel(discipline.color) }
     private var textColor: Color { discipline.color.mix(with: .black, by: 0.18) }
 
     private var chapters: [Chapter] { model.orderedChapters(for: discipline) }
@@ -215,7 +215,7 @@ struct ThemeDetailView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
-        .background(RoundedRectangle(cornerRadius: 18).fill(.white.opacity(0.6)))
+        .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card.opacity(0.6)))
         .padding(.horizontal, 16)
         .padding(.bottom, 12)
     }
@@ -227,7 +227,7 @@ struct ThemeDetailView: View {
             GeometryReader { geo in
                 let ratio = packsTotal > 0 ? Double(packsDone) / Double(packsTotal) : 0
                 ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.6))
+                    Capsule().fill(Theme.card.opacity(0.6))
                     if ratio > 0 {
                         Capsule()
                             .fill(Theme.ink)

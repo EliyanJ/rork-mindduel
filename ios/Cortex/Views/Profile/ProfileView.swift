@@ -85,7 +85,7 @@ struct ProfileView: View {
                         Image(systemName: "pencil.circle.fill")
                             .font(.system(size: 18))
                             .foregroundStyle(Theme.primary)
-                            .background(Circle().fill(.white))
+                            .background(Circle().fill(Theme.card))
                     }
             }
             .buttonStyle(.plain)

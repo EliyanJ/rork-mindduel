@@ -148,8 +148,8 @@ private struct ThemePillCard: View {
     /// Free players see every theme but picking one is a Premium perk.
     var isLocked: Bool = false
 
-    private var pastel: Color { discipline.color.mix(with: .white, by: 0.72) }
-    private var textColor: Color { discipline.color.mix(with: .black, by: 0.18) }
+    private var pastel: Color { Theme.pastel(discipline.color) }
+    private var textColor: Color { Theme.pastelInk(discipline.color) }
 
     var body: some View {
         HStack(spacing: 8) {

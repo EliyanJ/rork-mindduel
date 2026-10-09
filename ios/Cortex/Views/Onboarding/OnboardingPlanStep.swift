@@ -101,7 +101,7 @@ struct OnboardingPlanStep: View {
                     Haptics.success()
                     onFinish()
                 }
-                .buttonStyle(ChunkyButtonStyle(color: Theme.ink, textColor: Theme.gold))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.contrastButton, textColor: Theme.gold))
                 .padding(.top, 8)
             }
             .padding(.horizontal, 24)

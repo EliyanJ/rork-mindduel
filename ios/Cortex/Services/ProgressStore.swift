@@ -309,6 +309,25 @@ final class ProgressStore {
         save()
     }
 
+    // MARK: - Placement test ("Avancer ici ?")
+
+    private static let testUnlockedKey = "minduel.testUnlockedChapters.v1"
+    /// Score required to skip ahead with a placement test.
+    static let placementPassScore: Double = 0.8
+    static let placementQuestionCount = 15
+
+    private(set) var testUnlockedChapters: Set<String> = Set(UserDefaults.standard.stringArray(forKey: ProgressStore.testUnlockedKey) ?? [])
+
+    /// Whether a chapter was opened early by passing its placement test.
+    func isChapterUnlockedByTest(_ chapterId: String) -> Bool {
+        testUnlockedChapters.contains(chapterId)
+    }
+
+    func unlockChapterByTest(_ chapterId: String) {
+        testUnlockedChapters.insert(chapterId)
+        UserDefaults.standard.set(Array(testUnlockedChapters), forKey: Self.testUnlockedKey)
+    }
+
     // MARK: - Ring path ("ronds")
 
     /// Score a ring must reach to unlock the next one.

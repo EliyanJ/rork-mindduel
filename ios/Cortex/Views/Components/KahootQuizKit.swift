@@ -649,7 +649,7 @@ struct QuizLeaderboardOverlay: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity)
-        .background(Capsule().fill(.white))
+        .background(Capsule().fill(Theme.quizCard))
         .overlay(Capsule().stroke(Theme.danger, lineWidth: 2))
         .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
     }

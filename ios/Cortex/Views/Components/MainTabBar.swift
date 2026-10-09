@@ -92,7 +92,7 @@ struct MainTabBar: View {
                         Circle()
                             .fill(Theme.danger)
                             .frame(width: 10, height: 10)
-                            .overlay(Circle().stroke(.white, lineWidth: 2))
+                            .overlay(Circle().stroke(Theme.card, lineWidth: 2))
                             .offset(x: -4, y: 4)
                     }
                 }

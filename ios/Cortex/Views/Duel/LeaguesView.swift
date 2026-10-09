@@ -114,7 +114,7 @@ struct LeaguesView: View {
                         .fill(
                             isUnlocked
                                 ? AnyShapeStyle(LinearGradient(colors: league.colors.map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing))
-                                : AnyShapeStyle(Color(hex: "D9D4CC"))
+                                : AnyShapeStyle(Theme.lockedFill)
                         )
                     TrophyShape()
                         .stroke(.white.opacity(isUnlocked ? 0.5 : 0.3), lineWidth: 2)

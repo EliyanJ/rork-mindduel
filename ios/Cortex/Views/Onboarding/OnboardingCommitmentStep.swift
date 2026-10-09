@@ -107,7 +107,7 @@ struct OnboardingCommitmentStep: View {
                     commitmentText = displayName
                     onNext()
                 }
-                .buttonStyle(ChunkyButtonStyle(color: Theme.ink, textColor: Theme.gold))
+                .buttonStyle(ChunkyButtonStyle(color: Theme.contrastButton, textColor: Theme.gold))
                 .disabled(!hasSignature)
                 .opacity(hasSignature ? 1 : 0.4)
                 .animation(.spring(response: 0.35, dampingFraction: 0.8), value: hasSignature)

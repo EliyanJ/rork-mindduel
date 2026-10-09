@@ -152,7 +152,7 @@ struct PaywallView: View {
         .background(
             RoundedRectangle(cornerRadius: 22)
                 .fill(Theme.card)
-                .shadow(color: Theme.ink.opacity(0.06), radius: 14, y: 6)
+                .shadow(color: .black.opacity(0.06), radius: 14, y: 6)
         )
     }
 

@@ -98,7 +98,7 @@ struct OnboardingDiagnosticResultStep: View {
                                 Text("Commencer par \(weakest.disciplineName)")
                             }
                         }
-                        .buttonStyle(ChunkyButtonStyle(color: Theme.ink, textColor: Theme.gold))
+                        .buttonStyle(ChunkyButtonStyle(color: Theme.contrastButton, textColor: Theme.gold))
                     }
 
                     Button("Voir mon parcours complet") {

@@ -35,6 +35,13 @@ struct RingPathView: View {
                 }
                 .zIndex(1)
                 .offset(x: horizontalOffset(for: ring, width: pathWidth))
+                .background {
+                    if let cameo = cameo(at: index) {
+                        PathMascotCameo(imageName: cameo)
+                            .offset(x: cameoOffset(for: ring, width: pathWidth))
+                            .allowsHitTesting(false)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -45,6 +52,23 @@ struct RingPathView: View {
         }
     }
 
+    /// Occasional mascot cameo beside the path: roughly one every 7 rings,
+    /// never on the very first ones, rotating through the stylised poses.
+    private func cameo(at index: Int) -> String? {
+        guard index % 7 == 3 else { return nil }
+        let poses = PathMascotCameo.poses
+        var generator = RingWobbleGenerator(seed: rings[index].chapterId)
+        let start = Int.random(in: 0..<poses.count, using: &generator)
+        return poses[(start + index / 7) % poses.count]
+    }
+
+    /// Puts the cameo on the side the path leaves free.
+    private func cameoOffset(for ring: PathRing, width: CGFloat) -> CGFloat {
+        let ringX = horizontalOffset(for: ring, width: width)
+        let side: CGFloat = ringX > 0 ? -1 : 1
+        return side * min(width * 0.3, 120)
+    }
+
     /// Hairline S-curve joining two consecutive tiles: a pale stroke of the
     /// theme colour, no outline, no texture — intentionally discreet.
     @ViewBuilder
@@ -53,7 +77,7 @@ struct RingPathView: View {
         let fromX = horizontalOffset(for: previous, width: pathWidth)
         let toX = horizontalOffset(for: ring, width: pathWidth)
         TrailConnector(fromX: fromX, toX: toX, accent: accent)
-            .frame(height: 96)
+            .frame(height: 56)
     }
 
     /// Deterministic pseudo-random horizontal wobble per ring, so the path
@@ -93,6 +117,28 @@ private struct RingWobbleGenerator: RandomNumberGenerator {
     }
 }
 
+/// A stylised 3D mascot pose resting quietly beside the path.
+private struct PathMascotCameo: View {
+    static let poses = [
+        "book_mascot_peeking_cloud",
+        "book_mascot_sleeping",
+        "book_mascot_reading",
+        "book_mascot_waving",
+        "book_mascot_sitting"
+    ]
+
+    let imageName: String
+
+    var body: some View {
+        Image(imageName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 118, height: 118)
+            .opacity(0.8)
+            .accessibilityHidden(true)
+    }
+}
+
 /// Fine cord joining two tiles: a single pale S-curve between their
 /// (offset) centers, in the spirit of the soft track on the reference path.
 private struct TrailConnector: View {
@@ -104,7 +150,7 @@ private struct TrailConnector: View {
         GeometryReader { proxy in
             TrailShape(fromX: fromX, toX: toX)
                 .stroke(
-                    accent.mix(with: .white, by: 0.68),
+                    Theme.pastel(accent, strength: 0.7),
                     style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round)
                 )
                 .frame(width: proxy.size.width, height: proxy.size.height)
@@ -129,9 +175,9 @@ private struct TrailShape: Shape {
     }
 }
 
-/// A single step on the path: a rounded-square tile with a small "ROND n"
-/// badge on top, stacked on a darker offset base for the 3D chunky look.
-/// The recap is deliberately wider, gold and crowned so it reads as a gate.
+/// A single step on the path: a thick Duolingo-style disc — slightly domed
+/// face with a soft highlight, sitting on a clearly visible darker edge that
+/// it sinks into when pressed. No labels: the icon says it all.
 struct RingNodeView: View {
     let ring: PathRing
     let state: ChapterState
@@ -143,8 +189,9 @@ struct RingNodeView: View {
     @State private var isPulsing: Bool = false
 
     private var isRecap: Bool { ring.kind == .recap }
-    private var tileSize: CGFloat { isRecap ? 106 : 90 }
-    private var tileWidth: CGFloat { isRecap ? 128 : 90 }
+    private var faceWidth: CGFloat { isRecap ? 92 : 76 }
+    private var faceHeight: CGFloat { isRecap ? 82 : 68 }
+    private var depth: CGFloat { isRecap ? 9 : 8 }
     private var isLocked: Bool { state == .locked }
 
     var body: some View {
@@ -152,13 +199,37 @@ struct RingNodeView: View {
             Haptics.medium()
             action()
         } label: {
-            VStack(spacing: 7) {
-                badge
-                tile
-                caption
+            EmptyView()
+        }
+        .buttonStyle(
+            DiscButtonStyle(
+                faceWidth: faceWidth,
+                faceHeight: faceHeight,
+                depth: depth,
+                face: fillColor,
+                edge: edgeColor,
+                isLocked: isLocked,
+                icon: iconName,
+                iconSize: isRecap ? 32 : 28,
+                iconColor: iconColor
+            )
+        )
+        .background {
+            if state == .available {
+                Ellipse()
+                    .stroke(ringAccent.opacity(0.35), lineWidth: 5)
+                    .frame(width: faceWidth + 24, height: faceHeight + depth + 22)
+                    .scaleEffect(isPulsing ? 1.04 : 0.96)
+                    .offset(y: depth / 2)
             }
         }
-        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            if let cooldownDate {
+                CooldownLabel(date: cooldownDate)
+                    .offset(y: 26)
+            }
+        }
+        .padding(.vertical, 10)
         .disabled(isLocked && cooldownDate == nil)
         .onAppear {
             guard state == .available else { return }
@@ -169,70 +240,9 @@ struct RingNodeView: View {
         .accessibilityLabel(accessibilityText)
     }
 
-    /// Small pill above the tile, like the "LEÇON 1" tag over a lesson card.
-    private var badge: some View {
-        Text(isRecap ? "RÉCAP" : "ROND \(ring.indexInChapter + 1)")
-            .font(.system(size: 10, weight: .heavy, design: .rounded))
-            .tracking(0.6)
-            .foregroundStyle(isLocked ? Theme.inkMuted : .white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(
-                Capsule().fill(isLocked ? Theme.lockedFill : ringAccent)
-            )
-    }
-
-    private var tile: some View {
-        ZStack {
-            if state == .available {
-                Circle()
-                    .stroke(ringAccent.opacity(0.35), lineWidth: 3.5)
-                    .frame(width: tileWidth + 14, height: tileSize + 14)
-                    .scaleEffect(isPulsing ? 1.05 : 0.94)
-            }
-            ZStack {
-                Image(systemName: iconName)
-                    .font(.system(size: isRecap ? 34 : 27, weight: .bold))
-                    .foregroundStyle(iconColor)
-            }
-            .frame(width: tileWidth, height: tileSize)
-            .background(
-                Circle()
-                    .fill(fillColor.mix(with: .black, by: 0.24))
-                    .offset(y: 5)
-            )
-            .background(
-                Circle()
-                    .fill(fillColor)
-            )
-        }
-        .frame(height: tileSize + 16)
-    }
-
-    /// The checkmark reads as a clear success cue in green once a ring is
-    /// mastered; every other icon stays white/muted on its coloured disc.
     private var iconColor: Color {
-        if isLocked { return Theme.inkMuted }
-        if state == .mastered { return Theme.success }
+        if isLocked { return Theme.lockedInk }
         return .white
-    }
-
-    @ViewBuilder
-    private var caption: some View {
-        if isRecap {
-            Text(ring.chapterTitle)
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .foregroundStyle(isLocked ? Theme.inkMuted : Theme.ink)
-                .multilineTextAlignment(.center)
-                .frame(width: 190)
-        }
-        if let cooldownDate {
-            CooldownLabel(date: cooldownDate)
-        } else if !isLocked, !isRecap {
-            Text(ring.tier.label)
-                .font(.system(.caption2, design: .rounded, weight: .bold))
-                .foregroundStyle(Theme.inkMuted)
-        }
     }
 
     private var cooldownDate: Date? {
@@ -242,27 +252,27 @@ struct RingNodeView: View {
 
     private var ringAccent: Color { isRecap ? Theme.gold : color }
 
-    /// Lighter, brighter tint than the raw chapter accent — the whole path
-    /// reads as pastel and inviting rather than saturated and heavy.
     private var fillColor: Color {
         if isLocked { return Theme.lockedFill }
         switch state {
-        case .mastered: return Theme.gold.mix(with: .white, by: 0.12)
+        case .mastered: return Theme.gold
         case .available, .completed:
-            return isRecap
-                ? Theme.gold.mix(with: Theme.primary, by: 0.25).mix(with: .white, by: 0.1)
-                : color.mix(with: .white, by: 0.16)
+            return isRecap ? Theme.gold.mix(with: Theme.primary, by: 0.25) : color
         case .locked: return Theme.lockedFill
         }
     }
 
+    private var edgeColor: Color {
+        if isLocked { return Theme.lockedFill.mix(with: .black, by: 0.28) }
+        return fillColor.mix(with: .black, by: 0.25)
+    }
+
     private var iconName: String {
         if cooldownDate != nil { return "hourglass" }
-        if isLocked { return "lock.fill" }
+        if isLocked { return isRecap ? "trophy.fill" : "star.fill" }
         if isRecap { return "crown.fill" }
         switch state {
-        case .mastered: return "checkmark"
-        case .completed: return "arrow.clockwise"
+        case .mastered, .completed: return "checkmark"
         default: return "star.fill"
         }
     }
@@ -273,6 +283,56 @@ struct RingNodeView: View {
         }
         if isLocked { return "\(ring.lessonTitle), verrouillé" }
         return ring.lessonTitle
+    }
+}
+
+/// Draws the 3D disc and sinks its face onto the edge while pressed.
+private struct DiscButtonStyle: ButtonStyle {
+    let faceWidth: CGFloat
+    let faceHeight: CGFloat
+    let depth: CGFloat
+    let face: Color
+    let edge: Color
+    let isLocked: Bool
+    let icon: String
+    let iconSize: CGFloat
+    let iconColor: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = configuration.isPressed
+        ZStack(alignment: .top) {
+            Ellipse()
+                .fill(edge)
+                .frame(width: faceWidth, height: faceHeight)
+                .offset(y: depth)
+            ZStack {
+                Ellipse().fill(face)
+                // Soft dome: lighter crown, gently darker rim.
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [.white.opacity(isLocked ? 0.06 : 0.22), .clear],
+                            center: UnitPoint(x: 0.45, y: 0.28),
+                            startRadius: 2,
+                            endRadius: faceWidth * 0.55
+                        )
+                    )
+                Ellipse()
+                    .fill(.white.opacity(isLocked ? 0.05 : 0.28))
+                    .frame(width: faceWidth * 0.42, height: faceHeight * 0.16)
+                    .offset(x: -faceWidth * 0.12, y: -faceHeight * 0.3)
+                    .blur(radius: 1.5)
+                Image(systemName: icon)
+                    .font(.system(size: iconSize, weight: .black))
+                    .foregroundStyle(iconColor)
+                    .shadow(color: .black.opacity(isLocked ? 0 : 0.15), radius: 0, y: 2)
+            }
+            .frame(width: faceWidth, height: faceHeight)
+            .offset(y: pressed ? depth - 1 : 0)
+        }
+        .frame(width: faceWidth, height: faceHeight + depth, alignment: .top)
+        .contentShape(Ellipse())
+        .animation(.easeOut(duration: 0.08), value: pressed)
     }
 }
 

@@ -13,6 +13,9 @@ struct HomeView: View {
     /// A lesson the player picked from the menu to replay; nil tracks the
     /// current lesson of the journey.
     @State private var focusedLessonId: String?
+    @State private var placementLesson: PathLesson?
+    @State private var advanceChoiceLesson: PathLesson?
+    @State private var isPaywallPresented = false
 
     /// Lesson currently on display: the menu pick when it still exists,
     /// otherwise the current lesson of whichever path is active — a single
@@ -94,6 +97,44 @@ struct HomeView: View {
                     isMenuPresented = false
                 }
             }
+        }
+        .fullScreenCover(item: $placementLesson) { next in
+            PlacementTestView(
+                lesson: next,
+                items: model.placementItems(for: next),
+                accent: model.discipline(withId: next.disciplineId)?.color ?? Theme.primary,
+                onPassed: {
+                    Haptics.success()
+                    model.store.unlockChapterByTest(next.chapterId)
+                },
+                onClose: {
+                    let passed = model.isLessonUnlocked(next)
+                    placementLesson = nil
+                    if passed { focusedLessonId = next.id }
+                }
+            )
+        }
+        .sheet(item: $advanceChoiceLesson) { next in
+            AdvanceChoiceSheet(
+                chapterTitle: next.title,
+                onGoPremium: {
+                    advanceChoiceLesson = nil
+                    isPaywallPresented = true
+                },
+                onWatchVideo: {
+                    advanceChoiceLesson = nil
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(400))
+                        placementLesson = next
+                    }
+                },
+                onClose: { advanceChoiceLesson = nil }
+            )
+            .presentationDetents([.height(520)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isPaywallPresented) {
+            PaywallView(source: "advance_test")
         }
         .onChange(of: model.currentLesson?.id ?? "") { _, _ in
             // The journey moved on — stop showing an older, menu-picked lesson.
@@ -196,12 +237,6 @@ struct HomeView: View {
                     Color.clear
                         .frame(height: 1)
                         .id("pathTop")
-                    Text("\(lesson.title) · \(lesson.rings.count) épreuves")
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                        .frame(maxWidth: .infinity)
-                        .padding(.bottom, 6)
-
                     RingPathView(
                         rings: lesson.rings,
                         accent: model.discipline(withId: lesson.disciplineId)?.color ?? Theme.primary,
@@ -211,21 +246,21 @@ struct HomeView: View {
                     ) { ring in
                         startRing(ring)
                     }
+                    .padding(.horizontal, 16)
+                    if let next = model.lesson(after: lesson) {
+                        upNextBand(next) {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                proxy.scrollTo("pathTop", anchor: .top)
+                            }
+                        }
+                        .padding(.top, 36)
+                    }
                     Color.clear
                         .frame(height: 1)
                         .id("pathBottom")
                 }
-                .padding(.horizontal, 16)
                 .padding(.top, 18)
-                .padding(.bottom, 110)
-                .background(alignment: .top) {
-                    GeometryReader { geometry in
-                        AlternatingBackgroundPattern(
-                            width: geometry.size.width,
-                            tileCount: backgroundTileCount(width: geometry.size.width, ringCount: lesson.rings.count)
-                        )
-                    }
-                }
+                .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
             .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -274,18 +309,58 @@ struct HomeView: View {
         }
     }
 
-    /// Estimates how many stacked background tiles are needed for one lesson's
-    /// path, from its ring count rather than from a live-measured height — the
-    /// lazy stack would otherwise grow the background as it mounts.
-    private func backgroundTileCount(width: CGFloat, ringCount: Int) -> Int {
-        let tileAspectRatio: CGFloat = 887.0 / 1774.0
-        let tileHeight = width / tileAspectRatio
-        guard tileHeight > 0 else { return 1 }
-        let perRingPitch: CGFloat = 170
-        let headerAllowance: CGFloat = 220
-        let estimatedContentHeight = CGFloat(ringCount) * perRingPitch + headerAllowance
-        let minHeight = max(estimatedContentHeight, UIScreen.main.bounds.height * 1.2)
-        return max(1, Int((minHeight / tileHeight).rounded(.up)))
+    /// Duolingo-style "À SUIVRE" band closing the path: next chapter, a
+    /// short line, and "AVANCER ICI ?" to skip ahead with a placement test.
+    private func upNextBand(_ next: PathLesson, onShow: @escaping () -> Void) -> some View {
+        let isUnlocked = model.isLessonUnlocked(next)
+        return VStack(spacing: 14) {
+            Text("À SUIVRE")
+                .font(.system(.caption, design: .rounded, weight: .heavy))
+                .tracking(0.8)
+                .foregroundStyle(Theme.inkMuted)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.line))
+            HStack(spacing: 8) {
+                if !isUnlocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 20, weight: .heavy))
+                }
+                Text(next.title)
+                    .font(.system(.title2, design: .rounded, weight: .heavy))
+                    .multilineTextAlignment(.center)
+            }
+            .foregroundStyle(isUnlocked ? Theme.ink : Theme.inkMuted)
+            .padding(.horizontal, 24)
+            Text(isUnlocked
+                 ? "Ce chapitre est ouvert, lance-toi !"
+                 : "Déjà calé sur le sujet ? Passe le test et saute directement à ce chapitre.")
+                .font(.system(.body, design: .rounded, weight: .medium))
+                .foregroundStyle(Theme.inkMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 28)
+            Button(isUnlocked ? "Y ALLER" : "AVANCER ICI ?") {
+                Haptics.tap()
+                if isUnlocked {
+                    focusedLessonId = next.id
+                    onShow()
+                } else if store.isPremium {
+                    placementLesson = next
+                } else {
+                    advanceChoiceLesson = next
+                }
+            }
+            .buttonStyle(OutlineChunkyButtonStyle())
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+        }
+        .padding(.top, 26)
+        .padding(.bottom, 34)
+        .frame(maxWidth: .infinity)
+        .background(Theme.raised)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.line).frame(height: 1.5)
+        }
     }
 
     // MARK: - Launching
@@ -571,29 +646,5 @@ private struct CircularProgressGauge: View {
                 .lineLimit(1)
         }
         .frame(width: 46, height: 46)
-    }
-}
-
-/// Stacks the two decorative background illustrations one after another,
-/// alternating down the whole scrollable path so it never abruptly stops
-/// even on long lessons.
-private struct AlternatingBackgroundPattern: View {
-    let width: CGFloat
-    let tileCount: Int
-
-    private static let tileNames = ["BackgroundPatternIcons", "BackgroundPatternMascots"]
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(0..<tileCount, id: \.self) { index in
-                Image(Self.tileNames[index % Self.tileNames.count])
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: width)
-            }
-        }
-        .opacity(0.32)
-        .allowsHitTesting(false)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }

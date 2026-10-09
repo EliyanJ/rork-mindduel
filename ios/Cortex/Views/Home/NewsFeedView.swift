@@ -56,7 +56,7 @@ struct NewsFeedView: View {
                 body: "Bronze, Argent, Or, Platine, Maître : grimpe les divisions en gagnant tes duels et suis ta place dans « Mon classement ».",
                 image: "MascotTrophy",
                 isSystemImage: false,
-                background: Color(hex: "FFE7C2"),
+                background: Theme.pastel(Theme.primary, strength: 0.78),
                 cta: "VOIR MA LIGUE",
                 destination: .classement
             ),
@@ -68,7 +68,7 @@ struct NewsFeedView: View {
                 body: "Leçons illimitées, choix libre des thèmes, mode classé et duels sans limite. Essai gratuit de 7 jours sur l'offre annuelle.",
                 image: "MascotGift",
                 isSystemImage: false,
-                background: Color(hex: "FFF1B8"),
+                background: Theme.pastel(Theme.gold, strength: 0.7),
                 cta: "DÉCOUVRIR",
                 destination: .premium
             )
@@ -85,7 +85,7 @@ struct NewsFeedView: View {
                     body: "De nouvelles questions ont été ajoutées en \(discipline.name.lowercased()). Teste tes connaissances et fais grimper ta série !",
                     image: discipline.illustratedIconName ?? discipline.icon,
                     isSystemImage: discipline.illustratedIconName == nil,
-                    background: discipline.color.opacity(0.22),
+                    background: Theme.pastel(discipline.color, strength: 0.75),
                     cta: "TESTE TES CONNAISSANCES",
                     destination: .themes
                 )
@@ -100,7 +100,7 @@ struct NewsFeedView: View {
                 body: "Deux leçons par jour suffisent pour mieux retenir ce que tu apprends. Ta flamme te remerciera !",
                 image: "MascotStudy",
                 isSystemImage: false,
-                background: Color(hex: "FCEFD9"),
+                background: Theme.pastel(Color(hex: "E8A317"), strength: 0.8),
                 cta: nil,
                 destination: nil
             )
@@ -114,7 +114,7 @@ struct NewsFeedView: View {
                 body: "Partage ton code ami ou scanne celui d'un proche pour comparer vos points dans le classement entre amis.",
                 image: "MascotDuel",
                 isSystemImage: false,
-                background: Color(hex: "D7F5F2"),
+                background: Theme.pastel(Color(hex: "00D1B2"), strength: 0.8),
                 cta: "JOUER UN DUEL",
                 destination: .duel
             )

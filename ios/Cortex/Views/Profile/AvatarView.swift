@@ -46,20 +46,20 @@ struct AvatarView: View {
         let eyeSize = size * 0.1
         switch config.eyeStyle {
         case .round:
-            Circle().fill(Theme.quizInk).frame(width: eyeSize, height: eyeSize)
+            Circle().fill(Theme.faceInk).frame(width: eyeSize, height: eyeSize)
         case .sleepy:
-            Capsule().fill(Theme.quizInk).frame(width: eyeSize * 1.3, height: eyeSize * 0.35)
+            Capsule().fill(Theme.faceInk).frame(width: eyeSize * 1.3, height: eyeSize * 0.35)
         case .star:
             Image(systemName: "star.fill")
                 .resizable()
                 .frame(width: eyeSize, height: eyeSize)
-                .foregroundStyle(Theme.quizInk)
+                .foregroundStyle(Theme.faceInk)
         case .wink:
-            Capsule().fill(Theme.quizInk).frame(width: eyeSize * 1.1, height: eyeSize * 0.3)
+            Capsule().fill(Theme.faceInk).frame(width: eyeSize * 1.1, height: eyeSize * 0.3)
         case .wide:
-            Circle().fill(Theme.quizInk).frame(width: eyeSize * 1.4, height: eyeSize * 1.4)
+            Circle().fill(Theme.faceInk).frame(width: eyeSize * 1.4, height: eyeSize * 1.4)
         case .happy:
-            Capsule().fill(Theme.quizInk)
+            Capsule().fill(Theme.faceInk)
                 .frame(width: eyeSize * 1.2, height: eyeSize * 0.4)
                 .rotationEffect(.degrees(-20))
         }
@@ -69,20 +69,20 @@ struct AvatarView: View {
     private var mouthShape: some View {
         switch config.mouthStyle {
         case .smile:
-            SmileShape().stroke(Theme.quizInk, style: StrokeStyle(lineWidth: max(1.5, size * 0.035), lineCap: .round))
+            SmileShape().stroke(Theme.faceInk, style: StrokeStyle(lineWidth: max(1.5, size * 0.035), lineCap: .round))
                 .frame(width: size * 0.32, height: size * 0.14)
         case .grin:
             RoundedRectangle(cornerRadius: size * 0.05)
-                .fill(Theme.quizInk)
+                .fill(Theme.faceInk)
                 .frame(width: size * 0.34, height: size * 0.1)
         case .surprised:
-            Circle().fill(Theme.quizInk).frame(width: size * 0.14, height: size * 0.14)
+            Circle().fill(Theme.faceInk).frame(width: size * 0.14, height: size * 0.14)
         case .cool:
-            Capsule().fill(Theme.quizInk).frame(width: size * 0.28, height: size * 0.045)
+            Capsule().fill(Theme.faceInk).frame(width: size * 0.28, height: size * 0.045)
         case .shy:
-            Capsule().fill(Theme.quizInk.opacity(0.7)).frame(width: size * 0.16, height: size * 0.05)
+            Capsule().fill(Theme.faceInk.opacity(0.7)).frame(width: size * 0.16, height: size * 0.05)
         case .laugh:
-            SmileShape().fill(Theme.quizInk)
+            SmileShape().fill(Theme.faceInk)
                 .frame(width: size * 0.34, height: size * 0.18)
         }
     }

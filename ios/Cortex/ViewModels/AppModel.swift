@@ -242,6 +242,29 @@ final class AppModel {
         return group.first { !isLessonDone($0) } ?? group.last
     }
 
+    /// The lesson right after `lesson` on the active path (the theme's own
+    /// path when one is selected, the mixed journey otherwise).
+    func lesson(after lesson: PathLesson) -> PathLesson? {
+        let group = selectedDisciplineId.map { lessons(inDiscipline: $0) } ?? lessons
+        guard let index = group.firstIndex(where: { $0.id == lesson.id }), index + 1 < group.count else { return nil }
+        return group[index + 1]
+    }
+
+    /// The hardest questions of a lesson, used by its placement test.
+    func placementItems(for lesson: PathLesson) -> [LessonItem] {
+        let supported = lesson.rings.flatMap(\.items).filter { $0.question.type != .anagram }
+        var seen = Set<String>()
+        let unique = supported.filter { seen.insert($0.id).inserted }
+        let hardestFirst = lesson.rings.first { $0.kind == .recap }?.items.filter { $0.question.type != .anagram } ?? []
+        var picked: [LessonItem] = []
+        var used = Set<String>()
+        for item in hardestFirst + unique.shuffled() where picked.count < ProgressStore.placementQuestionCount {
+            guard used.insert(item.id).inserted else { continue }
+            picked.append(item)
+        }
+        return picked.shuffled()
+    }
+
     /// 1-based position of a lesson within its theme ("LEÇON 2").
     func lessonIndex(_ lesson: PathLesson) -> Int {
         let group = lessons(inDiscipline: lesson.disciplineId)
@@ -279,6 +302,8 @@ final class AppModel {
             let allCleared = siblings.allSatisfy { store.isRingPassed($0.id) }
             return allCleared ? nil : .sequence
         }
+        // First ring of a chapter opened early through its placement test.
+        if ring.indexInChapter == 0, store.isChapterUnlockedByTest(ring.chapterId) { return nil }
         guard let index = pathIndex(of: ring), index > 0 else { return nil }
         let previous = rings[index - 1]
         // Already-cleared rings stay replayable.

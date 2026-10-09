@@ -75,7 +75,7 @@ struct OnboardingDiagnosticProposeStep: View {
                         Haptics.success()
                         onStart()
                     }
-                    .buttonStyle(ChunkyButtonStyle(color: Theme.ink, textColor: Theme.gold))
+                    .buttonStyle(ChunkyButtonStyle(color: Theme.contrastButton, textColor: Theme.gold))
 
                     Button("Passer") {
                         Haptics.tap()
