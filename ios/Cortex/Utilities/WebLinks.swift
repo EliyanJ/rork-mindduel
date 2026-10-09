@@ -3,7 +3,7 @@ import Foundation
 /// Canonical URLs for the legal/support pages already live on the web app,
 /// shown in-app via `LegalWebView` wherever Apple requires them.
 enum WebLinks {
-    private static let base = "https://pqvvji2o1xg9ygfbwj3m1-web.rork.live"
+    private static let base = "https://mindduel-kqfozex.rork.app"
 
     static let appStore = URL(string: "https://apps.apple.com/app/id6788570245")!
     static let privacy = URL(string: "\(base)/privacy")!
