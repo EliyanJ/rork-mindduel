@@ -11,7 +11,7 @@ import { isLegacyExpired, legacyAnswer, LEGACY_DEADLINE_MS } from "./security-ro
 
 type Env = { DO: Fetcher & { setAlarm(className: string, id: string, time: number): Promise<void> } };
 
-// "team10" (10v10), "solo" (1v19), "oneVsTen" (1v10), or a free-form
+// "team10" (10v10), "solo" (1v19), "oneVsTen" (1v9 — wire name kept for older builds), or a free-form
 // `custom:<allies>:<opponents>` room.
 type PartyMode = string;
 

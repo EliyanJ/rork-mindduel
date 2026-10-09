@@ -1,7 +1,7 @@
 import Foundation
 
 /// The party formats: 10-vs-10 team score, 1-vs-19 individual ranking,
-/// 1-vs-10 (a lone challenger against a team of ten), or a free-form custom
+/// 1-vs-9 (a lone challenger against a team of nine), or a free-form custom
 /// room where the host picked both team sizes and invited people with a
 /// share code. Wire format mirrors the server exactly: "team10", "solo",
 /// "oneVsTen", or `custom:<allies>:<opponents>`.

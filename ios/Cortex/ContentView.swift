@@ -149,7 +149,7 @@ struct ContentView: View {
     }
 
     private enum MoreSheet: String, Identifiable {
-        case friends, qrCode, settings, support
+        case news, friends, qrCode, settings, support
         var id: String { rawValue }
     }
 
@@ -177,16 +177,8 @@ struct ContentView: View {
             DuelHomeView()
         case .classement:
             LeaguesView()
-        case .actus:
-            NewsFeedView { destination in
-                switch destination {
-                case .tab(let tab):
-                    selectedTab = tab
-                case .chapters:
-                    selectedTab = .parcours
-                    model.isChaptersMenuRequested = true
-                }
-            }
+        case .missions:
+            MissionsView()
         case .premium:
             if store.isPremium {
                 PremiumActiveView()
@@ -206,6 +198,7 @@ struct ContentView: View {
                     MoreMenuPanel(
                         incomingRequests: online.incomingRequests.count,
                         onProfile: { openFromMenu { selectedTab = .plus } },
+                        onNews: { openFromMenu { moreSheet = .news } },
                         onFriends: { openFromMenu { moreSheet = .friends } },
                         onQRCode: { openFromMenu { moreSheet = .qrCode } },
                         onSettings: { openFromMenu { moreSheet = .settings } },
@@ -226,6 +219,17 @@ struct ContentView: View {
             .sheet(item: $moreSheet) { sheet in
                 Group {
                     switch sheet {
+                    case .news:
+                        NewsFeedView { destination in
+                            moreSheet = nil
+                            switch destination {
+                            case .tab(let tab):
+                                selectedTab = tab
+                            case .chapters:
+                                selectedTab = .parcours
+                                model.isChaptersMenuRequested = true
+                            }
+                        }
                     case .friends: FriendsView()
                     case .qrCode: FriendQRView()
                     case .settings: SettingsView()

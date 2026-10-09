@@ -37,13 +37,13 @@ struct DuelHelpView: View {
                         icon: "trophy.fill",
                         color: Theme.gold,
                         title: "Le classement mondial",
-                        text: "Le classement mondial trie tous les joueurs par ELO décroissant. Il se met à jour après chaque match classé — le top 3 est visible directement sur l'écran Duel."
+                        text: "Le classement mondial trie tous les joueurs par ELO décroissant. Il se met à jour après chaque match classé."
                     )
                     helpSection(
                         icon: "person.2.fill",
                         color: Theme.primary,
                         title: "Jouer entre amis",
-                        text: "Ajoute des amis avec leur code ami pour suivre leur ELO et vous comparer, depuis l'écran Amis accessible sur l'écran Duel."
+                        text: "Ajoute des amis avec leur code ami pour suivre leur ELO et vous comparer, depuis « Amis » dans le menu « … » en bas à droite."
                     )
                 }
                 .padding(18)

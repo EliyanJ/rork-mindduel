@@ -3,7 +3,7 @@ import SwiftUI
 /// Every destination reachable from the fixed bottom bar. `.plus` hosts the
 /// profile and opens the "more" menu (profile, friends, settings…).
 enum AppTab: String, CaseIterable, Identifiable, Hashable {
-    case parcours, duel, classement, actus, premium, plus
+    case parcours, duel, classement, missions, premium, plus
 
     var id: String { rawValue }
 
@@ -12,7 +12,7 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         case .parcours: return "house.fill"
         case .duel: return "bolt.fill"
         case .classement: return "trophy.fill"
-        case .actus: return "newspaper.fill"
+        case .missions: return "target"
         case .premium: return "crown.fill"
         case .plus: return "ellipsis.circle.fill"
         }
@@ -23,7 +23,7 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         case .parcours: return Theme.primary
         case .duel: return Color(hex: "14B8AB")
         case .classement: return Color(hex: "C68A4A")
-        case .actus: return Color(hex: "FF3D8A")
+        case .missions: return Color(hex: "FF3D8A")
         case .premium: return Color(hex: "F2B400")
         case .plus: return Color(hex: "9B4DFF")
         }
@@ -34,7 +34,7 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         case .parcours: return "Parcours"
         case .duel: return "Duel"
         case .classement: return "Classement"
-        case .actus: return "Fil d'actualité"
+        case .missions: return "Missions"
         case .premium: return "Premium"
         case .plus: return "Plus"
         }
@@ -108,6 +108,7 @@ struct MainTabBar: View {
 struct MoreMenuPanel: View {
     let incomingRequests: Int
     let onProfile: () -> Void
+    let onNews: () -> Void
     let onFriends: () -> Void
     let onQRCode: () -> Void
     let onSettings: () -> Void
@@ -123,6 +124,8 @@ struct MoreMenuPanel: View {
                 .accessibilityAddTraits(.isButton)
             VStack(spacing: 0) {
                 row(icon: "person.crop.circle.fill", color: Color(hex: "1CB0F6"), title: "Profil", action: onProfile)
+                divider
+                row(icon: "newspaper.fill", color: Color(hex: "FF9600"), title: "Fil d'actualité", action: onNews)
                 divider
                 row(icon: "person.2.fill", color: Theme.success, title: "Amis", badge: incomingRequests, action: onFriends)
                 divider

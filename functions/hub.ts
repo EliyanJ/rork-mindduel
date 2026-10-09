@@ -72,7 +72,7 @@ export const PARTY_CAPACITY = 20;
 const PARTY_FILL_MS = 15_000;
 /** A finalized-but-never-connected lobby is abandoned after this long. */
 const PARTY_STALE_TICKET_MS = 120_000;
-// "team10" (10v10), "solo" (1v19), "oneVsTen" (1v10), or a free-form
+// "team10" (10v10), "solo" (1v19), "oneVsTen" (1v9 — wire name kept for older builds), or a free-form
 // `custom:<allies>:<opponents>` room where the host picked both team sizes
 // and invited people with a share code.
 export type PartyMode = string;
@@ -86,7 +86,7 @@ type PartyModeInfo = {
 
 function parsePartyMode(mode: PartyMode): PartyModeInfo {
   if (mode === "team10") return { kind: "team10", teamACapacity: 10, capacity: PARTY_CAPACITY };
-  if (mode === "oneVsTen") return { kind: "oneVsTen", teamACapacity: 1, capacity: 11 };
+  if (mode === "oneVsTen") return { kind: "oneVsTen", teamACapacity: 1, capacity: 10 };
   if (mode.startsWith("custom:")) {
     const [, alliesRaw, opponentsRaw] = mode.split(":");
     const allies = Math.max(0, Math.min(9, parseInt(alliesRaw ?? "0", 10) || 0));

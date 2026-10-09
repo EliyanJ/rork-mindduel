@@ -1,26 +1,27 @@
 import SwiftUI
 
+/// Duel tab: one hero card for the ranked 1v1, then a short list of the
+/// other formats.
 struct DuelHomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
     @State private var isRankedPresented: Bool = false
     @State private var isTrainingPresented: Bool = false
-    @State private var isLeaderboardPresented: Bool = false
     @State private var isSignInPresented: Bool = false
     @State private var isHelpPresented: Bool = false
-    @State private var isFriendsPresented: Bool = false
-    @State private var isMissionsPresented: Bool = false
     @State private var selectedDuelDisciplineId: String? = nil
     @State private var showThemePicker: Bool = false
     @State private var pendingMode: DuelMode = .training
     @State private var pendingPartyOrigin: PartySession.Origin?
     @State private var isFlashPresented: Bool = false
-    @State private var isLocalPresented: Bool = false
     @State private var isCustomSetupPresented: Bool = false
     @State private var isDuelPointsPresented: Bool = false
     @State private var isPaywallPresented: Bool = false
     @State private var paywallSource: String = "duel"
+    @State private var isLeaguePresented: Bool = false
+    @State private var appeared: Bool = false
+    @State private var heroWobble: Bool = false
 
     private enum DuelMode {
         case ranked
@@ -28,44 +29,37 @@ struct DuelHomeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(spacing: 0) {
             header
+            Rectangle().fill(Theme.line).frame(height: 1.5)
             ScrollView {
-                VStack(spacing: 22) {
-                    shortcutRow
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text("Jeu duel")
-                            .font(.system(.title3, design: .rounded, weight: .heavy))
+                VStack(alignment: .leading, spacing: 26) {
+                    rankedHero
+                        .opacity(appeared ? 1 : 0)
+                        .offset(y: appeared ? 0 : 16)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Autres modes")
+                            .font(.system(.title2, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                            rankedModeCard
-                            modeCard(title: "1 vs 10", subtitle: "Toi contre tous", icon: "flame.fill", colors: ["FF7675", "D63031"]) {
-                                joinParty(.oneVsTen)
+                        ForEach(Array(otherModes.enumerated()), id: \.element.id) { index, mode in
+                            DuelModeTile(mode: mode, isLocked: mode.isPremium && !store.isPremium) {
+                                open(mode.kind)
                             }
-                            modeCard(title: "Flash", subtitle: "Solo rapide", icon: "bolt.fill", colors: ["FDCB6E", "E17055"]) {
-                                Haptics.medium()
-                                isFlashPresented = true
-                            }
-                            modeCard(title: "Personnalisé", subtitle: "Choisis tes équipes", icon: "slider.horizontal.3", colors: ["00B894", "00896B"]) {
-                                Haptics.medium()
-                                isCustomSetupPresented = true
-                            }
-                            modeCard(title: "Local", subtitle: "Même réseau", icon: "wifi", colors: ["0984E3", "0652DD"]) {
-                                Haptics.medium()
-                                isLocalPresented = true
-                            }
-                            modeCard(title: "Entraînement", subtitle: "Non classé", icon: "figure.strengthtraining.traditional", colors: ["FF9F43", "E58E26"]) {
-                                Haptics.medium()
-                                presentTraining()
-                            }
+                            .opacity(appeared ? 1 : 0)
+                            .offset(y: appeared ? 0 : 16)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.08 + Double(index) * 0.06), value: appeared)
                         }
                     }
                 }
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
                 .padding(.bottom, 32)
             }
+            .scrollIndicators(.hidden)
         }
         .background(Theme.background)
+        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: appeared)
+        .onAppear { appeared = true }
         .fullScreenCover(isPresented: $isRankedPresented) {
             OnlineMatchView(
                 catalog: model.catalog,
@@ -86,30 +80,11 @@ struct DuelHomeView: View {
                 isFlashPresented = false
             }
         }
-        .fullScreenCover(isPresented: $isLocalPresented) {
-            LocalDuelView(
-                catalog: model.catalog,
-                store: model.store,
-                displayName: online.profile?.name ?? "Toi",
-                displayEmoji: online.profile?.emoji ?? "🧠"
-            ) {
-                isLocalPresented = false
-            }
-        }
-        .sheet(isPresented: $isLeaderboardPresented) {
-            RankView()
-        }
         .sheet(isPresented: $isSignInPresented) {
             SignInSheet()
         }
         .sheet(isPresented: $isHelpPresented) {
             DuelHelpView()
-        }
-        .sheet(isPresented: $isFriendsPresented) {
-            FriendsView()
-        }
-        .sheet(isPresented: $isMissionsPresented) {
-            MissionsView()
         }
         .sheet(isPresented: $isCustomSetupPresented) {
             CustomPartySetupView { origin in
@@ -143,6 +118,9 @@ struct DuelHomeView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $isLeaguePresented) {
+            RankView()
+        }
         .task {
             if online.isSignedIn && online.profile == nil {
                 await online.syncProfile(localElo: model.store.progress.elo)
@@ -151,17 +129,10 @@ struct DuelHomeView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Duel")
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                Text("Affronte des joueurs du monde entier")
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Theme.inkMuted)
-            }
+        HStack(spacing: 10) {
+            Text("Duel")
+                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.ink)
             Spacer()
             if !store.isPremium {
                 duelPointsPill
@@ -170,15 +141,16 @@ struct DuelHomeView: View {
                 Haptics.tap()
                 isHelpPresented = true
             } label: {
-                Image(systemName: "questionmark.circle")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Theme.inkMuted)
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(Theme.lockedInk)
                     .frame(width: 44, height: 44)
-                    .background(Circle().fill(Theme.card))
             }
+            .accessibilityLabel("Comment ça marche")
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.leading, 20)
+        .padding(.trailing, 10)
+        .padding(.top, 6)
         .padding(.bottom, 6)
     }
 
@@ -190,160 +162,127 @@ struct DuelHomeView: View {
             Haptics.tap()
             isDuelPointsPresented = true
         } label: {
-            HStack(spacing: 3) {
-                ForEach(0..<ProgressStore.duelPointsMax, id: \.self) { index in
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 12, weight: .heavy))
-                        .foregroundStyle(index < points ? Theme.duelAccent : Theme.inkMuted.opacity(0.3))
-                }
+            HStack(spacing: 6) {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 20, weight: .bold))
+                Text("\(points)")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
             }
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(Capsule().fill(Theme.duelAccent.opacity(0.12)))
-            .contentShape(Capsule())
+            .foregroundStyle(points > 0 ? Theme.duelAccent : Theme.lockedInk)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(points) points de duel sur \(ProgressStore.duelPointsMax)")
     }
 
-    /// The three quick-access shortcuts (rank, missions, friends), shown as a
-    /// row of round icon tabs right under the header.
-    private var shortcutRow: some View {
-        HStack(spacing: 0) {
-            shortcut(icon: "crown.fill", color: Theme.gold, label: "Rang") {
-                isLeaderboardPresented = true
-            }
-            Spacer()
-            shortcut(icon: "flag.checkered", color: Theme.primary, label: "Missions") {
-                isMissionsPresented = true
-            }
-            Spacer()
-            shortcut(icon: "person.2.fill", color: Theme.duelAccent, label: "Amis") {
-                isFriendsPresented = true
-            }
-        }
-        .padding(.horizontal, 24)
+    private var rankedPoints: Int {
+        online.profile?.displayPoints ?? model.store.progress.elo
     }
 
-    private func shortcut(icon: String, color: Color, label: String, action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.tap()
-            action()
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(color)
-                    .frame(width: 56, height: 56)
-                    .background(Circle().fill(color.opacity(0.14)))
-                Text(label)
-                    .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// 1v1 ranked slots into the mode grid like every other mode — it's not
-    /// special, it's just the mode where the queue finds a real opponent.
-    /// The points/record live here as the subtitle instead of a dedicated
-    /// full-width banner.
-    private var rankedModeCard: some View {
-        Button {
-            Haptics.medium()
-            if !store.isPremium {
-                openPaywall(source: "ranked")
-            } else if online.isSignedIn {
-                presentRankedDuel()
-            } else {
-                isSignInPresented = true
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Image(systemName: "globe")
-                        .font(.system(size: 20, weight: .bold))
+    /// The main event: one bold card for the ranked 1v1, with the player's
+    /// league and a single big button.
+    private var rankedHero: some View {
+        let league = RankLeague.league(for: rankedPoints)
+        let leagueColor = Color(hex: league.colors[0])
+        return VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("1 CONTRE 1")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(.white.opacity(0.8))
+                    Text("Match classé")
+                        .font(.system(size: 30, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
-                        .background(Circle().fill(.white.opacity(0.2)))
-                    Spacer()
-                    if !store.isPremium {
-                        Label("Premium", systemImage: "crown.fill")
-                            .font(.system(size: 11, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Theme.duelBackground)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Theme.gold))
-                    } else if online.isSignedIn, let profile = online.profile {
-                        Text("\(profile.displayPoints)")
-                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Button {
+                        Haptics.tap()
+                        isLeaguePresented = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: league.icon)
+                                .foregroundStyle(leagueColor)
+                            Text("Ligue \(league.name) · \(rankedPoints) pts")
+                                .foregroundStyle(.white)
+                        }
+                        .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 34)
+                        .background(Capsule().fill(.black.opacity(0.18)))
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Ouvre ton rang")
                 }
-                Spacer(minLength: 14)
-                Text("1V1")
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                Text(!store.isPremium ? "Match classé" : (online.isSignedIn ? "Match classé" : "Se connecter"))
-                    .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.75))
+                Spacer(minLength: 0)
+                Image("MascotDuel")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 112, height: 112)
+                    .rotationEffect(.degrees(heroWobble ? 3 : -3))
+                    .animation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true), value: heroWobble)
+                    .onAppear { heroWobble = true }
+                    .accessibilityHidden(true)
             }
-            .padding(16)
-            .frame(height: 118, alignment: .topLeading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 22)
-                    .fill(
-                        LinearGradient(
-                            colors: [Theme.duelAccent, Theme.duelAccent.mix(with: .black, by: 0.28)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
+            Button {
+                Haptics.medium()
+                if !store.isPremium {
+                    openPaywall(source: "ranked")
+                } else if online.isSignedIn {
+                    presentRankedDuel()
+                } else {
+                    isSignInPresented = true
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if !store.isPremium {
+                        Image(systemName: "crown.fill")
+                            .foregroundStyle(Theme.gold)
+                    }
+                    Text(store.isPremium && !online.isSignedIn ? "SE CONNECTER" : "JOUER")
+                }
+            }
+            .buttonStyle(ChunkyButtonStyle(color: .white, textColor: Color(hex: "0A7A72")))
         }
-        .buttonStyle(.plain)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 26)
+                .fill(LinearGradient(colors: [Color(hex: "1CC9BC"), Color(hex: "0E9F95")], startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 26)
+                .fill(Color(hex: "0A7A72"))
+                .offset(y: 5)
+        )
+        .padding(.bottom, 5)
     }
 
-    /// One colourful, chunky mode card — mirrors the reference casual-game
-    /// grid: bold gradient, icon top-left, name + short tag underneath.
-    private func modeCard(title: String, subtitle: String, icon: String, colors: [String], action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.medium()
-            guardedAction(action)
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(.white.opacity(0.2)))
-                Spacer(minLength: 14)
-                Text(title.uppercased())
-                    .font(.system(size: 16, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(subtitle)
-                    .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.75))
+    private var otherModes: [DuelModeInfo] {
+        [
+            DuelModeInfo(kind: .oneVsNine, title: "1 contre 9", subtitle: "Seul face à une équipe", icon: "flame.fill", color: Color(hex: "FF4B4B"), isPremium: false),
+            DuelModeInfo(kind: .flash, title: "Flash", subtitle: "Questions éclair en solo", icon: "bolt.fill", color: Color(hex: "FF9600"), isPremium: true),
+            DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Crée ta partie entre amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: false),
+            DuelModeInfo(kind: .offline, title: "Hors ligne", subtitle: "Contre un robot, sans classement", icon: "wifi.slash", color: Color(hex: "A560FF"), isPremium: false)
+        ]
+    }
+
+    private func open(_ kind: DuelModeInfo.Kind) {
+        switch kind {
+        case .oneVsNine:
+            guardedAction { joinParty(.oneVsTen) }
+        case .flash:
+            guard store.isPremium else {
+                openPaywall(source: "flash")
+                return
             }
-            .padding(16)
-            .frame(height: 118, alignment: .topLeading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 22)
-                    .fill(
-                        LinearGradient(
-                            colors: colors.map { Color(hex: $0) },
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
+            isFlashPresented = true
+        case .custom:
+            guardedAction { isCustomSetupPresented = true }
+        case .offline:
+            guardedAction { presentTraining() }
         }
-        .buttonStyle(.plain)
     }
 
     /// Every non-ranked mode costs one duel point for free players (spent
@@ -408,5 +347,83 @@ struct DuelHomeView: View {
         case .training:
             isTrainingPresented = true
         }
+    }
+}
+
+/// One secondary duel format shown in the "Autres modes" list.
+private struct DuelModeInfo: Identifiable {
+    enum Kind: String {
+        case oneVsNine, flash, custom, offline
+    }
+
+    let kind: Kind
+    let title: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+    let isPremium: Bool
+
+    var id: String { kind.rawValue }
+}
+
+/// Duolingo-style list tile: chunky colored icon block, title and one short
+/// line, outlined card that sinks on press. Premium-only modes show a crown.
+private struct DuelModeTile: View {
+    let mode: DuelModeInfo
+    let isLocked: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.medium()
+            action()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: mode.icon)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 54, height: 54)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(mode.color))
+                    .background(RoundedRectangle(cornerRadius: 16).fill(mode.color.mix(with: .black, by: 0.25)).offset(y: 3))
+                    .padding(.bottom, 3)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(mode.title)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .foregroundStyle(Theme.ink)
+                    Text(mode.subtitle)
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                Spacer(minLength: 4)
+                if isLocked {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.gold)
+                        .accessibilityLabel("Premium")
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundStyle(Theme.lockedInk)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TileButtonStyle())
+    }
+}
+
+private struct TileButtonStyle: ButtonStyle {
+    func makeBody(configuration: ButtonStyleConfiguration) -> some View {
+        configuration.label
+            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.background))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 2))
+            .offset(y: configuration.isPressed ? 4 : 0)
+            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.line).offset(y: 4))
+            .padding(.bottom, 4)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }

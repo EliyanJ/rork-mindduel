@@ -149,6 +149,12 @@ nonisolated struct DailyUsage: Codable {
     var reviewCardsUsed: Int
     var extraReviewCardsUnlocked: Int
     var rewardedAdsWatched: Int
+    // MARK: Daily missions
+    var ringsCompleted: Int
+    var duelsPlayed: Int
+    var duelsWon: Int
+    var correctAnswers: Int
+    var claimedMissionIds: [String]
 
     static func empty(day: Date) -> DailyUsage {
         DailyUsage(
@@ -157,8 +163,55 @@ nonisolated struct DailyUsage: Codable {
             extraLessonsUnlocked: 0,
             reviewCardsUsed: 0,
             extraReviewCardsUnlocked: 0,
-            rewardedAdsWatched: 0
+            rewardedAdsWatched: 0,
+            ringsCompleted: 0,
+            duelsPlayed: 0,
+            duelsWon: 0,
+            correctAnswers: 0,
+            claimedMissionIds: []
         )
+    }
+
+    init(
+        day: Date,
+        lessonsCompleted: Int,
+        extraLessonsUnlocked: Int,
+        reviewCardsUsed: Int,
+        extraReviewCardsUnlocked: Int,
+        rewardedAdsWatched: Int,
+        ringsCompleted: Int,
+        duelsPlayed: Int,
+        duelsWon: Int,
+        correctAnswers: Int,
+        claimedMissionIds: [String]
+    ) {
+        self.day = day
+        self.lessonsCompleted = lessonsCompleted
+        self.extraLessonsUnlocked = extraLessonsUnlocked
+        self.reviewCardsUsed = reviewCardsUsed
+        self.extraReviewCardsUnlocked = extraReviewCardsUnlocked
+        self.rewardedAdsWatched = rewardedAdsWatched
+        self.ringsCompleted = ringsCompleted
+        self.duelsPlayed = duelsPlayed
+        self.duelsWon = duelsWon
+        self.correctAnswers = correctAnswers
+        self.claimedMissionIds = claimedMissionIds
+    }
+
+    /// Older saves predate the mission counters: they default to zero.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        day = try c.decode(Date.self, forKey: .day)
+        lessonsCompleted = try c.decodeIfPresent(Int.self, forKey: .lessonsCompleted) ?? 0
+        extraLessonsUnlocked = try c.decodeIfPresent(Int.self, forKey: .extraLessonsUnlocked) ?? 0
+        reviewCardsUsed = try c.decodeIfPresent(Int.self, forKey: .reviewCardsUsed) ?? 0
+        extraReviewCardsUnlocked = try c.decodeIfPresent(Int.self, forKey: .extraReviewCardsUnlocked) ?? 0
+        rewardedAdsWatched = try c.decodeIfPresent(Int.self, forKey: .rewardedAdsWatched) ?? 0
+        ringsCompleted = try c.decodeIfPresent(Int.self, forKey: .ringsCompleted) ?? 0
+        duelsPlayed = try c.decodeIfPresent(Int.self, forKey: .duelsPlayed) ?? 0
+        duelsWon = try c.decodeIfPresent(Int.self, forKey: .duelsWon) ?? 0
+        correctAnswers = try c.decodeIfPresent(Int.self, forKey: .correctAnswers) ?? 0
+        claimedMissionIds = try c.decodeIfPresent([String].self, forKey: .claimedMissionIds) ?? []
     }
 }
 

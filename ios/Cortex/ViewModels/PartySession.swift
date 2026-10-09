@@ -638,6 +638,7 @@ final class PartySession {
         online.applyPartyResult(pointsDelta: pointsDelta, reputationDelta: reputationDelta)
         phase = .finished
         let won = mode.isTeam ? (winningTeam != nil && winningTeam == you?.team) : myRank <= 3
+        store.recordCasualDuel(won: won)
         if won { Haptics.success() }
     }
 

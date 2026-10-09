@@ -389,6 +389,7 @@ private final class FlashSession {
         entries.append(FinalEntry(name: "Toi", emoji: "🧠", score: score, isYou: true))
         finalEntries = entries.sorted { $0.score > $1.score }
         phase = .finished
+        store.recordCasualDuel(won: finalEntries.first?.isYou == true)
         if finalEntries.first?.isYou == true { Haptics.success() }
     }
 

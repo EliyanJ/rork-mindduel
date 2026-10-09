@@ -296,6 +296,35 @@ final class ProgressStore {
         save()
     }
 
+    // MARK: - Daily missions
+
+    /// Counts a party or Flash game (they don't go through `finalizeDuel`)
+    /// toward today's missions and the lifetime duel stats.
+    func recordCasualDuel(won: Bool) {
+        rolloverIfNeeded()
+        progress.duelsPlayed += 1
+        if won { progress.duelsWon += 1 }
+        progress.dailyUsage.duelsPlayed += 1
+        if won { progress.dailyUsage.duelsWon += 1 }
+        save()
+        registerActivity()
+    }
+
+    func isMissionClaimed(_ id: String) -> Bool {
+        dailyUsage.claimedMissionIds.contains(id)
+    }
+
+    /// Credits a finished mission's rubis once per day.
+    @discardableResult
+    func claimMission(_ id: String, reward: Int) -> Bool {
+        rolloverIfNeeded()
+        guard !progress.dailyUsage.claimedMissionIds.contains(id) else { return false }
+        progress.dailyUsage.claimedMissionIds.append(id)
+        progress.livresBalance += reward
+        save()
+        return true
+    }
+
     func addXP(_ amount: Int) {
         progress.xp += amount
         save()
@@ -367,6 +396,8 @@ final class ProgressStore {
         if previousBest < passThreshold, score >= passThreshold {
             progress.livresBalance += kind == .recap ? Self.recapRubisReward : Self.ringRubisReward
         }
+        rolloverIfNeeded()
+        progress.dailyUsage.ringsCompleted += 1
         if kind == .recap {
             record.lockedUntil = score >= Self.ringMasteryScore ? nil : Self.startOfNextDay(after: reference)
         }
@@ -409,6 +440,10 @@ final class ProgressStore {
             consecutiveCorrect: 0
         )
         if correct {
+            rolloverIfNeeded()
+            progress.dailyUsage.correctAnswers += 1
+        }
+        if correct {
             item.consecutiveCorrect += 1
             switch item.consecutiveCorrect {
             case 1:
@@ -437,6 +472,9 @@ final class ProgressStore {
     func finalizeDuel(won: Bool, draw: Bool, score: Int, eloChange: Int) {
         progress.duelsPlayed += 1
         if won { progress.duelsWon += 1 }
+        rolloverIfNeeded()
+        progress.dailyUsage.duelsPlayed += 1
+        if won { progress.dailyUsage.duelsWon += 1 }
         progress.elo = max(400, progress.elo + eloChange)
         progress.xp += max(5, score / 10)
         save()
