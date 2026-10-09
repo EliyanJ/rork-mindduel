@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		XX58A87C46960997EAFEF8XX /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = XX5EB48DBE87E012384FECXX /* GoogleMobileAds */; };
+		XX962FF88DFC8D90FC0863XX /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = XX5C08B18460D6DA9D3401XX /* PostHog */; };
 		XXE4266AC4E579DCA6CBF3XX /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = XX726C91EBDA70D356992EXX /* GoogleUserMessagingPlatform */; };
 /* End PBXBuildFile section */
 
@@ -59,6 +60,7 @@
 			files = (
 				XX58A87C46960997EAFEF8XX /* GoogleMobileAds in Frameworks */,
 				XXE4266AC4E579DCA6CBF3XX /* GoogleUserMessagingPlatform in Frameworks */,
+				XX962FF88DFC8D90FC0863XX /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +123,7 @@
 			packageProductDependencies = (
 				XX5EB48DBE87E012384FECXX /* GoogleMobileAds */,
 				XX726C91EBDA70D356992EXX /* GoogleUserMessagingPlatform */,
+				XX5C08B18460D6DA9D3401XX /* PostHog */,
 			);
 			productName = Cortex;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* Cortex.app */;
@@ -216,6 +219,7 @@
 			packageReferences = (
 				XX8F321EBFA973C6F11275XX /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 				XX56E440F9AA2D946771D1XX /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */,
+				XX38BAC3E5F315C4634B35XX /* XCRemoteSwiftPackageReference "posthog-ios" */,
 			);
 		};
 /* End PBXProject section */
@@ -607,6 +611,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		XX38BAC3E5F315C4634B35XX /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.0;
+			};
+		};
 		XX56E440F9AA2D946771D1XX /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git";
@@ -626,6 +638,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		XX5C08B18460D6DA9D3401XX /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = XX38BAC3E5F315C4634B35XX /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
 		XX5EB48DBE87E012384FECXX /* GoogleMobileAds */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = XX8F321EBFA973C6F11275XX /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
