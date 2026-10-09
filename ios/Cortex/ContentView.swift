@@ -1,10 +1,5 @@
 import SwiftUI
-
-/// Tab identifiers used to switch tabs programmatically (e.g. jumping from
-/// a theme card straight to its dedicated path).
-private enum AppTab: Hashable {
-    case parcours, themes, duel, profil
-}
+import StoreKit
 
 struct ContentView: View {
     @State private var updates: AppUpdateService = .shared
@@ -13,6 +8,9 @@ struct ContentView: View {
     @State private var showSplash = true
     @State private var selectedTab: AppTab = .parcours
     @State private var isPaywallPresented: Bool = false
+    @State private var isMoreMenuOpen: Bool = false
+    @State private var moreSheet: MoreSheet?
+    @State private var isWelcomeBackPresented: Bool = false
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
     @Environment(\.scenePhase) private var scenePhase
@@ -57,6 +55,7 @@ struct ContentView: View {
         // questions published from the admin panel arrive in the background
         // and rebuild the path without ever blocking the launch.
         .task {
+            checkWelcomeBack()
             await updates.refresh()
             guard !updates.requiresUpdate else { return }
             await model.refreshFromBackend()
@@ -69,6 +68,7 @@ struct ContentView: View {
             if phase != .active { AnswerTelemetry.shared.flush() }
             if phase == .active {
                 Task { await updates.refresh() }
+                checkWelcomeBack()
             }
             guard phase == .active, onboardingStore.isCompleted else { return }
             Task { await refreshReminders() }
@@ -76,6 +76,14 @@ struct ContentView: View {
 
             if onboardingStore.isCompleted && !showSplash && !updates.requiresUpdate {
                 FeedbackBubble()
+            }
+
+            if isWelcomeBackPresented && !showSplash && onboardingStore.isCompleted {
+                WelcomeBackView(name: welcomeName) {
+                    withAnimation(.easeInOut(duration: 0.35)) { isWelcomeBackPresented = false }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 1.04)))
+                .zIndex(5)
             }
 
             if showSplash {
@@ -122,40 +130,181 @@ struct ContentView: View {
         )
     }
 
-    private var mainTabs: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Parcours", systemImage: "map.fill", value: AppTab.parcours) {
-                HomeView()
+    private var welcomeName: String {
+        if let name = online.profile?.name, !name.isEmpty { return name }
+        let nickname = onboardingStore.preferences.nickname
+        return nickname.isEmpty ? "Toi" : nickname
+    }
+
+    /// Greets players coming back after several days away (never right
+    /// after the onboarding, which records the first visit).
+    private func checkWelcomeBack() {
+        guard onboardingStore.isCompleted else {
+            ReturnTracker.touch()
+            return
+        }
+        if ReturnTracker.checkAndRecord() {
+            Analytics.capture("welcome_back_shown")
+            withAnimation(.easeInOut(duration: 0.35)) { isWelcomeBackPresented = true }
+        }
+    }
+
+    private enum MoreSheet: String, Identifiable {
+        case friends, qrCode, settings, support
+        var id: String { rawValue }
+    }
+
+    private func select(_ tab: AppTab) {
+        Haptics.tap()
+        if tab == .plus {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { isMoreMenuOpen.toggle() }
+            return
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isMoreMenuOpen = false }
+        selectedTab = tab
+    }
+
+    private func openFromMenu(_ action: () -> Void) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isMoreMenuOpen = false }
+        action()
+    }
+
+    @ViewBuilder
+    private var currentTab: some View {
+        switch selectedTab {
+        case .parcours:
+            HomeView()
+        case .themes:
+            ThemesView { discipline in
+                // Free players follow the imposed mixed journey; picking a
+                // theme is a Premium perk.
+                guard store.isPremium else {
+                    isPaywallPresented = true
+                    return
+                }
+                // Jump straight to Parcours, showing that theme's own
+                // dedicated ring path instead of the mixed journey.
+                model.selectedDisciplineId = discipline.id
+                selectedTab = .parcours
             }
-            Tab("Thèmes", systemImage: "square.grid.2x2.fill", value: AppTab.themes) {
-                ThemesView { discipline in
-                    // Free players follow the imposed mixed journey; picking a
-                    // theme is a Premium perk.
-                    guard store.isPremium else {
-                        isPaywallPresented = true
-                        return
-                    }
-                    // Jump straight to Parcours, showing that theme's own
-                    // dedicated ring path instead of the mixed journey.
-                    model.selectedDisciplineId = discipline.id
-                    selectedTab = .parcours
+        case .duel:
+            DuelHomeView()
+        case .classement:
+            LeaguesView()
+        case .actus:
+            NewsFeedView { destination in
+                selectedTab = destination
+            }
+        case .premium:
+            if store.isPremium {
+                PremiumActiveView()
+            } else {
+                PaywallView(source: "tab", isEmbedded: true)
+            }
+        case .plus:
+            ProfileView()
+        }
+    }
+
+    private var mainTabs: some View {
+        currentTab
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay {
+                if isMoreMenuOpen {
+                    MoreMenuPanel(
+                        incomingRequests: online.incomingRequests.count,
+                        onProfile: { openFromMenu { selectedTab = .plus } },
+                        onFriends: { openFromMenu { moreSheet = .friends } },
+                        onQRCode: { openFromMenu { moreSheet = .qrCode } },
+                        onSettings: { openFromMenu { moreSheet = .settings } },
+                        onSupport: { openFromMenu { moreSheet = .support } },
+                        onClose: { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isMoreMenuOpen = false } }
+                    )
                 }
             }
-            Tab("Duel", systemImage: "bolt.fill", value: AppTab.duel) {
-                DuelHomeView()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                MainTabBar(
+                    selected: selectedTab,
+                    isMoreMenuOpen: isMoreMenuOpen,
+                    plusBadge: online.incomingRequests.count,
+                    onSelect: select
+                )
             }
-            Tab("Profil", systemImage: "person.crop.circle.fill", value: AppTab.profil) {
-                ProfileView()
+            .environment(model)
+            .sheet(isPresented: $isPaywallPresented) {
+                PaywallView(source: "themes")
             }
+            .sheet(item: $moreSheet) { sheet in
+                Group {
+                    switch sheet {
+                    case .friends: FriendsView()
+                    case .qrCode: FriendQRView()
+                    case .settings: SettingsView()
+                    case .support: LegalWebView(title: "Aide et support", url: WebLinks.support)
+                    }
+                }
+                .environment(model)
+            }
+            .onAppear { Analytics.capture("screen_viewed", ["screen": selectedTab.rawValue]) }
+            .onChange(of: selectedTab) { _, tab in
+                Analytics.capture("screen_viewed", ["screen": tab.rawValue])
+            }
+    }
+}
+
+/// "Premium" tab once subscribed: a thank-you card with the perks and a
+/// shortcut to manage the subscription.
+private struct PremiumActiveView: View {
+    @State private var isManaging: Bool = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                Image("MascotCelebrate")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 150)
+                    .accessibilityHidden(true)
+                Label("MINDUEL PREMIUM ACTIF", systemImage: "crown.fill")
+                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                    .tracking(1)
+                    .foregroundStyle(Theme.primary)
+                Text("Merci de soutenir Minduel !")
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 12) {
+                    perk("Leçons illimitées")
+                    perk("Choix libre des thèmes")
+                    perk("Mode classé et classement mondial")
+                    perk("Duels illimités")
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
+                .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
+                Button("Gérer mon abonnement") {
+                    Haptics.tap()
+                    isManaging = true
+                }
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.primary)
+                .frame(minHeight: 44)
+            }
+            .padding(20)
+            .padding(.top, 20)
         }
-        .tint(Theme.primary)
-        .environment(model)
-        .sheet(isPresented: $isPaywallPresented) {
-            PaywallView(source: "themes")
-        }
-        .onAppear { Analytics.capture("screen_viewed", ["screen": "\(selectedTab)"]) }
-        .onChange(of: selectedTab) { _, tab in
-            Analytics.capture("screen_viewed", ["screen": "\(tab)"])
+        .background(Theme.background.ignoresSafeArea())
+        .manageSubscriptionsSheet(isPresented: $isManaging)
+    }
+
+    private func perk(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Theme.success)
+            Text(text)
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.ink)
         }
     }
 }

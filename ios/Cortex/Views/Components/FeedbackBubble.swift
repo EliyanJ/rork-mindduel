@@ -14,7 +14,7 @@ struct FeedbackBubble: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let initial = CGPoint(x: max(28, geometry.size.width - 44), y: max(28, geometry.size.height - 105))
+            let initial = CGPoint(x: max(28, geometry.size.width - 44), y: max(28, geometry.size.height - 130))
             Button { isPresented = true } label: {
                 Image(systemName: "questionmark.bubble.fill")
                     .font(.system(size: 24, weight: .bold))
@@ -32,13 +32,13 @@ struct FeedbackBubble: View {
                     dragOrigin = origin
                     position = CGPoint(
                         x: min(max(28, origin.x + value.translation.width), max(28, geometry.size.width - 28)),
-                        y: min(max(28, origin.y + value.translation.height), max(28, geometry.size.height - 80))
+                        y: min(max(28, origin.y + value.translation.height), max(28, geometry.size.height - 100))
                     )
                 }
                 .onEnded { _ in dragOrigin = nil })
             .onChange(of: geometry.size) { _, size in
                 guard let current = position else { return }
-                position = CGPoint(x: min(max(28, current.x), max(28, size.width - 28)), y: min(max(28, current.y), max(28, size.height - 80)))
+                position = CGPoint(x: min(max(28, current.x), max(28, size.width - 28)), y: min(max(28, current.y), max(28, size.height - 100)))
             }
         }
         .sheet(isPresented: $isPresented) {

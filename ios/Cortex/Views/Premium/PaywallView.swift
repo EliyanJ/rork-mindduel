@@ -7,6 +7,8 @@ import RevenueCat
 struct PaywallView: View {
     /// Where the paywall was opened from, for analytics only.
     let source: String
+    /// True when shown as the "Premium" tab rather than a sheet: no close button.
+    var isEmbedded: Bool = false
 
     @Environment(StoreViewModel.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -45,7 +47,7 @@ struct PaywallView: View {
             .scrollBounceBehavior(.basedOnSize)
             .safeAreaInset(edge: .bottom) { footer }
 
-            closeButton
+            if !isEmbedded { closeButton }
         }
         .task {
             Analytics.capture("paywall_viewed", ["source": source])
@@ -54,7 +56,7 @@ struct PaywallView: View {
         .onChange(of: store.isPremium) { _, isPremium in
             guard isPremium else { return }
             Haptics.success()
-            dismiss()
+            if !isEmbedded { dismiss() }
         }
         .sheet(item: $legalLink) { link in
             LegalWebView(title: link.title, url: link.url)

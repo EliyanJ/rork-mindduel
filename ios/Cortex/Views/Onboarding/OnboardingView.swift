@@ -184,17 +184,25 @@ struct OnboardingView: View {
     }
 
     private var progress: Double {
-        Double(step.rawValue) / Double(OnboardingStep.allCases.count - 1)
+        let visible = OnboardingStep.allCases.filter(isStepAvailable)
+        let index = visible.firstIndex(of: step) ?? 0
+        return Double(index) / Double(max(1, visible.count - 1))
     }
 
     private var canGoBack: Bool {
         step != .welcome && step != .quizResult && step != .miniQuiz && step != .diagnosticResult
     }
 
-    /// Steps that are skipped entirely in the current build. Kept as a hook so
-    /// the paywall step can be reinstated in the paid 1.1 build.
+    /// Steps skipped entirely in the current build. The long aptitude test
+    /// (diagnostic) is no longer offered: everyone gets the same flow, only the
+    /// 5-question demo quiz remains.
     private func isStepAvailable(_ candidate: OnboardingStep) -> Bool {
-        true
+        switch candidate {
+        case .diagnosticPropose, .diagnosticQuiz, .diagnosticResult:
+            return false
+        default:
+            return true
+        }
     }
 
     private func goBack() {
