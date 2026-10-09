@@ -92,11 +92,30 @@ struct AppTourView: View {
     private var isLast: Bool { index == steps.count - 1 }
 
     var body: some View {
-        GeometryReader { geo in
+        // The outer reader keeps the real safe-area insets (Dynamic Island,
+        // home indicator); the inner one covers the full screen for the veil.
+        GeometryReader { outer in
+            let insets = outer.safeAreaInsets
+            GeometryReader { geo in
+                tourLayer(geo: geo, insets: insets)
+            }
+            .ignoresSafeArea()
+        }
+        .onAppear {
+            Analytics.capture("app_tour_started")
+            startTyping()
+            withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { isPulsing = true }
+        }
+        .onDisappear { typingTask?.cancel() }
+    }
+
+    private func tourLayer(geo: GeometryProxy, insets: EdgeInsets) -> some View {
             let hole = holeRect(in: geo)
             let cardOnTop = hole.map { $0.midY > geo.size.height * 0.5 } ?? false
+            let topInset = max(insets.top, 47) + 52
+            let bottomInset = max(insets.bottom, 20) + 16
 
-            ZStack {
+            return ZStack {
                 SpotlightShape(hole: hole ?? CGRect(x: geo.size.width / 2, y: geo.size.height / 2, width: 0, height: 0),
                                cornerRadius: hole == nil ? 0 : 18)
                     .fill(Color.black.opacity(0.68), style: FillStyle(eoFill: true))
@@ -117,8 +136,8 @@ struct AppTourView: View {
                     if !cardOnTop { Spacer(minLength: 0) }
                     card
                         .padding(.horizontal, 16)
-                        .padding(.top, cardOnTop ? geo.safeAreaInsets.top + 12 : 0)
-                        .padding(.bottom, cardOnTop ? 0 : (hole == nil ? geo.safeAreaInsets.bottom + 24 : geo.safeAreaInsets.bottom + 110))
+                        .padding(.top, cardOnTop ? topInset : 0)
+                        .padding(.bottom, cardOnTop ? 0 : bottomInset)
                         .id(step.id)
                         .transition(.asymmetric(
                             insertion: .move(edge: cardOnTop ? .top : .bottom).combined(with: .opacity),
@@ -129,9 +148,7 @@ struct AppTourView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .animation(.spring(response: 0.55, dampingFraction: 0.85), value: index)
-        }
-        .ignoresSafeArea()
-        .overlay(alignment: .topTrailing) {
+            .overlay(alignment: .topTrailing) {
             if !isLast {
                 Button {
                     Haptics.tap()
@@ -147,62 +164,63 @@ struct AppTourView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 16)
-                .padding(.top, 4)
+                .padding(.top, max(insets.top, 47) + 6)
             }
         }
-        .onAppear {
-            Analytics.capture("app_tour_started")
-            startTyping()
-            withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { isPulsing = true }
-        }
-        .onDisappear { typingTask?.cancel() }
     }
 
     private var card: some View {
-        HStack(alignment: .bottom, spacing: 6) {
-            Image(step.mascot)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 92, height: 92)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(spacing: 14) {
+            HStack(alignment: .bottom, spacing: 8) {
+                Image(step.mascot)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 84, height: 84)
+                    .id(step.mascot)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(step.title)
-                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .foregroundStyle(Theme.primary)
                     ZStack(alignment: .topLeading) {
                         Text(step.text)
                             .opacity(0)
                         Text(String(step.text.prefix(typedCount)))
                     }
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(Theme.ink)
+                    .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel(step.text)
                 }
-                HStack(spacing: 10) {
-                    HStack(spacing: 5) {
-                        ForEach(steps) { item in
-                            Capsule()
-                                .fill(item.id == index ? Theme.primary : Theme.line)
-                                .frame(width: item.id == index ? 16 : 6, height: 6)
-                        }
-                    }
-                    Spacer(minLength: 4)
-                    Button(isLast ? "C'EST PARTI" : "CONTINUER", action: advance)
-                        .buttonStyle(TourButtonStyle())
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 18).fill(Theme.card))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 2))
+                .overlay(alignment: .bottomLeading) {
+                    BubbleTail()
+                        .fill(Theme.card)
+                        .frame(width: 12, height: 14)
+                        .offset(x: -10, y: -20)
                 }
             }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 2))
-            .overlay(alignment: .bottomLeading) {
-                BubbleTail()
-                    .fill(Theme.card)
-                    .frame(width: 14, height: 16)
-                    .offset(x: -12, y: -22)
+            HStack(spacing: 12) {
+                HStack(spacing: 5) {
+                    ForEach(steps) { item in
+                        Capsule()
+                            .fill(item.id == index ? Color.white : Color.white.opacity(0.35))
+                            .frame(width: item.id == index ? 16 : 6, height: 6)
+                    }
+                }
+                .layoutPriority(1)
+                Spacer(minLength: 8)
+                Button(isLast ? "C'EST PARTI" : "CONTINUER", action: advance)
+                    .buttonStyle(TourButtonStyle())
+                    .fixedSize()
             }
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     private func holeRect(in geo: GeometryProxy) -> CGRect? {
@@ -289,11 +307,12 @@ private struct BubbleTail: Shape {
 private struct TourButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.subheadline, design: .rounded, weight: .heavy))
-            .tracking(0.4)
+            .font(.system(size: 15, weight: .heavy, design: .rounded))
+            .tracking(0.3)
+            .lineLimit(1)
             .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 40)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 44)
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.primary))
             .offset(y: configuration.isPressed ? 3 : 0)
             .background(RoundedRectangle(cornerRadius: 12).fill(Theme.primary.mix(with: .black, by: 0.25)).offset(y: 3))
