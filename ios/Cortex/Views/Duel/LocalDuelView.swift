@@ -76,6 +76,7 @@ struct LocalDuelView: View {
     }
 
     private func startPlaying(seed: String, count: Int, duration: Double) {
+        store.consumeDuelPoint()
         questions = MatchQuestionPicker.questions(
             from: catalog,
             seed: seed,

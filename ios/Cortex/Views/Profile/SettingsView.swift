@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// Réglages screen, reached from the gear icon on the Profile tab. Groups
 /// account deletion, cache clearing, legal links, and sign-out — the
@@ -17,6 +18,8 @@ struct SettingsView: View {
     @State private var legalSheet: LegalLink?
     @State private var didClearCache = false
     @State private var analyticsEnabled: Bool = Analytics.isEnabled
+    @State private var isPaywallPresented = false
+    @State private var isManagingSubscription = false
 
     private enum LegalLink: Identifiable {
         case privacy, terms, support
@@ -42,6 +45,33 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    if store.isPremium {
+                        HStack {
+                            Label("Minduel Premium", systemImage: "crown.fill")
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                            Text("Actif")
+                                .font(.system(.caption, design: .rounded, weight: .heavy))
+                                .foregroundStyle(Theme.success)
+                        }
+                        row(icon: "creditcard", title: "Gérer mon abonnement") {
+                            isManagingSubscription = true
+                        }
+                    } else {
+                        row(icon: "crown.fill", title: "Découvrir Minduel Premium") {
+                            isPaywallPresented = true
+                        }
+                    }
+                    row(icon: "arrow.clockwise", title: "Restaurer les achats") {
+                        Task { await store.restore() }
+                    } trailing: {
+                        if store.isRestoring { ProgressView() }
+                    }
+                } header: {
+                    Text("Abonnement")
+                }
+
                 Section {
                     row(icon: "trash", tint: .clear, title: "Vider le cache") {
                         clearCache()
@@ -130,6 +160,18 @@ struct SettingsView: View {
             }
             .sheet(item: $legalSheet) { link in
                 LegalWebView(title: link.title, url: link.url)
+            }
+            .sheet(isPresented: $isPaywallPresented) {
+                PaywallView(source: "settings")
+            }
+            .manageSubscriptionsSheet(isPresented: $isManagingSubscription)
+            .alert("Minduel Premium", isPresented: Binding(
+                get: { store.notice != nil || store.error != nil },
+                set: { if !$0 { store.notice = nil; store.error = nil } }
+            )) {
+                Button("OK") { store.notice = nil; store.error = nil }
+            } message: {
+                Text(store.notice ?? store.error ?? "")
             }
             .task {
                 await notifications.refreshAuthorizationStatus()

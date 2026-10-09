@@ -18,6 +18,9 @@ struct DuelHomeView: View {
     @State private var isFlashPresented: Bool = false
     @State private var isLocalPresented: Bool = false
     @State private var isCustomSetupPresented: Bool = false
+    @State private var isDuelPointsPresented: Bool = false
+    @State private var isPaywallPresented: Bool = false
+    @State private var paywallSource: String = "duel"
 
     private enum DuelMode {
         case ranked
@@ -64,7 +67,13 @@ struct DuelHomeView: View {
         }
         .background(Theme.background)
         .fullScreenCover(isPresented: $isRankedPresented) {
-            OnlineMatchView(catalog: model.catalog, store: model.store, online: online, disciplineId: selectedDuelDisciplineId)
+            OnlineMatchView(
+                catalog: model.catalog,
+                store: model.store,
+                online: online,
+                disciplineId: selectedDuelDisciplineId,
+                onPlayBot: playBotInstead
+            )
         }
         .fullScreenCover(isPresented: $isTrainingPresented) {
             DuelMatchView(catalog: model.catalog, store: model.store, disciplineId: selectedDuelDisciplineId)
@@ -113,6 +122,16 @@ struct DuelHomeView: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $isDuelPointsPresented) {
+            DuelPointsSheet(progressStore: model.store) {
+                isDuelPointsPresented = false
+                openPaywall(source: "duel_points")
+            }
+            .presentationDetents([.height(440)])
+        }
+        .sheet(isPresented: $isPaywallPresented) {
+            PaywallView(source: paywallSource)
+        }
         .sheet(isPresented: $showThemePicker) {
             DuelThemePickerView(
                 catalog: model.catalog,
@@ -144,6 +163,9 @@ struct DuelHomeView: View {
                     .foregroundStyle(Theme.inkMuted)
             }
             Spacer()
+            if !store.isPremium {
+                duelPointsPill
+            }
             Button {
                 Haptics.tap()
                 isHelpPresented = true
@@ -158,6 +180,30 @@ struct DuelHomeView: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 6)
+    }
+
+    /// Remaining free-tier duel points; tapping explains them and offers the
+    /// rewarded-video refill.
+    private var duelPointsPill: some View {
+        let points = model.store.duelPoints
+        return Button {
+            Haptics.tap()
+            isDuelPointsPresented = true
+        } label: {
+            HStack(spacing: 3) {
+                ForEach(0..<ProgressStore.duelPointsMax, id: \.self) { index in
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(index < points ? Theme.duelAccent : Theme.inkMuted.opacity(0.3))
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .background(Capsule().fill(Theme.duelAccent.opacity(0.12)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(points) points de duel sur \(ProgressStore.duelPointsMax)")
     }
 
     /// The three quick-access shortcuts (rank, missions, friends), shown as a
@@ -205,7 +251,9 @@ struct DuelHomeView: View {
     private var rankedModeCard: some View {
         Button {
             Haptics.medium()
-            if online.isSignedIn {
+            if !store.isPremium {
+                openPaywall(source: "ranked")
+            } else if online.isSignedIn {
                 presentRankedDuel()
             } else {
                 isSignInPresented = true
@@ -219,7 +267,14 @@ struct DuelHomeView: View {
                         .frame(width: 40, height: 40)
                         .background(Circle().fill(.white.opacity(0.2)))
                     Spacer()
-                    if online.isSignedIn, let profile = online.profile {
+                    if !store.isPremium {
+                        Label("Premium", systemImage: "crown.fill")
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.duelBackground)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Theme.gold))
+                    } else if online.isSignedIn, let profile = online.profile {
                         Text("\(profile.displayPoints)")
                             .font(.system(.subheadline, design: .rounded, weight: .heavy))
                             .foregroundStyle(.white)
@@ -230,7 +285,7 @@ struct DuelHomeView: View {
                 Text("1V1")
                     .font(.system(size: 16, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                Text(online.isSignedIn ? "Match classé" : "Se connecter")
+                Text(!store.isPremium ? "Match classé" : (online.isSignedIn ? "Match classé" : "Se connecter"))
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(.white.opacity(0.75))
             }
@@ -291,10 +346,35 @@ struct DuelHomeView: View {
         .buttonStyle(.plain)
     }
 
-    /// Party/team modes need a signed-in profile for matchmaking; Local and
-    /// Flash are fully offline and skip the sign-in gate entirely.
+    /// Every non-ranked mode costs one duel point for free players (spent
+    /// when the game actually begins). With no point left, the refill sheet
+    /// opens instead of the mode.
     private func guardedAction(_ action: @escaping () -> Void) {
+        guard model.store.canStartDuel() else {
+            Haptics.error()
+            isDuelPointsPresented = true
+            return
+        }
         action()
+    }
+
+    private func openPaywall(source: String) {
+        paywallSource = source
+        Task {
+            // Lets a closing sheet finish before presenting the paywall.
+            try? await Task.sleep(for: .milliseconds(350))
+            isPaywallPresented = true
+        }
+    }
+
+    /// Ranked queue found nobody: hand over to an unranked bot match with the
+    /// same theme (Premium only, so it never costs a duel point).
+    private func playBotInstead() {
+        isRankedPresented = false
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            isTrainingPresented = true
+        }
     }
 
     private func joinParty(_ mode: PartyMode) {
@@ -310,31 +390,23 @@ struct DuelHomeView: View {
         showThemePicker = true
     }
 
+    /// Free players get an imposed mix of every theme; choosing is Premium.
     private func presentTraining() {
         pendingMode = .training
+        guard store.isPremium else {
+            selectedDuelDisciplineId = nil
+            isTrainingPresented = true
+            return
+        }
         showThemePicker = true
     }
 
     private func proceedAfterThemePick() {
         switch pendingMode {
         case .ranked:
-            guard !store.isPremium, model.store.shouldShowRankedDuelAd() else {
-                isRankedPresented = true
-                return
-            }
-            AdsManager.shared.showInterstitial(from: TopViewControllerFinder.topViewController()) {
-                model.store.resetRankedDuelAdCounter()
-                isRankedPresented = true
-            }
+            isRankedPresented = true
         case .training:
-            guard !store.isPremium, model.store.shouldShowBotMatchAd() else {
-                isTrainingPresented = true
-                return
-            }
-            AdsManager.shared.showInterstitial(from: TopViewControllerFinder.topViewController()) {
-                model.store.resetBotMatchAdCounter()
-                isTrainingPresented = true
-            }
+            isTrainingPresented = true
         }
     }
 }

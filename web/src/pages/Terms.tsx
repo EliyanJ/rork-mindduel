@@ -56,9 +56,28 @@ const Terms = () => {
           </p>
         </Section>
 
+        <Section title="Minduel Premium">
+          <p>
+            Minduel est gratuit, avec deux leçons par jour, un parcours aux thèmes imposés, le
+            classement entre amis et des duels utilisant des points de duel (trois points, une vidéo
+            récompensée les recharge). L'abonnement Minduel Premium débloque les leçons illimitées,
+            le choix libre des thèmes, le mode classé avec le classement mondial et les duels
+            illimités.
+          </p>
+          <p>
+            Premium est proposé en formule mensuelle ou annuelle ; les prix applicables sont ceux
+            affichés dans l'application au moment de l'achat. La formule annuelle peut inclure un essai
+            gratuit, une seule fois par compte Apple. L'abonnement se renouvelle automatiquement pour la
+            même durée, sauf résiliation au moins 24 heures avant la fin de la période en cours, depuis
+            les réglages de ton compte Apple. Le paiement est prélevé sur ton compte Apple à la
+            confirmation de l'achat ou à la fin de l'essai gratuit. Le bouton « Restaurer les achats »
+            réactive un abonnement déjà souscrit avec le même compte Apple.
+          </p>
+        </Section>
+
         <Section title="Achats et remboursements">
           <p>
-            Les achats éventuels effectués dans l'application sont vendus par Apple, qui en est le
+            Les achats effectués dans l'application sont vendus par Apple, qui en est le
             vendeur officiel : Apple encaisse le paiement, émet le reçu et applique ses propres
             conditions. Les demandes de remboursement se font exclusivement auprès d'Apple, via
             reportaproblem.apple.com ; nous ne pouvons ni accorder ni refuser un remboursement.

@@ -7,6 +7,7 @@ import SwiftUI
 /// on the right.
 struct ThemesView: View {
     @Environment(AppModel.self) private var model
+    @Environment(StoreViewModel.self) private var store
 
     @State private var searchText: String = ""
     /// Jumps to Parcours with this theme's own path on display.
@@ -46,7 +47,7 @@ struct ThemesView: View {
                                 Haptics.tap()
                                 onSelectDiscipline(discipline)
                             } label: {
-                                ThemePillCard(discipline: discipline)
+                                ThemePillCard(discipline: discipline, isLocked: !store.isPremium)
                             }
                             .buttonStyle(.plain)
                         }
@@ -72,7 +73,7 @@ struct ThemesView: View {
                         .foregroundStyle(Theme.inkMuted)
                         .offset(y: -1)
                 }
-                Text("Tous nos packs, classés par thèmes")
+                Text(store.isPremium ? "Tous nos packs, classés par thèmes" : "Choisis tes thèmes avec Premium")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(Theme.inkMuted)
             }
@@ -144,6 +145,8 @@ struct ThemesView: View {
 /// deeper colour, illustrated badge on the right.
 private struct ThemePillCard: View {
     let discipline: Discipline
+    /// Free players see every theme but picking one is a Premium perk.
+    var isLocked: Bool = false
 
     private var pastel: Color { discipline.color.mix(with: .white, by: 0.72) }
     private var textColor: Color { discipline.color.mix(with: .black, by: 0.18) }
@@ -156,6 +159,11 @@ private struct ThemePillCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 4)
+            if isLocked {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(textColor.opacity(0.7))
+            }
             icon
         }
         .padding(.horizontal, 16)

@@ -104,6 +104,7 @@ final class DuelSession {
     func start() {
         guard runTask == nil else { return }
         Analytics.capture("duel_started", ["mode": "bot"])
+        store.consumeDuelPoint()
         runTask = Task { await run() }
     }
 
@@ -276,7 +277,6 @@ final class DuelSession {
         let draw = playerScore == botScore
         eloChange = draw ? 4 : (won ? 18 : -12)
         store.finalizeDuel(won: won, draw: draw, score: playerScore, eloChange: eloChange)
-        store.registerBotMatchPlayed()
         phase = .finished
         if won { Haptics.success() }
     }

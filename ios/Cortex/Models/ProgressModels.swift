@@ -181,8 +181,9 @@ nonisolated struct UserProgress: Codable {
     /// When the energy regen timer started; nil while energy is full.
     var energyRegenAt: Date?
     var dailyUsage: DailyUsage
-    var duelsSinceLastAd: Int
-    var botMatchesSinceLastAd: Int
+    /// Free-tier duel tokens: one per duel, refilled to the max by a rewarded
+    /// video. Ignored entirely while the player has Premium.
+    var duelPoints: Int
 
     // MARK: - Multi-level progression (v2)
     /// Key: "disciplineId_chapterId_level" → ChapterProgress
@@ -203,15 +204,14 @@ nonisolated struct UserProgress: Codable {
         energy: 5,
         energyRegenAt: nil,
         dailyUsage: .empty(day: Calendar.current.startOfDay(for: .now)),
-        duelsSinceLastAd: 0,
-        botMatchesSinceLastAd: 0,
+        duelPoints: 3,
         chapterProgress: [:]
     )
 
     private enum CodingKeys: String, CodingKey {
         case xp, streak, lastActiveDay, activeDays, chapterRecords, reviewItems, elo, duelsPlayed, duelsWon
         case livresBalance, lastLivreAwardDay, energy, energyRegenAt
-        case dailyUsage, duelsSinceLastAd, botMatchesSinceLastAd
+        case dailyUsage, duelPoints
         case chapterProgress
     }
 
@@ -230,8 +230,7 @@ nonisolated struct UserProgress: Codable {
         energy: Int,
         energyRegenAt: Date?,
         dailyUsage: DailyUsage,
-        duelsSinceLastAd: Int,
-        botMatchesSinceLastAd: Int,
+        duelPoints: Int,
         chapterProgress: [String: ChapterProgress]
     ) {
         self.xp = xp
@@ -248,8 +247,7 @@ nonisolated struct UserProgress: Codable {
         self.energy = energy
         self.energyRegenAt = energyRegenAt
         self.dailyUsage = dailyUsage
-        self.duelsSinceLastAd = duelsSinceLastAd
-        self.botMatchesSinceLastAd = botMatchesSinceLastAd
+        self.duelPoints = duelPoints
         self.chapterProgress = chapterProgress
     }
 
@@ -273,8 +271,7 @@ nonisolated struct UserProgress: Codable {
         energyRegenAt = try container.decodeIfPresent(Date.self, forKey: .energyRegenAt)
         dailyUsage = try container.decodeIfPresent(DailyUsage.self, forKey: .dailyUsage)
             ?? .empty(day: Calendar.current.startOfDay(for: .now))
-        duelsSinceLastAd = try container.decodeIfPresent(Int.self, forKey: .duelsSinceLastAd) ?? 0
-        botMatchesSinceLastAd = try container.decodeIfPresent(Int.self, forKey: .botMatchesSinceLastAd) ?? 0
+        duelPoints = try container.decodeIfPresent(Int.self, forKey: .duelPoints) ?? 3
         chapterProgress = try container.decodeIfPresent([String: ChapterProgress].self, forKey: .chapterProgress) ?? [:]
     }
 }

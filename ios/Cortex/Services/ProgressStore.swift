@@ -9,16 +9,15 @@ final class ProgressStore {
     private static let firstLessonReviewPromptKey = "cortex.review.firstLessonPrompted.v1"
 
     // MARK: - Rubis economy tuning
-    static let freeLessonDailyLimit = 1
-    static let premiumLessonDailyLimit = 4
+    static let freeLessonDailyLimit = 2
     static let extraLessonCost = 10
     static let rewardedAdLivres = 2
     static let rewardedAdDailyCap = 20
     static let streakLivreReward = 1
     static let ringRubisReward = 5
     static let recapRubisReward = 10
-    static let rankedDuelAdInterval = 2
-    static let botMatchAdInterval = 3
+    /// Duel tokens for free players; one rewarded video refills all of them.
+    static let duelPointsMax = 3
     /// Free nickname changes before rubis are required (the very first pick
     /// during onboarding doesn't count against this).
     static let freeNicknameChanges = 3
@@ -44,6 +43,10 @@ final class ProgressStore {
     private static let strengthMax: Double = 1.0
 
     private(set) var progress: UserProgress
+
+    /// Mirrors the Premium entitlement (set by `ContentView`). Not persisted:
+    /// RevenueCat stays the only source of truth for access.
+    var hasUnlimitedDuels = false
 
     init() {
         if let data = UserDefaults.standard.data(forKey: Self.storageKey),
@@ -158,18 +161,16 @@ final class ProgressStore {
 
     // MARK: - Lessons quota
 
-    func lessonDailyLimit(isPremium: Bool) -> Int {
-        isPremium ? Self.premiumLessonDailyLimit : Self.freeLessonDailyLimit
-    }
-
-    func remainingFreeLessons(isPremium: Bool) -> Int {
+    /// Free lessons left today (extra ones unlocked with rubis or a video
+    /// included). Premium players are never limited.
+    func remainingFreeLessons() -> Int {
         let usage = dailyUsage
-        let allowance = lessonDailyLimit(isPremium: isPremium) + usage.extraLessonsUnlocked
+        let allowance = Self.freeLessonDailyLimit + usage.extraLessonsUnlocked
         return max(0, allowance - usage.lessonsCompleted)
     }
 
     func canStartLesson(isPremium: Bool) -> Bool {
-        isPremium || remainingFreeLessons(isPremium: false) > 0
+        isPremium || remainingFreeLessons() > 0
     }
 
     func registerLessonCompleted() {
@@ -273,33 +274,25 @@ final class ProgressStore {
         save()
     }
 
-    // MARK: - Forced interstitials (duels & training)
+    // MARK: - Duel points (free tier)
 
-    func registerRankedDuelPlayed() {
-        progress.duelsSinceLastAd += 1
+    var duelPoints: Int { min(progress.duelPoints, Self.duelPointsMax) }
+
+    /// Whether a new duel may start right now.
+    func canStartDuel() -> Bool {
+        hasUnlimitedDuels || duelPoints > 0
+    }
+
+    /// Spends one point when a duel actually begins. No-op with Premium.
+    func consumeDuelPoint() {
+        guard !hasUnlimitedDuels, progress.duelPoints > 0 else { return }
+        progress.duelPoints -= 1
         save()
     }
 
-    func registerBotMatchPlayed() {
-        progress.botMatchesSinceLastAd += 1
-        save()
-    }
-
-    func shouldShowRankedDuelAd() -> Bool {
-        progress.duelsSinceLastAd >= Self.rankedDuelAdInterval
-    }
-
-    func shouldShowBotMatchAd() -> Bool {
-        progress.botMatchesSinceLastAd >= Self.botMatchAdInterval
-    }
-
-    func resetRankedDuelAdCounter() {
-        progress.duelsSinceLastAd = 0
-        save()
-    }
-
-    func resetBotMatchAdCounter() {
-        progress.botMatchesSinceLastAd = 0
+    /// Rewarded-video refill: always back to the full allowance.
+    func refillDuelPoints() {
+        progress.duelPoints = Self.duelPointsMax
         save()
     }
 

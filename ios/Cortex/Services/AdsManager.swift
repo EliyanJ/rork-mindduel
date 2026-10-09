@@ -4,8 +4,9 @@ import GoogleMobileAds
 import UserMessagingPlatform
 import UIKit
 
-/// Central place for AdMob: UMP consent, interstitials (forced, no reward)
-/// and rewarded video (opt-in, credits livres). Uses Google's official test
+/// Central place for AdMob: UMP consent and rewarded video only. Minduel never
+/// shows a forced ad — every video is started by the player in exchange for a
+/// reward (rubis, hearts, duel points, a retry). Uses Google's official test
 /// ad unit IDs until a real AdMob account is configured.
 @Observable
 @MainActor
@@ -14,31 +15,30 @@ final class AdsManager: NSObject {
 
     /// Google's public test ad unit IDs (safe to ship while waiting on a real AdMob account).
     private enum TestUnit {
-        static let interstitial = "ca-app-pub-3940256099942544/4411468910"
         static let rewarded = "ca-app-pub-3940256099942544/1712485313"
     }
 
     private(set) var isConsentReady = false
-    private(set) var isLoadingInterstitial = false
     private(set) var isLoadingRewarded = false
+    private var hasStarted = false
     /// Set when an ad was requested but AdMob returned no fill — surfaces
     /// the "Pub indisponible" fallback message in the UI.
     var lastError: String?
 
-    private var interstitialAd: InterstitialAd?
     private var rewardedAd: RewardedAd?
-    private var pendingInterstitialCompletion: (() -> Void)?
     private var pendingRewardCompletion: ((Bool) -> Void)?
+    private var pendingRewardResult = false
 
     override private init() {
         super.init()
     }
 
-    /// Call once at app launch. Requests UMP consent info, shows the consent
-    /// form if required (EU users), then starts the Mobile Ads SDK and
-    /// preloads both ad formats.
+    /// Call once the onboarding is finished. Requests UMP consent info, shows
+    /// the consent form if required (EU users), then starts the Mobile Ads SDK
+    /// and preloads a rewarded video.
     func start() {
-        guard Monetization.isEnabled else { return }
+        guard Monetization.isEnabled, !hasStarted else { return }
+        hasStarted = true
         Task {
             let parameters = RequestParameters()
             do {
@@ -56,44 +56,12 @@ final class AdsManager: NSObject {
         isConsentReady = true
         MobileAds.shared.start { [weak self] _ in
             Task { @MainActor in
-                self?.preloadInterstitial()
                 self?.preloadRewarded()
             }
         }
     }
 
-    // MARK: - Forced interstitial (ranked duels / bot training)
-
-    private func preloadInterstitial() {
-        guard Monetization.isEnabled, isConsentReady, ConsentInformation.shared.canRequestAds, interstitialAd == nil, !isLoadingInterstitial else { return }
-        isLoadingInterstitial = true
-        Task {
-            do {
-                let ad = try await InterstitialAd.load(with: TestUnit.interstitial, request: Request())
-                ad.fullScreenContentDelegate = self
-                self.interstitialAd = ad
-            } catch {
-                self.lastError = "Pub indisponible, réessaie dans un instant"
-            }
-            self.isLoadingInterstitial = false
-        }
-    }
-
-    /// Shows the forced interstitial if one is ready; always calls
-    /// `completion` afterward (whether or not an ad was shown) so callers
-    /// can proceed to matchmaking without ever blocking on ads.
-    func showInterstitial(from viewController: UIViewController?, completion: @escaping () -> Void) {
-        guard let ad = interstitialAd, let viewController else {
-            lastError = interstitialAd == nil ? "Pub indisponible, réessaie dans un instant" : nil
-            completion()
-            preloadInterstitial()
-            return
-        }
-        pendingInterstitialCompletion = completion
-        ad.present(from: viewController)
-    }
-
-    // MARK: - Rewarded video (opt-in, +2 livres)
+    // MARK: - Rewarded video (opt-in)
 
     private func preloadRewarded() {
         guard Monetization.isEnabled, isConsentReady, ConsentInformation.shared.canRequestAds, rewardedAd == nil, !isLoadingRewarded else { return }
@@ -112,9 +80,18 @@ final class AdsManager: NSObject {
 
     var isRewardedReady: Bool { rewardedAd != nil }
 
-    /// Presents the rewarded video. `onReward` is called only if the user
-    /// watched it fully and AdMob granted the reward.
+    /// Presents the rewarded video. `onReward` is called with `true` only if
+    /// the user watched it fully and AdMob granted the reward. The tracking
+    /// permission is asked right before the very first video, when the player
+    /// can understand why.
     func showRewarded(from viewController: UIViewController?, onReward: @escaping (Bool) -> Void) {
+        Task {
+            await TrackingManager.requestAuthorizationIfNeeded()
+            presentRewarded(from: viewController ?? TopViewControllerFinder.topViewController(), onReward: onReward)
+        }
+    }
+
+    private func presentRewarded(from viewController: UIViewController?, onReward: @escaping (Bool) -> Void) {
         guard let ad = rewardedAd, let viewController else {
             lastError = "Pub indisponible, réessaie dans un instant"
             onReward(false)
@@ -128,45 +105,30 @@ final class AdsManager: NSObject {
             self?.pendingRewardResult = true
         }
     }
-
-    private var pendingRewardResult = false
 }
 
 extension AdsManager: FullScreenContentDelegate {
     nonisolated func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         Task { @MainActor in
-            if ad is InterstitialAd {
-                interstitialAd = nil
-                let completion = pendingInterstitialCompletion
-                pendingInterstitialCompletion = nil
-                preloadInterstitial()
-                completion?()
-            } else if ad is RewardedAd {
-                rewardedAd = nil
-                let completion = pendingRewardCompletion
-                pendingRewardCompletion = nil
-                let result = pendingRewardResult
-                pendingRewardResult = false
-                preloadRewarded()
-                completion?(result)
-            }
+            guard ad is RewardedAd else { return }
+            rewardedAd = nil
+            let completion = pendingRewardCompletion
+            pendingRewardCompletion = nil
+            let result = pendingRewardResult
+            pendingRewardResult = false
+            preloadRewarded()
+            completion?(result)
         }
     }
 
     nonisolated func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         Task { @MainActor in
             lastError = "Pub indisponible, réessaie dans un instant"
-            if ad is InterstitialAd {
-                interstitialAd = nil
-                let completion = pendingInterstitialCompletion
-                pendingInterstitialCompletion = nil
-                completion?()
-            } else if ad is RewardedAd {
-                rewardedAd = nil
-                let completion = pendingRewardCompletion
-                pendingRewardCompletion = nil
-                completion?(false)
-            }
+            guard ad is RewardedAd else { return }
+            rewardedAd = nil
+            let completion = pendingRewardCompletion
+            pendingRewardCompletion = nil
+            completion?(false)
         }
     }
 }

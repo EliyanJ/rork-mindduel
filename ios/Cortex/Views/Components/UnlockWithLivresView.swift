@@ -6,8 +6,8 @@ struct UnlockWithLivresView: View {
     enum Kind {
         case lesson
 
-        var title: String { "Leçon du jour terminée" }
-        var message: String { "Tu as utilisé ta leçon gratuite d'aujourd'hui. Débloque-en une de plus avec des rubis, ou reviens demain." }
+        var title: String { "Leçons du jour terminées" }
+        var message: String { "Tu as utilisé tes \(ProgressStore.freeLessonDailyLimit) leçons gratuites d'aujourd'hui. Débloque-en une de plus avec des rubis, passe à Premium pour des leçons illimitées, ou reviens demain." }
         var cost: Int { ProgressStore.extraLessonCost }
         var unlockLabel: String { "Débloquer cette leçon" }
     }
@@ -17,7 +17,9 @@ struct UnlockWithLivresView: View {
     let onUnlocked: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(StoreViewModel.self) private var store
     @State private var isWatchingAd = false
+    @State private var isPaywallPresented = false
 
     var body: some View {
         NavigationStack {
@@ -56,6 +58,14 @@ struct UnlockWithLivresView: View {
                     .opacity(progressStore.livresBalance < kind.cost ? 0.5 : 1)
 
                     rewardedAdButton
+
+                    Button {
+                        Haptics.tap()
+                        isPaywallPresented = true
+                    } label: {
+                        Label("Leçons illimitées avec Premium", systemImage: "crown.fill")
+                    }
+                    .buttonStyle(ChunkyButtonStyle())
                 }
                 .padding(.bottom, 8)
             }
@@ -74,6 +84,14 @@ struct UnlockWithLivresView: View {
                 Button("OK") { AdsManager.shared.lastError = nil }
             } message: {
                 Text(AdsManager.shared.lastError ?? "")
+            }
+            .sheet(isPresented: $isPaywallPresented) {
+                PaywallView(source: "lesson_limit")
+            }
+            .onChange(of: store.isPremium) { _, isPremium in
+                guard isPremium else { return }
+                dismiss()
+                onUnlocked()
             }
         }
     }

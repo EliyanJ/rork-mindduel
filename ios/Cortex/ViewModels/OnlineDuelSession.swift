@@ -453,7 +453,6 @@ final class OnlineDuelSession {
         let draw = !wonByForfeit && playerScore == opponentScore
         // Local stats & XP; ranked ELO lives on the server profile.
         store.finalizeDuel(won: won, draw: draw, score: playerScore, eloChange: 0)
-        store.registerRankedDuelPlayed()
         online.applyRankedResult(newElo: newElo, won: won, draw: draw)
 
         phase = .finished

@@ -67,6 +67,22 @@ const Privacy = () => {
               abonnement et l'historique des remboursements accordés par Apple.
             </li>
           </ul>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>
+              <span className="text-white">Abonnement Minduel Premium</span> : RevenueCat reçoit
+              d'Apple l'historique de tes achats dans l'app (produit, dates, renouvellement) et
+              l'associe à l'identifiant technique de ton compte Minduel, afin d'activer Premium sur
+              tes appareils.
+            </li>
+            <li>
+              <span className="text-white">Vidéos récompensées</span> : lorsque tu choisis de
+              regarder une vidéo (pour des rubis, des cœurs, des points de duel ou rejouer un niveau),
+              Google AdMob la diffuse et traite des données techniques de l'appareil. L'identifiant
+              publicitaire n'est utilisé que si tu l'autorises dans la fenêtre d'iOS ; dans l'Union
+              européenne, ton consentement est aussi demandé via le formulaire de Google. Aucune
+              publicité n'est jamais imposée.
+            </li>
+          </ul>
           <p>Nous ne collectons pas de données de localisation, de contacts ou de photos.</p>
           <p>
             Nous ne détenons aucun mot de passe : la connexion passe uniquement par Google ou Apple.
@@ -103,7 +119,7 @@ const Privacy = () => {
 
         <Section title="Achats et remboursements">
           <p>
-            Si des achats sont proposés dans l'application, Apple en est le vendeur officiel : c'est
+            L'abonnement Minduel Premium est vendu par Apple, qui en est le vendeur officiel : c'est
             Apple qui encaisse, émet le reçu et décide seul des remboursements, que tu peux demander
             depuis reportaproblem.apple.com. Nous recevons uniquement l'état de ton abonnement et la
             notification d'un remboursement accordé, afin d'ajuster ton accès en conséquence.
@@ -115,7 +131,9 @@ const Privacy = () => {
             Nous ne vendons pas tes données. L'authentification est traitée par les services
             d'authentification de Google et Apple (selon le fournisseur choisi). L'hébergement de
             notre backend (comptes, duels, classement) est assuré par Cloudflare. Les statistiques
-            d'usage sont traitées par PostHog, hébergé dans l'Union européenne. Ces prestataires
+            d'usage sont traitées par PostHog, hébergé dans l'Union européenne. L'état de
+            l'abonnement est géré par RevenueCat et les vidéos récompensées par Google AdMob. Ces
+            prestataires
             traitent les données uniquement pour permettre le fonctionnement du service.
           </p>
         </Section>

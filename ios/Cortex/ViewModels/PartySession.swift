@@ -258,6 +258,7 @@ final class PartySession {
 
     private func beginGame(ticket partyTicket: PartyTicket, service: MultiplayerService) async {
         ticket = partyTicket
+        store.consumeDuelPoint()
         roundDuration = partyTicket.roundDuration
         totalQuestions = partyTicket.totalQuestions
         let averageElo = partyTicket.players.reduce(0) { $0 + $1.elo } / max(partyTicket.players.count, 1)
@@ -634,7 +635,6 @@ final class PartySession {
             winningTeam = teamScores.a == teamScores.b ? nil : (teamScores.a > teamScores.b ? "A" : "B")
         }
 
-        store.registerRankedDuelPlayed()
         online.applyPartyResult(pointsDelta: pointsDelta, reputationDelta: reputationDelta)
         phase = .finished
         let won = mode.isTeam ? (winningTeam != nil && winningTeam == you?.team) : myRank <= 3

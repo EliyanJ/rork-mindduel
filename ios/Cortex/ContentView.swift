@@ -12,7 +12,9 @@ struct ContentView: View {
     @State private var onboardingStore = OnboardingStore()
     @State private var showSplash = true
     @State private var selectedTab: AppTab = .parcours
+    @State private var isPaywallPresented: Bool = false
     @Environment(OnlineModel.self) private var online
+    @Environment(StoreViewModel.self) private var store
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -37,6 +39,19 @@ struct ContentView: View {
         }
         .onChange(of: onboardingStore.preferences.topicIds) { _, newTopics in
             model.preferredDisciplineIds = newTopics
+        }
+        // Premium perks that live in the progress store (duel points) follow
+        // the RevenueCat entitlement, and purchases follow the Minduel account.
+        .onChange(of: store.isPremium, initial: true) { _, isPremium in
+            model.store.hasUnlimitedDuels = isPremium
+        }
+        .onChange(of: online.auth.user?.id, initial: true) { _, userId in
+            Task { await store.identify(userId: userId) }
+        }
+        // Rewarded videos (and the EU consent form) only start once the
+        // onboarding is over, never on top of the first screens.
+        .onChange(of: onboardingStore.isCompleted, initial: true) { _, isCompleted in
+            if isCompleted { AdsManager.shared.start() }
         }
         // The first frame already shows the bundled catalogue; the freshest
         // questions published from the admin panel arrive in the background
@@ -93,10 +108,8 @@ struct ContentView: View {
             await NotificationService.shared.requestAuthorization()
             await refreshReminders()
         }
-        // No tracking permission is requested in the free, advertising-free version.
-        if Monetization.isEnabled {
-            Task { await TrackingManager.requestAuthorizationIfNeeded() }
-        }
+        // The tracking permission is asked later, right before the first
+        // rewarded video the player chooses to watch.
     }
 
     private func refreshReminders() async {
@@ -116,6 +129,12 @@ struct ContentView: View {
             }
             Tab("Thèmes", systemImage: "square.grid.2x2.fill", value: AppTab.themes) {
                 ThemesView { discipline in
+                    // Free players follow the imposed mixed journey; picking a
+                    // theme is a Premium perk.
+                    guard store.isPremium else {
+                        isPaywallPresented = true
+                        return
+                    }
                     // Jump straight to Parcours, showing that theme's own
                     // dedicated ring path instead of the mixed journey.
                     model.selectedDisciplineId = discipline.id
@@ -131,6 +150,9 @@ struct ContentView: View {
         }
         .tint(Theme.primary)
         .environment(model)
+        .sheet(isPresented: $isPaywallPresented) {
+            PaywallView(source: "themes")
+        }
         .onAppear { Analytics.capture("screen_viewed", ["screen": "\(selectedTab)"]) }
         .onChange(of: selectedTab) { _, tab in
             Analytics.capture("screen_viewed", ["screen": "\(tab)"])

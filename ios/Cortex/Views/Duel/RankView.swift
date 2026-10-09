@@ -52,16 +52,19 @@ nonisolated enum RankLeague: Int, CaseIterable, Identifiable {
     }
 }
 
-/// Dedicated "Rang" page: current league standing on one side, the full
-/// world ranking on the other, tabbed within a single screen.
+/// Dedicated "Rang" page: current league standing, the ranking among
+/// friends (everyone) and the world ranking (Premium), tabbed in one screen.
 struct RankView: View {
     @Environment(OnlineModel.self) private var online
+    @Environment(StoreViewModel.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var tab: Tab = .league
+    @State private var isPaywallPresented: Bool = false
 
     private enum Tab: String, CaseIterable {
         case league = "Ma ligue"
-        case world = "Classement mondial"
+        case friends = "Amis"
+        case world = "Mondial"
     }
 
     private var points: Int { online.profile?.displayPoints ?? 400 }
@@ -77,8 +80,14 @@ struct RankView: View {
                         case .league:
                             leagueHero
                             leagueLadder
+                        case .friends:
+                            friendsRanking
                         case .world:
-                            worldRanking
+                            if store.isPremium {
+                                worldRanking
+                            } else {
+                                worldLocked
+                            }
                         }
                     }
                     .padding(16)
@@ -98,7 +107,16 @@ struct RankView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
-        .task { await online.refreshLeaderboard() }
+        .task {
+            await online.refreshFriends()
+            if store.isPremium { await online.refreshLeaderboard() }
+        }
+        .onChange(of: store.isPremium) { _, isPremium in
+            if isPremium { Task { await online.refreshLeaderboard() } }
+        }
+        .sheet(isPresented: $isPaywallPresented) {
+            PaywallView(source: "world_ranking")
+        }
     }
 
     private var tabPicker: some View {
@@ -108,7 +126,13 @@ struct RankView: View {
                     Haptics.tap()
                     withAnimation(.easeInOut(duration: 0.2)) { tab = candidate }
                 } label: {
-                    Text(candidate.rawValue)
+                    HStack(spacing: 4) {
+                        if candidate == .world && !store.isPremium {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 10, weight: .heavy))
+                        }
+                        Text(candidate.rawValue)
+                    }
                         .font(.system(.subheadline, design: .rounded, weight: .heavy))
                         .foregroundStyle(tab == candidate ? Theme.duelBackground : .white.opacity(0.7))
                         .frame(maxWidth: .infinity)
@@ -247,6 +271,92 @@ struct RankView: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(isCurrent ? Theme.duelAccent.opacity(0.5) : .clear, lineWidth: 1.5)
         )
+    }
+
+    // MARK: - Friends ranking tab
+
+    /// You and your friends, ordered by points.
+    private var friendEntries: [RankedEntry] {
+        var players = online.friends
+        if let me = online.profile, !players.contains(where: { $0.id == me.id }) {
+            players.append(me)
+        }
+        return players
+            .sorted { $0.displayPoints > $1.displayPoints }
+            .enumerated()
+            .map { index, player in
+                RankedEntry(
+                    rank: index + 1,
+                    id: player.id,
+                    name: player.name,
+                    emoji: player.emoji,
+                    elo: player.elo,
+                    points: player.points,
+                    wins: player.wins,
+                    losses: player.losses,
+                    draws: player.draws,
+                    friendCode: player.friendCode
+                )
+            }
+    }
+
+    @ViewBuilder
+    private var friendsRanking: some View {
+        if !online.isSignedIn {
+            rankingMessage("Connecte-toi pour comparer tes points avec tes amis.")
+        } else if online.friends.isEmpty {
+            rankingMessage("Ajoute des amis depuis l'écran Amis pour lancer votre classement.")
+        } else {
+            VStack(spacing: 10) {
+                ForEach(friendEntries) { entry in
+                    entryRow(entry)
+                }
+            }
+        }
+    }
+
+    private func rankingMessage(_ text: String) -> some View {
+        VStack(spacing: 12) {
+            Image("MascotDuel")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 110)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, 40)
+    }
+
+    private var worldLocked: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "globe")
+                .font(.system(size: 34, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 80, height: 80)
+                .background(Circle().fill(Theme.duelAccent.opacity(0.25)))
+            Text("Classement mondial")
+                .font(.system(.title3, design: .rounded, weight: .heavy))
+                .foregroundStyle(.white)
+            Text("Le mode classé et le classement mondial font partie de Minduel Premium. Le classement entre amis reste gratuit.")
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+            Button {
+                Haptics.medium()
+                isPaywallPresented = true
+            } label: {
+                Label("Débloquer avec Premium", systemImage: "crown.fill")
+            }
+            .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+            .padding(.top, 6)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity)
+        .background(RoundedRectangle(cornerRadius: 24).fill(Theme.duelCard))
+        .padding(.top, 12)
     }
 
     // MARK: - World ranking tab

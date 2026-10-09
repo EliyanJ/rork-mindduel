@@ -4,19 +4,25 @@ import SwiftUI
 struct OnlineMatchView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var session: OnlineDuelSession
+    /// Offered after a long search with nobody in the queue.
+    let onPlayBot: () -> Void
 
-    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, disciplineId: String? = nil) {
+    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, disciplineId: String? = nil, onPlayBot: @escaping () -> Void = {}) {
         _session = State(initialValue: OnlineDuelSession(catalog: catalog, store: store, online: online, disciplineId: disciplineId))
+        self.onPlayBot = onPlayBot
     }
 
     var body: some View {
         Group {
             switch session.phase {
             case .searching, .found:
-                OnlineSearchStage(session: session) {
+                OnlineSearchStage(session: session, onCancel: {
                     session.cancel(voluntary: true)
                     dismiss()
-                }
+                }, onPlayBot: {
+                    session.cancel(voluntary: true)
+                    onPlayBot()
+                })
             case .countdown:
                 OnlineCountdownStage()
             case .question, .reveal:
@@ -62,6 +68,10 @@ struct OnlineMatchView: View {
 private struct OnlineSearchStage: View {
     let session: OnlineDuelSession
     let onCancel: () -> Void
+    let onPlayBot: () -> Void
+
+    /// After this long with no real opponent, a bot match is offered.
+    private static let botFallbackSeconds = 20
 
     @State private var isPulsing: Bool = false
 
@@ -110,6 +120,22 @@ private struct OnlineSearchStage: View {
             }
             .animation(.spring(duration: 0.4), value: isFound)
             Spacer()
+            if !isFound && session.searchSeconds >= Self.botFallbackSeconds {
+                VStack(spacing: 6) {
+                    Button {
+                        Haptics.medium()
+                        onPlayBot()
+                    } label: {
+                        Label("Jouer contre un bot", systemImage: "cpu")
+                    }
+                    .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
+                    Text("Peu de joueurs en ligne. Partie non classée, sans perte de points.")
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.quizInkMuted)
+                        .multilineTextAlignment(.center)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
             if !isFound {
                 Button("Annuler", action: onCancel)
                     .font(.system(.body, design: .rounded, weight: .bold))

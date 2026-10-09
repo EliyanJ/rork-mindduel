@@ -159,6 +159,7 @@ private final class FlashSession {
             themes: ["all"],
             averageElo: store.progress.elo
         )
+        store.consumeDuelPoint()
         fillLobby()
     }
 
@@ -388,7 +389,6 @@ private final class FlashSession {
         entries.append(FinalEntry(name: "Toi", emoji: "🧠", score: score, isYou: true))
         finalEntries = entries.sorted { $0.score > $1.score }
         phase = .finished
-        store.registerRankedDuelPlayed()
         if finalEntries.first?.isYou == true { Haptics.success() }
     }
 

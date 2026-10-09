@@ -24,10 +24,8 @@ struct CortexApp: App {
         // bearer token to attribute events, and `AuthManager` is owned here.
         AnswerTelemetry.shared.configure { await auth.validAccessToken() }
 
-        // Version 1.0 ships free: no purchase SDK is linked and no ads load.
-        if Monetization.isEnabled {
-            AdsManager.shared.start()
-        }
+        // RevenueCat is configured by `StoreViewModel`; AdMob only starts once
+        // the onboarding is over (see `ContentView`).
     }
 
     var body: some Scene {
