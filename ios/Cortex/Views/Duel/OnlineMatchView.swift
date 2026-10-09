@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Full-screen ranked match flow: queue → found → countdown → rounds → results.
+/// Full-screen online 1v1 flow (ranked or unranked): queue → found → countdown → rounds → results.
 struct OnlineMatchView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var session: OnlineDuelSession
     /// Offered after a long search with nobody in the queue.
     let onPlayBot: () -> Void
 
-    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, disciplineId: String? = nil, onPlayBot: @escaping () -> Void = {}) {
-        _session = State(initialValue: OnlineDuelSession(catalog: catalog, store: store, online: online, disciplineId: disciplineId))
+    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, disciplineId: String? = nil, isRanked: Bool = true, onPlayBot: @escaping () -> Void = {}) {
+        _session = State(initialValue: OnlineDuelSession(catalog: catalog, store: store, online: online, disciplineId: disciplineId, isRanked: isRanked))
         self.onPlayBot = onPlayBot
     }
 
@@ -106,7 +106,7 @@ private struct OnlineSearchStage: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else {
                     VStack(spacing: 4) {
-                        Text("Matchmaking ELO avec de vrais joueurs")
+                        Text(session.isRanked ? "Match classé avec de vrais joueurs" : "Partie non classée avec de vrais joueurs")
                             .font(.system(.subheadline, design: .rounded, weight: .medium))
                             .foregroundStyle(Theme.quizInkMuted)
                         if session.searchSeconds > 3 {

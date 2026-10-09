@@ -121,8 +121,9 @@ nonisolated struct MultiplayerService {
 
     // MARK: Matchmaking queue
 
-    func joinQueue(disciplineId: String? = nil) async throws -> QueueStatus {
-        var body: [String: Any] = [:]
+    /// `ranked: false` joins the free unranked 1v1 queue (no ladder points).
+    func joinQueue(disciplineId: String? = nil, ranked: Bool = true) async throws -> QueueStatus {
+        var body: [String: Any] = ["ranked": ranked]
         if let disciplineId { body["disciplineId"] = disciplineId }
         let data = try await request(path: "/api/hub/queue/join", method: "POST", body: body)
         return try parseQueue(data)

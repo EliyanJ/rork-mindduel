@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// Duel tab: one hero card for the ranked 1v1, then a short list of the
-/// other formats.
+/// Duel tab: a "Non classé / Classé" switch. Unranked holds the free modes
+/// (online 1v1, Flash, offline); Ranked holds the Premium ones (ranked 1v1,
+/// 1 vs 9, Flash 2 vs 2, custom).
 struct DuelHomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
     @State private var isRankedPresented: Bool = false
+    @State private var isCasualOnlinePresented: Bool = false
+    @State private var section: DuelSection = .casual
+    @State private var isTeamFlash: Bool = false
+    @Namespace private var sectionNamespace
     @State private var isTrainingPresented: Bool = false
     @State private var isSignInPresented: Bool = false
     @State private var isHelpPresented: Bool = false
@@ -25,20 +30,38 @@ struct DuelHomeView: View {
 
     private enum DuelMode {
         case ranked
+        case casualOnline
         case training
+    }
+
+    private enum DuelSection: String, CaseIterable, Identifiable {
+        case casual = "Non classé"
+        case ranked = "Classé"
+        var id: String { rawValue }
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
+            sectionPicker
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
             Rectangle().fill(Theme.line).frame(height: 1.5)
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
-                    rankedHero
-                        .opacity(appeared ? 1 : 0)
-                        .offset(y: appeared ? 0 : 16)
+                    Group {
+                        if section == .ranked {
+                            rankedHero
+                        } else {
+                            casualHero
+                        }
+                    }
+                    .id(section)
+                    .transition(.asymmetric(insertion: .move(edge: section == .ranked ? .trailing : .leading).combined(with: .opacity), removal: .opacity))
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 16)
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Autres modes")
+                        Text(section == .ranked ? "Modes Premium" : "Autres modes")
                             .font(.system(.title2, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.ink)
                         ForEach(Array(otherModes.enumerated()), id: \.element.id) { index, mode in
@@ -59,7 +82,21 @@ struct DuelHomeView: View {
         }
         .background(Theme.background)
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: appeared)
-        .onAppear { appeared = true }
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: section)
+        .onAppear {
+            if !appeared, store.isPremium { section = .ranked }
+            appeared = true
+        }
+        .fullScreenCover(isPresented: $isCasualOnlinePresented) {
+            OnlineMatchView(
+                catalog: model.catalog,
+                store: model.store,
+                online: online,
+                disciplineId: selectedDuelDisciplineId,
+                isRanked: false,
+                onPlayBot: playBotInsteadOfCasual
+            )
+        }
         .fullScreenCover(isPresented: $isRankedPresented) {
             OnlineMatchView(
                 catalog: model.catalog,
@@ -76,7 +113,7 @@ struct DuelHomeView: View {
             PartyLobbyView(catalog: model.catalog, store: model.store, online: online, origin: origin)
         }
         .fullScreenCover(isPresented: $isFlashPresented) {
-            FlashDuelView(catalog: model.catalog, store: model.store, isTeamFlavor: false) {
+            FlashDuelView(catalog: model.catalog, store: model.store, isTeamFlavor: isTeamFlash) {
                 isFlashPresented = false
             }
         }
@@ -177,6 +214,107 @@ struct DuelHomeView: View {
         .accessibilityLabel("\(points) éclairs de duel")
     }
 
+    /// Duolingo-style two-segment switch with a sliding chunky pill.
+    private var sectionPicker: some View {
+        HStack(spacing: 4) {
+            ForEach(DuelSection.allCases) { item in
+                let isSelected = section == item
+                Button {
+                    guard section != item else { return }
+                    Haptics.tap()
+                    section = item
+                } label: {
+                    HStack(spacing: 6) {
+                        if item == .ranked {
+                            Image(systemName: store.isPremium ? "trophy.fill" : "crown.fill")
+                                .foregroundStyle(isSelected ? Theme.duelBackground : Theme.gold)
+                        }
+                        Text(item.rawValue.uppercased())
+                            .tracking(0.6)
+                    }
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundStyle(isSelected ? Theme.duelBackground : Theme.inkMuted)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Theme.duelAccent)
+                                .matchedGeometryEffect(id: "duelSection", in: sectionNamespace)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(RoundedRectangle(cornerRadius: 18).fill(Theme.background))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.line, lineWidth: 2))
+    }
+
+    /// Free online 1v1 against a real player: no ladder points, one duel bolt.
+    private var casualHero: some View {
+        let points = model.store.duelPoints
+        let isPremium = store.isPremium
+        return VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("1 CONTRE 1 EN LIGNE")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .tracking(1)
+                        .foregroundStyle(.white.opacity(0.85))
+                    Text("Duel amical")
+                        .font(.system(size: 30, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.fill")
+                            .foregroundStyle(Theme.duelAccent)
+                        Text(isPremium ? "Illimité · sans classement" : "1 éclair · sans classement")
+                            .foregroundStyle(.white)
+                    }
+                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 34)
+                    .background(Capsule().fill(.black.opacity(0.2)))
+                }
+                Spacer(minLength: 0)
+                Image("MascotDuel")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 112, height: 112)
+                    .rotationEffect(.degrees(heroWobble ? -3 : 3))
+                    .animation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true), value: heroWobble)
+                    .onAppear { heroWobble = true }
+                    .accessibilityHidden(true)
+            }
+            Button {
+                Haptics.medium()
+                guard online.isSignedIn else {
+                    isSignInPresented = true
+                    return
+                }
+                guardedAction { presentCasualOnline() }
+            } label: {
+                Text(!online.isSignedIn ? "SE CONNECTER" : (!isPremium && points == 0 ? "RECHARGER" : "JOUER"))
+            }
+            .buttonStyle(ChunkyButtonStyle(color: .white, textColor: Color(hex: "1453A8")))
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 26)
+                .fill(LinearGradient(colors: [Color(hex: "3A8BFF"), Color(hex: "1F6AE0")], startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 26)
+                .fill(Color(hex: "1453A8"))
+                .offset(y: 5)
+        )
+        .padding(.bottom, 5)
+    }
+
     private var rankedPoints: Int {
         online.profile?.displayPoints ?? model.store.progress.elo
     }
@@ -260,32 +398,44 @@ struct DuelHomeView: View {
     }
 
     private var otherModes: [DuelModeInfo] {
-        [
-            DuelModeInfo(kind: .oneVsNine, title: "1 contre 9", subtitle: "Seul face à une équipe", icon: "flame.fill", color: Color(hex: "FF4B4B"), isPremium: false),
-            DuelModeInfo(kind: .flash, title: "Flash", subtitle: "Questions éclair en solo", icon: "bolt.fill", color: Color(hex: "FF9600"), isPremium: true),
-            DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Crée ta partie entre amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: false),
-            DuelModeInfo(kind: .offline, title: "Hors ligne", subtitle: "Contre un robot, sans classement", icon: "wifi.slash", color: Color(hex: "A560FF"), isPremium: false)
-        ]
+        switch section {
+        case .casual:
+            return [
+                DuelModeInfo(kind: .flash, title: "Flash", subtitle: "Questions éclair en solo", icon: "bolt.fill", color: Color(hex: "FF9600"), isPremium: false),
+                DuelModeInfo(kind: .offline, title: "Hors ligne", subtitle: "Contre un robot, sans connexion", icon: "wifi.slash", color: Color(hex: "A560FF"), isPremium: false)
+            ]
+        case .ranked:
+            return [
+                DuelModeInfo(kind: .oneVsNine, title: "1 contre 9", subtitle: "Seul face à une équipe", icon: "flame.fill", color: Color(hex: "FF4B4B"), isPremium: true),
+                DuelModeInfo(kind: .teamFlash, title: "Flash 2 contre 2", subtitle: "Questions éclair en équipe", icon: "bolt.horizontal.fill", color: Color(hex: "FF9600"), isPremium: true),
+                DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Crée ta partie entre amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: true)
+            ]
+        }
     }
 
     private func open(_ kind: DuelModeInfo.Kind) {
         switch kind {
         case .oneVsNine:
-            guardedAction { joinParty(.oneVsTen) }
+            guard store.isPremium else { return openPaywall(source: "one_vs_nine") }
+            joinParty(.oneVsTen)
         case .flash:
-            guard store.isPremium else {
-                openPaywall(source: "flash")
-                return
+            guardedAction {
+                isTeamFlash = false
+                isFlashPresented = true
             }
+        case .teamFlash:
+            guard store.isPremium else { return openPaywall(source: "team_flash") }
+            isTeamFlash = true
             isFlashPresented = true
         case .custom:
-            guardedAction { isCustomSetupPresented = true }
+            guard store.isPremium else { return openPaywall(source: "custom") }
+            isCustomSetupPresented = true
         case .offline:
             guardedAction { presentTraining() }
         }
     }
 
-    /// Every non-ranked mode costs one duel point for free players (spent
+    /// Every free mode costs one duel point for free players (spent
     /// when the game actually begins). With no point left, the refill sheet
     /// opens instead of the mode.
     private func guardedAction(_ action: @escaping () -> Void) {
@@ -316,6 +466,16 @@ struct DuelHomeView: View {
         }
     }
 
+    /// Nobody in the unranked queue: fall back to an offline bot match. The
+    /// bolt was not spent (it is only spent once a real match is found).
+    private func playBotInsteadOfCasual() {
+        isCasualOnlinePresented = false
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            isTrainingPresented = true
+        }
+    }
+
     private func joinParty(_ mode: PartyMode) {
         guard online.isSignedIn else {
             isSignInPresented = true
@@ -326,6 +486,17 @@ struct DuelHomeView: View {
 
     private func presentRankedDuel() {
         pendingMode = .ranked
+        showThemePicker = true
+    }
+
+    /// Free players get an imposed theme mix; choosing a theme is Premium.
+    private func presentCasualOnline() {
+        pendingMode = .casualOnline
+        guard store.isPremium else {
+            selectedDuelDisciplineId = nil
+            isCasualOnlinePresented = true
+            return
+        }
         showThemePicker = true
     }
 
@@ -344,6 +515,8 @@ struct DuelHomeView: View {
         switch pendingMode {
         case .ranked:
             isRankedPresented = true
+        case .casualOnline:
+            isCasualOnlinePresented = true
         case .training:
             isTrainingPresented = true
         }
@@ -353,7 +526,7 @@ struct DuelHomeView: View {
 /// One secondary duel format shown in the "Autres modes" list.
 private struct DuelModeInfo: Identifiable {
     enum Kind: String {
-        case oneVsNine, flash, custom, offline
+        case oneVsNine, flash, teamFlash, custom, offline
     }
 
     let kind: Kind

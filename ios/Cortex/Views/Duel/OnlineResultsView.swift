@@ -80,15 +80,24 @@ struct OnlineResultsView: View {
 
     private var rewardChips: some View {
         HStack(spacing: 10) {
-            rewardChip(
-                icon: "chart.line.uptrend.xyaxis",
-                text: session.eloChange >= 0 ? "ELO +\(session.eloChange)" : "ELO \(session.eloChange)",
-                color: session.eloChange >= 0 ? Theme.success : Theme.danger
-            )
-            if let newElo = session.newElo {
-                rewardChip(icon: "globe", text: "Classé \(newElo)", color: Theme.duelAccent)
+            if !session.isRanked {
+                rewardChip(icon: "person.2.fill", text: "Non classé", color: Theme.duelAccent)
+            } else {
+                rankedChips
             }
             rewardChip(icon: "bolt.fill", text: "+\(max(5, session.playerScore / 10)) XP", color: Theme.gold)
+        }
+    }
+
+    @ViewBuilder
+    private var rankedChips: some View {
+        rewardChip(
+            icon: "chart.line.uptrend.xyaxis",
+            text: session.eloChange >= 0 ? "ELO +\(session.eloChange)" : "ELO \(session.eloChange)",
+            color: session.eloChange >= 0 ? Theme.success : Theme.danger
+        )
+        if let newElo = session.newElo {
+            rewardChip(icon: "globe", text: "Classé \(newElo)", color: Theme.duelAccent)
         }
     }
 

@@ -61,6 +61,8 @@ type QueueRow = {
   last_seen_at: number;
   match_payload: string | null;
   discipline_id: string | null;
+  /** 1 = ranked ladder match (Premium in the app), 0 = free unranked 1v1. */
+  ranked: number;
 };
 
 const QUEUE_STALE_MS = 12_000;
@@ -286,6 +288,9 @@ export class Hub extends DurableObject {
     // (CREATE TABLE IF NOT EXISTS does not add new columns to existing tables).
     try {
       this.ctx.storage.sql.exec("ALTER TABLE queue ADD COLUMN discipline_id TEXT");
+    } catch { /* already there */ }
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE queue ADD COLUMN ranked INTEGER NOT NULL DEFAULT 1");
     } catch {
       // column already exists
     }
@@ -777,9 +782,9 @@ export class Hub extends DurableObject {
       }
 
       if (path === "/api/hub/queue/join" && request.method === "POST") {
-        const body = (await request.json().catch(() => ({}))) as { disciplineId?: string };
+        const body = (await request.json().catch(() => ({}))) as { disciplineId?: string; ranked?: boolean };
         this.ensureProfile(userId, userName);
-        return this.queueJoin(userId, body.disciplineId ?? null);
+        return this.queueJoin(userId, body.disciplineId ?? null, body.ranked !== false);
       }
 
       if (path === "/api/hub/queue/poll" && request.method === "GET") {
@@ -1486,7 +1491,7 @@ export class Hub extends DurableObject {
 
   // MARK: matchmaking queue
 
-  private queueJoin(userId: string, disciplineId: string | null): Response {
+  private queueJoin(userId: string, disciplineId: string | null, ranked: boolean): Response {
     this.purgeStaleQueue();
     const me = this.playerRow(userId);
     if (!me) {
@@ -1498,14 +1503,14 @@ export class Hub extends DurableObject {
     }
     if (!existing) {
       this.ctx.storage.sql.exec(
-        `INSERT INTO queue (user_id, elo, queued_at, last_seen_at, match_payload, discipline_id)
-         VALUES (?, ?, ?, ?, NULL, ?)`,
-        userId, me.elo, Date.now(), Date.now(), disciplineId,
+        `INSERT INTO queue (user_id, elo, queued_at, last_seen_at, match_payload, discipline_id, ranked)
+         VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+        userId, me.elo, Date.now(), Date.now(), disciplineId, ranked ? 1 : 0,
       );
     } else {
       this.ctx.storage.sql.exec(
-        "UPDATE queue SET last_seen_at = ?, discipline_id = ? WHERE user_id = ?",
-        Date.now(), disciplineId, userId,
+        "UPDATE queue SET last_seen_at = ?, discipline_id = ?, ranked = ? WHERE user_id = ?",
+        Date.now(), disciplineId, ranked ? 1 : 0, userId,
       );
     }
     this.tryPair(userId);
@@ -1572,10 +1577,10 @@ export class Hub extends DurableObject {
     const sameTheme = this.ctx.storage.sql
       .exec<QueueRow>(
         `SELECT * FROM queue
-         WHERE user_id != ? AND match_payload IS NULL
+         WHERE user_id != ? AND match_payload IS NULL AND ranked = ?
            AND (discipline_id IS ? OR discipline_id = ?)
          ORDER BY ABS(elo - ?) ASC LIMIT 1`,
-        userId, me.discipline_id, me.discipline_id, me.elo,
+        userId, me.ranked, me.discipline_id, me.discipline_id, me.elo,
       )
       .toArray();
     let opponent: QueueRow | null = sameTheme[0] ?? null;
@@ -1583,9 +1588,9 @@ export class Hub extends DurableObject {
       const anyTheme = this.ctx.storage.sql
         .exec<QueueRow>(
           `SELECT * FROM queue
-           WHERE user_id != ? AND match_payload IS NULL
+           WHERE user_id != ? AND match_payload IS NULL AND ranked = ?
            ORDER BY ABS(elo - ?) ASC LIMIT 1`,
-          userId, me.elo,
+          userId, me.ranked, me.elo,
         )
         .toArray();
       opponent = anyTheme[0] ?? null;
@@ -1602,7 +1607,8 @@ export class Hub extends DurableObject {
     // Both players receive the same sorted theme list so their clients derive
     // an identical mixed question set from the shared seed.
     const themes = [me.discipline_id ?? "all", opponent.discipline_id ?? "all"].sort();
-    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes };
+    const ranked = me.ranked !== 0;
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes, ranked };
     const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + oppProfile.elo) / 2));
     this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, oppProfile], questions });
     const forMe = JSON.stringify({ ...base, you: myProfile, opponent: oppProfile });
@@ -2007,6 +2013,12 @@ export class Hub extends DurableObject {
       forfeitBy?: string;
       voluntaryLeave?: boolean;
     };
+    const ticketRow = payload.matchId ? this.ctx.storage.sql.exec<{ payload: string }>("SELECT payload FROM room_tickets WHERE id = ? AND kind = 'duel'", payload.matchId).toArray()[0] : undefined;
+    const isCasual = !!ticketRow && (JSON.parse(ticketRow.payload) as { ranked?: boolean }).ranked === false;
+    if (isCasual) {
+      // Unranked 1v1: the match counts, but neither rating nor ladder points move.
+      return Response.json({ ok: true, unranked: true, eloChanges: {}, newElos: {} });
+    }
     const hasTicket = payload.matchId && this.ctx.storage.sql.exec("SELECT id FROM room_tickets WHERE id = ? AND kind = 'duel'", payload.matchId).toArray().length > 0;
     if ((!hasTicket && Date.now() >= LEGACY_DEADLINE_MS) || (payload.forfeitBy && !payload.voluntaryLeave)) {
       return Response.json({ ok: true, noResult: true, eloChanges: {}, newElos: {} });

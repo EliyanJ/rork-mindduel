@@ -10,7 +10,7 @@ struct DuelHelpView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Le mode Duel classé te fait affronter de vrais joueurs du monde entier sur les mêmes questions, en même temps.")
+                    Text("Deux onglets : « Non classé » pour jouer librement (1v1 en ligne, Flash, Hors ligne — 1 éclair par partie), et « Classé » pour grimper au classement mondial (Premium).")
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
@@ -18,7 +18,7 @@ struct DuelHelpView: View {
                     helpSection(
                         icon: "globe",
                         color: Theme.duelAccent.mix(with: .black, by: 0.2),
-                        title: "Matchmaking ELO",
+                        title: "Match classé",
                         text: "Un match classé t'oppose à un vrai joueur de niveau proche du tien (même ELO), pour un duel équilibré. Vous recevez tous les deux les mêmes questions, au même moment."
                     )
                     helpSection(

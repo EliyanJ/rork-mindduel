@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// Real online ranked duel: joins the matchmaking queue (HTTP polling),
+/// Real online 1v1 (ranked or free unranked): joins the matchmaking queue (HTTP polling),
 /// then connects to the match room over WebSocket. The server drives the
 /// rounds; both players derive the same questions from the shared seed.
 @Observable
@@ -75,8 +75,11 @@ final class OnlineDuelSession {
     private var finishedHandled = false
 
     private let disciplineId: String?
+    /// Ranked = Premium ladder match; unranked = free 1v1 that costs one duel bolt.
+    let isRanked: Bool
 
-    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, disciplineId: String? = nil) {
+    init(catalog: ContentCatalog, store: ProgressStore, online: OnlineModel, disciplineId: String? = nil, isRanked: Bool = true) {
+        self.isRanked = isRanked
         self.catalog = catalog
         self.store = store
         self.online = online
@@ -140,12 +143,12 @@ final class OnlineDuelSession {
 
     private func runQueue() async {
         guard let token = await online.auth.validAccessToken() else {
-            phase = .failed("Connecte-toi pour jouer en classé")
+            phase = .failed("Connecte-toi pour jouer en ligne")
             return
         }
         let service = MultiplayerService(token: token)
         do {
-            var status = try await service.joinQueue(disciplineId: disciplineId)
+            var status = try await service.joinQueue(disciplineId: disciplineId, ranked: isRanked)
             let startedAt = Date()
             while case .searching = status {
                 try Task.checkCancellation()
@@ -167,6 +170,7 @@ final class OnlineDuelSession {
 
     private func beginMatch(ticket matchTicket: MatchTicket, service: MultiplayerService) async {
         ticket = matchTicket
+        if !isRanked { store.consumeDuelPoint() }
         roundDuration = matchTicket.roundDuration
         let averageElo = (matchTicket.you.elo + matchTicket.opponent.elo) / 2
         questions = MatchQuestionPicker.questions(
@@ -439,10 +443,10 @@ final class OnlineDuelSession {
             playerScore = scores[you.id] ?? playerScore
             opponentScore = scores[opp.id] ?? opponentScore
         }
-        if let changes = raw["eloChanges"] as? [String: Int] {
+        if isRanked, let changes = raw["eloChanges"] as? [String: Int] {
             eloChange = changes[you.id] ?? 0
         }
-        if let elos = raw["newElos"] as? [String: Int] {
+        if isRanked, let elos = raw["newElos"] as? [String: Int] {
             newElo = elos[you.id]
         }
         if let forfeitBy = raw["forfeitBy"] as? String, forfeitBy == opp.id {
@@ -453,7 +457,9 @@ final class OnlineDuelSession {
         let draw = !wonByForfeit && playerScore == opponentScore
         // Local stats & XP; ranked ELO lives on the server profile.
         store.finalizeDuel(won: won, draw: draw, score: playerScore, eloChange: 0)
-        online.applyRankedResult(newElo: newElo, won: won, draw: draw)
+        if isRanked {
+            online.applyRankedResult(newElo: newElo, won: won, draw: draw)
+        }
 
         phase = .finished
         if won { Haptics.success() }
