@@ -430,7 +430,7 @@ struct DuelHomeView: View {
 
     /// "D'autres choses" (unranked tab only): games made with friends.
     private var extraModes: [DuelModeInfo] {
-        [DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Ta partie, tes règles, tes amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: true)]
+        [DuelModeInfo(kind: .custom, title: "Personnalisé", subtitle: "Ta partie, tes règles, tes amis", icon: "person.3.fill", color: Color(hex: "1CB0F6"), isPremium: false)]
     }
 
     private var otherModes: [DuelModeInfo] {
@@ -488,7 +488,10 @@ struct DuelHomeView: View {
             isTeamFlash = true
             isFlashPresented = true
         case .custom:
-            guard store.isPremium else { return openPaywall(source: "custom") }
+            guard online.isSignedIn else {
+                isSignInPresented = true
+                return
+            }
             isCustomSetupPresented = true
         case .offline:
             guardedAction { presentTraining() }

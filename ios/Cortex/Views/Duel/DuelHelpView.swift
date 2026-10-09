@@ -10,7 +10,7 @@ struct DuelHelpView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Deux onglets : « Non classé » pour jouer librement (1v1 en ligne, Flash, Hors ligne — 1 éclair par partie, rechargeable avec des vidéos), et « Classé » pour grimper au classement mondial. En gratuit, tu as droit à 1 partie classée par jour (non rechargeable) ; Premium la rend illimitée et débloque 1 contre 9, Flash 2v2 et Personnalisé.")
+                    Text("Deux onglets : « Non classé » pour jouer librement (1v1 en ligne, Flash, Hors ligne — 1 éclair par partie, rechargeable avec des vidéos — et Personnalisé, gratuit, pour créer ta partie entre amis), et « Classé » pour grimper au classement mondial. En gratuit, tu as droit à 1 partie classée par jour (non rechargeable) ; Premium la rend illimitée et débloque 1 contre 9 et Flash 2v2.")
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
