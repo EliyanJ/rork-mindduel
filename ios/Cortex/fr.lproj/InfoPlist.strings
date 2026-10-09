@@ -1,0 +1,14 @@
+/* Nom affiché sous l'icône */
+"CFBundleDisplayName" = "Minduel";
+
+/* Appareil photo : scan du QR code d'un ami */
+"NSCameraUsageDescription" = "Minduel utilise l'appareil photo pour scanner le QR code d'un ami et l'ajouter directement.";
+
+/* Contacts : invitation d'un ami */
+"NSContactsUsageDescription" = "Minduel utilise tes contacts pour te permettre d'inviter tes amis à jouer.";
+
+/* Suivi publicitaire : demandé avant la première vidéo récompensée */
+"NSUserTrackingUsageDescription" = "Minduel utilise cet identifiant pour te proposer des publicités plus pertinentes.";
+
+/* Réseau local : duels à proximité */
+"NSLocalNetworkUsageDescription" = "Minduel utilise le réseau local pour trouver et rejoindre les duels avec d'autres joueurs à proximité.";
