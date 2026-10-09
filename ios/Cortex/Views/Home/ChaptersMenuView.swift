@@ -16,8 +16,6 @@ struct ChaptersMenuView: View {
 
     @State private var appeared: Bool = false
 
-    private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
-
     private var lessons: [PathLesson] { model.lessons(inDiscipline: discipline.id) }
 
     var body: some View {
@@ -213,55 +211,144 @@ struct ChaptersMenuView: View {
 
     private var themeSwitcher: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("CHANGER DE THÈME")
-                .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                .tracking(0.8)
-                .foregroundStyle(Theme.inkMuted)
-            if !store.isPremium {
-                Text("Avec Premium, choisis librement le thème de ton parcours.")
-                    .font(.system(.footnote, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Theme.inkMuted)
-            }
-            if store.isPremium && model.selectedDisciplineId != nil {
-                Button {
-                    Haptics.tap()
-                    onSelectDiscipline(nil)
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "shuffle")
-                            .font(.system(size: 15, weight: .heavy))
-                        Text("Parcours général (tous les thèmes)")
-                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .heavy))
-                    }
-                    .foregroundStyle(Theme.link)
-                    .padding(.horizontal, 16)
-                    .frame(height: 54)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Theme.card))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.line, lineWidth: 2))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Changer de thème")
+                    .font(.system(.title3, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+                if !store.isPremium {
+                    Text("Avec Premium, choisis librement ton thème.")
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
                 }
-                .buttonStyle(PressDownStyle())
             }
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(model.orderedDisciplines) { item in
-                    let isActive = item.id == discipline.id
-                    Button {
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                if store.isPremium {
+                    ThemeRow(
+                        title: "Parcours général",
+                        subtitle: "Tous les thèmes mélangés",
+                        tint: Theme.link,
+                        state: model.selectedDisciplineId == nil ? .active : .open,
+                        icon: { Image(systemName: "shuffle").font(.system(size: 18, weight: .heavy)).foregroundStyle(.white) }
+                    ) {
+                        Haptics.tap()
+                        onSelectDiscipline(nil)
+                    }
+                    divider
+                }
+                ForEach(Array(model.orderedDisciplines.enumerated()), id: \.element.id) { index, item in
+                    let isActive = item.id == discipline.id && (model.selectedDisciplineId != nil || !store.isPremium)
+                    let count = model.lessons(inDiscipline: item.id).count
+                    if index > 0 { divider }
+                    ThemeRow(
+                        title: item.name,
+                        subtitle: "\(count) chapitre\(count > 1 ? "s" : "")",
+                        tint: item.color,
+                        state: isActive ? .active : (store.isPremium || item.id == discipline.id ? .open : .locked),
+                        icon: { ThemeBadge(discipline: item) }
+                    ) {
                         Haptics.tap()
                         onSelectDiscipline(item)
-                    } label: {
-                        ThemePillCard(discipline: item, isLocked: !store.isPremium && !isActive)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(isActive ? item.color : .clear, lineWidth: 2.5)
-                            )
                     }
-                    .buttonStyle(PressDownStyle())
-                    .accessibilityAddTraits(isActive ? .isSelected : [])
                 }
             }
+            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
+            .clipShape(.rect(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 2))
+            .background(RoundedRectangle(cornerRadius: 22).fill(Theme.line).offset(y: 4))
+            .padding(.bottom, 4)
         }
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Theme.line).frame(height: 1.5).padding(.leading, 78)
+    }
+}
+
+/// One theme in the vertical switcher list: badge, name, chapter count and a
+/// trailing state (check / lock / chevron). Same type scale on every row.
+private struct ThemeRow<Icon: View>: View {
+    enum RowState { case active, open, locked }
+
+    let title: String
+    let subtitle: String
+    let tint: Color
+    let state: RowState
+    @ViewBuilder let icon: () -> Icon
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(tint)
+                    .frame(width: 48, height: 48)
+                    .overlay { icon() }
+                    .overlay(alignment: .bottom) {
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.black.opacity(0.12), lineWidth: 1)
+                    }
+                    .saturation(state == .locked ? 0.35 : 1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(.headline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(state == .locked ? Theme.inkMuted : Theme.ink)
+                        .lineLimit(1)
+                    Text(subtitle)
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.inkMuted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                trailing
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(state == .active ? tint.opacity(0.1) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(state == .active ? .isSelected : [])
+        .accessibilityHint(state == .locked ? "Réservé à Premium" : "")
+    }
+
+    @ViewBuilder
+    private var trailing: some View {
+        switch state {
+        case .active:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(tint)
+        case .open:
+            Image(systemName: "chevron.right")
+                .font(.system(size: 15, weight: .heavy))
+                .foregroundStyle(Theme.inkMuted)
+        case .locked:
+            Image(systemName: "lock.fill")
+                .font(.system(size: 16, weight: .heavy))
+                .foregroundStyle(Theme.inkMuted)
+        }
+    }
+}
+
+/// The theme's illustration filling its coloured tile, or its SF symbol.
+private struct ThemeBadge: View {
+    let discipline: Discipline
+
+    var body: some View {
+        RemoteThemeImage(urlString: discipline.imageUrl) {
+            if let illustrated = discipline.illustratedIconName {
+                Image(illustrated).resizable().scaledToFit().padding(4)
+            } else {
+                Image(systemName: discipline.icon)
+                    .font(.system(size: 20, weight: .black))
+                    .foregroundStyle(.white)
+            }
+        }
+        .aspectRatio(contentMode: .fill)
+        .frame(width: 48, height: 48)
+        .clipShape(.rect(cornerRadius: 14))
     }
 }
 
@@ -331,55 +418,6 @@ struct PressDownStyle: ButtonStyle {
         configuration.label
             .offset(y: configuration.isPressed ? 3 : 0)
             .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
-    }
-}
-
-/// One pastel pill per theme: soft tinted background, name in the theme's own
-/// deeper colour, illustrated badge on the right.
-struct ThemePillCard: View {
-    let discipline: Discipline
-    var isLocked: Bool = false
-
-    private var pastel: Color { Theme.pastel(discipline.color) }
-    private var textColor: Color { Theme.pastelInk(discipline.color) }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(discipline.name)
-                .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(textColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Spacer(minLength: 4)
-            if isLocked {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 11, weight: .heavy))
-                    .foregroundStyle(textColor.opacity(0.7))
-            }
-            icon
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 62)
-        .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 18).fill(pastel))
-        .contentShape(RoundedRectangle(cornerRadius: 18))
-    }
-
-    private var icon: some View {
-        RemoteThemeImage(urlString: discipline.imageUrl) {
-            if let illustratedIconName = discipline.illustratedIconName {
-                Image(illustratedIconName)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                Image(systemName: discipline.icon)
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(textColor)
-            }
-        }
-        .aspectRatio(contentMode: .fill)
-        .frame(width: 30, height: 30)
-        .clipShape(Circle())
     }
 }
 
