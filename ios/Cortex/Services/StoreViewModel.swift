@@ -73,16 +73,56 @@ final class StoreViewModel {
     }
 
     func loadOfferings() async {
-        guard Purchases.isConfigured, !isLoading else { return }
+        guard Purchases.isConfigured else {
+            if Monetization.isEnabled && Self.isTestFlight {
+                error = Self.offeringsErrorMessage + "\n\n[TestFlight] RevenueCat non configuré : clé API iOS vide."
+            }
+            return
+        }
+        guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
         do {
             let offerings = try await Purchases.shared.offerings()
             offering = offerings.current
+            if Self.isTestFlight, offerings.current?.availablePackages.isEmpty ?? true {
+                let ids = offerings.all.keys.sorted().joined(separator: ", ")
+                error = Self.offeringsErrorMessage
+                    + "\n\n[TestFlight] Aucune offre « current » ou aucun package. Offres reçues : "
+                    + (ids.isEmpty ? "aucune" : ids)
+            }
             await refreshTrialEligibility()
         } catch {
-            self.error = "Impossible de charger les offres. Vérifie ta connexion et réessaie."
+            var message = Self.offeringsErrorMessage
+            if Self.isTestFlight {
+                message += "\n\n[TestFlight] " + Self.debugDescription(of: error)
+            }
+            self.error = message
         }
+    }
+
+    private static let offeringsErrorMessage = "Impossible de charger les offres. Vérifie ta connexion et réessaie."
+
+    /// True only for TestFlight installs (sandbox receipt), never for App Store builds.
+    private static var isTestFlight: Bool {
+        #if DEBUG
+        return false
+        #else
+        return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        #endif
+    }
+
+    /// Full RevenueCat error details, shown to testers only.
+    private static func debugDescription(of error: Error) -> String {
+        let nsError = error as NSError
+        var parts: [String] = []
+        let readable = nsError.userInfo["readable_error_code"] as? String
+        parts.append("Code \(nsError.code)" + (readable.map { " (\($0))" } ?? ""))
+        parts.append(nsError.localizedDescription)
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            parts.append("Cause : \(underlying.domain) \(underlying.code) – \(underlying.localizedDescription)")
+        }
+        return parts.joined(separator: "\n")
     }
 
     private func refreshTrialEligibility() async {
