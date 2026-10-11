@@ -137,10 +137,13 @@ struct LessonView: View {
                     .overlay {
                         EnergyRefillView(
                             progressStore: model.store,
-                            quitTitle: "Arrêter la leçon"
-                        ) {
-                            dismiss()
-                        }
+                            quitTitle: "Arrêter la leçon",
+                            onQuit: { dismiss() },
+                            onOpenMissions: {
+                                dismiss()
+                                model.openMissions()
+                            }
+                        )
                         .padding(8)
                         .background(RoundedRectangle(cornerRadius: 28).fill(Theme.card))
                         .padding(20)

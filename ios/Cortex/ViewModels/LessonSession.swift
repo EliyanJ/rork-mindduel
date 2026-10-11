@@ -195,6 +195,10 @@ final class LessonSession {
         if correctCount == items.count { xpEarned += 20 }
         var ringDiamonds = 0
         store.addXP(xpEarned)
+        // Each finished ring spends one of the free player's daily lessons.
+        if ringKind != nil, !store.hasUnlimitedDuels {
+            store.registerLessonCompleted()
+        }
         store.registerActivity()
         isFirstLessonToday = !wasActiveToday
         weekActivity = Self.computeWeekActivity(store: store)

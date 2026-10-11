@@ -132,6 +132,17 @@ final class AppModel {
     /// Set from elsewhere (news feed) to open the Parcours chapters page.
     var isChaptersMenuRequested: Bool = false
 
+    /// Set from a sheet or screen to switch the main tab (e.g. "Voir mes missions").
+    var requestedTab: AppTab?
+
+    /// Switches to the Missions tab once the caller's own sheet has closed.
+    func openMissions() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            requestedTab = .missions
+        }
+    }
+
     func rings(for disciplineId: String) -> [PathRing] {
         ringsByDiscipline[disciplineId] ?? []
     }

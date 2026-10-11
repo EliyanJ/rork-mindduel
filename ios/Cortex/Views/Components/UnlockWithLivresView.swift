@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// Shared "quota reached" screen: explains the daily free lesson limit,
-/// offers to spend rubis or watch a rewarded ad to top up the balance.
+/// Shared "quota reached" screen: explains the daily free lesson limit and
+/// offers to buy an extra lesson with diamonds (2 per day), watch a video
+/// for diamonds, or go Premium.
 struct UnlockWithLivresView: View {
     enum Kind {
         case lesson
 
         var title: String { "Plus d'éclairs de leçon" }
-        var message: String { "Chaque leçon coûte 1 éclair, et tu en reçois \(ProgressStore.freeLessonDailyLimit) par jour. Achète-en un avec tes diamants, passe à Premium pour des leçons illimitées, ou reviens demain." }
+        var message: String { "Chaque leçon coûte 1 éclair, et tu en reçois \(ProgressStore.freeLessonDailyLimit) par jour. Achète-en avec tes diamants (\(ProgressStore.extraLessonDailyMax) max par jour), passe à Premium pour des leçons illimitées, ou reviens demain." }
         var cost: Int { ProgressStore.extraLessonCost }
         var unlockLabel: String { "Acheter 1 éclair" }
     }
@@ -15,11 +16,14 @@ struct UnlockWithLivresView: View {
     let kind: Kind
     let progressStore: ProgressStore
     let onUnlocked: () -> Void
+    /// "Voir mes missions" from the missing-diamonds sheet.
+    let onOpenMissions: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(StoreViewModel.self) private var store
     @State private var isWatchingAd = false
     @State private var isPaywallPresented = false
+    @State private var isMissingPresented = false
 
     var body: some View {
         NavigationStack {
@@ -47,16 +51,7 @@ struct UnlockWithLivresView: View {
                 Spacer(minLength: 4)
 
                 VStack(spacing: 12) {
-                    Button {
-                        Haptics.medium()
-                        unlock()
-                    } label: {
-                        Label("\(kind.unlockLabel) — \(kind.cost) diamants", systemImage: "diamond.fill")
-                    }
-                    .buttonStyle(ChunkyButtonStyle(color: Theme.livres))
-                    .disabled(progressStore.livresBalance < kind.cost)
-                    .opacity(progressStore.livresBalance < kind.cost ? 0.5 : 1)
-
+                    unlockButton
                     rewardedAdButton
 
                     Button {
@@ -78,7 +73,7 @@ struct UnlockWithLivresView: View {
                 }
             }
             .alert("Erreur", isPresented: .init(
-                get: { AdsManager.shared.lastError != nil },
+                get: { AdsManager.shared.lastError != nil && !isMissingPresented },
                 set: { if !$0 { AdsManager.shared.lastError = nil } }
             )) {
                 Button("OK") { AdsManager.shared.lastError = nil }
@@ -87,6 +82,9 @@ struct UnlockWithLivresView: View {
             }
             .sheet(isPresented: $isPaywallPresented) {
                 PaywallView(source: "lesson_limit")
+            }
+            .sheet(isPresented: $isMissingPresented) {
+                InsufficientDiamondsSheet(cost: kind.cost, progressStore: progressStore, onOpenMissions: onOpenMissions)
             }
             .onChange(of: store.isPremium) { _, isPremium in
                 guard isPremium else { return }
@@ -97,9 +95,33 @@ struct UnlockWithLivresView: View {
     }
 
     @ViewBuilder
+    private var unlockButton: some View {
+        let left = progressStore.extraLessonsBuyableToday
+        if left > 0 {
+            Button {
+                Haptics.medium()
+                unlock()
+            } label: {
+                Label("\(kind.unlockLabel) — \(kind.cost) 💎", systemImage: "diamond.fill")
+            }
+            .buttonStyle(ChunkyButtonStyle(color: Theme.livres))
+            Text("Encore \(left)/\(ProgressStore.extraLessonDailyMax) à acheter aujourd'hui")
+                .font(.system(.caption, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.inkMuted)
+        } else {
+            Text("Tu as déjà acheté \(ProgressStore.extraLessonDailyMax) leçons aujourd'hui, reviens demain")
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.inkMuted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Theme.lockedFill))
+        }
+    }
+
+    @ViewBuilder
     private var rewardedAdButton: some View {
-        let remaining = progressStore.rewardedAdsRemainingToday
-        if remaining > 0 {
+        if progressStore.diamondAdsRemainingToday > 0 {
             Button {
                 Haptics.medium()
                 watchAd()
@@ -107,24 +129,21 @@ struct UnlockWithLivresView: View {
                 if isWatchingAd {
                     ProgressView().tint(.white)
                 } else {
-                    Label("Regarder une pub (+\(ProgressStore.rewardedAdLivres) diamants)", systemImage: "play.rectangle.fill")
+                    Label("Regarder une vidéo (+\(ProgressStore.rewardedAdLivres) 💎)", systemImage: "play.rectangle.fill")
                 }
             }
             .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: Theme.duelBackground))
             .disabled(isWatchingAd)
-        } else {
-            Text("Pubs épuisées pour aujourd'hui — reviens demain")
-                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(Theme.inkMuted)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Theme.lockedFill))
         }
     }
 
     private func unlock() {
-        let ok = progressStore.unlockExtraLesson()
-        if ok {
+        guard progressStore.livresBalance >= kind.cost else {
+            Haptics.error()
+            isMissingPresented = true
+            return
+        }
+        if progressStore.unlockExtraLesson() {
             Haptics.success()
             dismiss()
             onUnlocked()

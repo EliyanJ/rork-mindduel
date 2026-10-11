@@ -10,9 +10,14 @@ final class ProgressStore {
 
     // MARK: - Rubis economy tuning
     static let freeLessonDailyLimit = 2
-    static let extraLessonCost = 10
+    static let extraLessonCost = 20
+    /// Extra lessons a free player may buy with diamonds each day.
+    static let extraLessonDailyMax = 2
     static let rewardedAdLivres = 2
+    /// Overall daily cap shared by every rewarded video (hearts, duel bolts, diamonds).
     static let rewardedAdDailyCap = 20
+    /// Daily cap on the videos that pay out diamonds.
+    static let diamondAdDailyCap = 5
     static let streakLivreReward = 1
     static let ringRubisReward = 5
     static let recapRubisReward = 10
@@ -25,7 +30,25 @@ final class ProgressStore {
 
     // MARK: - Energy (hearts) tuning
     static let energyMax = 3
-    static let energyRefillCost = 15
+    static let heartCost = 10
+    static let energyRefillCost = 25
+
+    // MARK: - Streak repair & protection tuning
+    static let streakFreezeCost = 40
+    static let streakFreezeMax = 2
+    /// A broken streak can be repaired for this long after it broke.
+    static let streakRepairWindow: TimeInterval = 48 * 3600
+    /// One repair per rolling week.
+    static let streakRepairCooldownDays = 7
+
+    /// Repair price grows with the streak that was lost.
+    static func streakRepairCost(for streak: Int) -> Int {
+        switch streak {
+        case 30...: return 100
+        case 7...: return 60
+        default: return 30
+        }
+    }
 
     // MARK: - Spaced repetition (ease-factor / SM-2 inspired)
     private static let easeDefault: Double = 2.5
@@ -99,6 +122,7 @@ final class ProgressStore {
     }
 
     func registerActivity(on date: Date = .now) {
+        applyStreakFreezesIfNeeded(reference: date)
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: date)
         if let last = progress.lastActiveDay {
@@ -121,6 +145,101 @@ final class ProgressStore {
             progress.lastLivreAwardDay = today
         }
         save()
+    }
+
+    // MARK: - Streak repair & protection
+
+    /// A streak that broke recently enough to be repaired.
+    struct BrokenStreak: Equatable {
+        let length: Int
+        let cost: Int
+        /// When the repair offer expires.
+        let expiresAt: Date
+    }
+
+    /// Whole calendar days skipped since the last active day (0 while the streak is alive).
+    private func missedDays(reference: Date = .now) -> Int {
+        guard let last = progress.lastActiveDay else { return 0 }
+        let calendar = Calendar.current
+        let diff = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: last),
+            to: calendar.startOfDay(for: reference)
+        ).day ?? 0
+        return max(0, diff - 1)
+    }
+
+    private static func startOfYesterday(_ reference: Date) -> Date {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: reference)
+        return calendar.date(byAdding: .day, value: -1, to: today) ?? today.addingTimeInterval(-86_400)
+    }
+
+    /// The streak that just broke, while it can still be repaired (less than
+    /// 48 h since the first missed day ended).
+    func brokenStreak(reference: Date = .now) -> BrokenStreak? {
+        guard progress.streak > 0, let last = progress.lastActiveDay, missedDays(reference: reference) > 0 else { return nil }
+        let calendar = Calendar.current
+        let brokeAt = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: last)) ?? last
+        let expiresAt = brokeAt.addingTimeInterval(Self.streakRepairWindow)
+        guard reference < expiresAt else { return nil }
+        return BrokenStreak(length: progress.streak, cost: Self.streakRepairCost(for: progress.streak), expiresAt: expiresAt)
+    }
+
+    /// When the next repair becomes possible, or nil if one is available now.
+    func nextStreakRepairDate(reference: Date = .now) -> Date? {
+        guard let last = progress.lastStreakRepairAt,
+              let next = Calendar.current.date(byAdding: .day, value: Self.streakRepairCooldownDays, to: last),
+              next > reference else { return nil }
+        return next
+    }
+
+    /// Restores a broken streak as if yesterday had been played.
+    @discardableResult
+    func repairStreak(reference: Date = .now) -> Bool {
+        guard let broken = brokenStreak(reference: reference),
+              nextStreakRepairDate(reference: reference) == nil,
+              progress.livresBalance >= broken.cost else { return false }
+        progress.livresBalance -= broken.cost
+        progress.lastActiveDay = Self.startOfYesterday(reference)
+        progress.lastStreakRepairAt = reference
+        save()
+        Analytics.capture("diamonds_spent", ["item": "streak_repair", "amount": broken.cost, "streak": broken.length])
+        return true
+    }
+
+    /// The player gave up on the broken streak: it restarts at the next lesson.
+    func abandonBrokenStreak() {
+        guard brokenStreak() != nil else { return }
+        progress.streak = 0
+        save()
+    }
+
+    var streakFreezes: Int { min(progress.streakFreezes, Self.streakFreezeMax) }
+
+    @discardableResult
+    func buyStreakFreeze() -> Bool {
+        guard streakFreezes < Self.streakFreezeMax,
+              progress.livresBalance >= Self.streakFreezeCost else { return false }
+        progress.livresBalance -= Self.streakFreezeCost
+        progress.streakFreezes = streakFreezes + 1
+        save()
+        Analytics.capture("diamonds_spent", ["item": "streak_freeze", "amount": Self.streakFreezeCost])
+        return true
+    }
+
+    /// Spends one protection per missed day, only when they cover every
+    /// missed day (otherwise the streak is lost anyway and they're kept).
+    /// Returns how many were used.
+    @discardableResult
+    func applyStreakFreezesIfNeeded(reference: Date = .now) -> Int {
+        let missed = missedDays(reference: reference)
+        guard missed > 0, progress.streak > 0, streakFreezes >= missed else { return 0 }
+        progress.streakFreezes = streakFreezes - missed
+        progress.lastActiveDay = Self.startOfYesterday(reference)
+        save()
+        Analytics.capture("streak_freeze_used", ["count": missed, "streak": progress.streak])
+        return missed
     }
 
     // MARK: - Daily rollover
@@ -191,13 +310,21 @@ final class ProgressStore {
         return true
     }
 
+    /// Extra lessons that can still be bought with diamonds today.
+    var extraLessonsBuyableToday: Int {
+        max(0, Self.extraLessonDailyMax - dailyUsage.extraLessonsBought)
+    }
+
     @discardableResult
     func unlockExtraLesson() -> Bool {
         rolloverIfNeeded()
-        guard progress.livresBalance >= Self.extraLessonCost else { return false }
+        guard extraLessonsBuyableToday > 0,
+              progress.livresBalance >= Self.extraLessonCost else { return false }
         progress.livresBalance -= Self.extraLessonCost
         progress.dailyUsage.extraLessonsUnlocked += 1
+        progress.dailyUsage.extraLessonsBought += 1
         save()
+        Analytics.capture("diamonds_spent", ["item": "extra_lesson", "amount": Self.extraLessonCost])
         return true
     }
 
@@ -232,15 +359,29 @@ final class ProgressStore {
         save()
     }
 
-    /// Buys a full energy refill with rubis. Returns false when too poor.
+    /// Buys a full energy refill with diamonds. Returns false when too poor or already full.
     @discardableResult
     func refillEnergyWithRubis() -> Bool {
-        regenEnergyIfNeeded()
-        guard progress.livresBalance >= Self.energyRefillCost else { return false }
+        guard energy < Self.energyMax,
+              progress.livresBalance >= Self.energyRefillCost else { return false }
         progress.livresBalance -= Self.energyRefillCost
         progress.energy = Self.energyMax
         progress.energyRegenAt = nil
         save()
+        Analytics.capture("diamonds_spent", ["item": "hearts_refill", "amount": Self.energyRefillCost])
+        return true
+    }
+
+    /// Buys a single heart with diamonds. Returns false when too poor or already full.
+    @discardableResult
+    func buyHeart() -> Bool {
+        guard energy < Self.energyMax,
+              progress.livresBalance >= Self.heartCost else { return false }
+        progress.livresBalance -= Self.heartCost
+        progress.energy = min(Self.energyMax, progress.energy + 1)
+        if progress.energy >= Self.energyMax { progress.energyRegenAt = nil }
+        save()
+        Analytics.capture("diamonds_spent", ["item": "heart", "amount": Self.heartCost])
         return true
     }
 
@@ -267,10 +408,17 @@ final class ProgressStore {
 
     func canWatchRewardedAd() -> Bool { rewardedAdsRemainingToday > 0 }
 
+    /// Diamond videos left today (5 per day, within the overall video cap).
+    var diamondAdsRemainingToday: Int {
+        min(rewardedAdsRemainingToday, max(0, Self.diamondAdDailyCap - dailyUsage.diamondAdsWatched))
+    }
+
+    /// Rewarded video paid out in diamonds (+2).
     func creditRewardedAd() {
         rolloverIfNeeded()
-        guard canWatchRewardedAd() else { return }
+        guard diamondAdsRemainingToday > 0 else { return }
         progress.dailyUsage.rewardedAdsWatched += 1
+        progress.dailyUsage.diamondAdsWatched += 1
         progress.livresBalance += Self.rewardedAdLivres
         save()
     }

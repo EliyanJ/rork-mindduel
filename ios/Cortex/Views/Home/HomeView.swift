@@ -17,6 +17,7 @@ struct HomeView: View {
     @State private var placementLesson: PathLesson?
     @State private var advanceChoiceLesson: PathLesson?
     @State private var isPaywallPresented = false
+    @State private var isShopPresented = false
 
     /// Lesson currently on display: the menu pick when it still exists,
     /// otherwise the current lesson of whichever path is active — a single
@@ -67,9 +68,12 @@ struct HomeView: View {
             )
         }
         .sheet(item: $lockedRingPending) { ring in
-            UnlockWithLivresView(kind: .lesson, progressStore: model.store) {
+            UnlockWithLivresView(kind: .lesson, progressStore: model.store, onUnlocked: {
                 startRing(ring, bypassCheck: true)
-            }
+            }, onOpenMissions: {
+                lockedRingPending = nil
+                model.openMissions()
+            })
         }
         .sheet(item: $cooldownRing) { ring in
             RecapCooldownSheet(
@@ -79,13 +83,28 @@ struct HomeView: View {
             .presentationDetents([.height(340)])
         }
         .sheet(isPresented: $isBoltsSheetPresented) {
-            UnlockWithLivresView(kind: .lesson, progressStore: model.store) {}
+            UnlockWithLivresView(kind: .lesson, progressStore: model.store, onUnlocked: {}, onOpenMissions: {
+                isBoltsSheetPresented = false
+                model.openMissions()
+            })
         }
         .sheet(isPresented: $isEnergyOutPresented) {
-            EnergyRefillView(progressStore: model.store, quitTitle: "Fermer") {
-                isEnergyOutPresented = false
+            EnergyRefillView(
+                progressStore: model.store,
+                quitTitle: "Fermer",
+                onQuit: { isEnergyOutPresented = false },
+                onRefilled: { isEnergyOutPresented = false },
+                onOpenMissions: {
+                    isEnergyOutPresented = false
+                    model.openMissions()
+                }
+            )
+            .presentationDetents([.large])
+        }
+        .sheet(isPresented: $isShopPresented) {
+            ShopView(progressStore: model.store) {
+                model.openMissions()
             }
-            .presentationDetents([.medium])
         }
         .fullScreenCover(isPresented: $isMenuPresented) {
             if let lesson = visibleLesson,
@@ -213,7 +232,14 @@ struct HomeView: View {
     private var statsHeader: some View {
         let isPremium = store.isPremium
         return HStack(spacing: 0) {
-            HeaderStat(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)", isEmpty: model.store.livresBalance == 0, label: "Diamants")
+            Button {
+                Haptics.tap()
+                isShopPresented = true
+            } label: {
+                HeaderStat(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)", isEmpty: model.store.livresBalance == 0, label: "Diamants")
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Ouvre la boutique")
             Button {
                 Haptics.tap()
                 if !isPremium { isBoltsSheetPresented = true }

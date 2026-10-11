@@ -157,6 +157,10 @@ nonisolated struct DailyUsage: Codable {
     var claimedMissionIds: [String]
     /// Ranked matches started today (free players get one per day).
     var rankedPlayed: Int = 0
+    /// Extra lessons bought with diamonds today (capped per day).
+    var extraLessonsBought: Int = 0
+    /// Rewarded videos watched today for diamonds (capped per day).
+    var diamondAdsWatched: Int = 0
 
     static func empty(day: Date) -> DailyUsage {
         DailyUsage(
@@ -215,6 +219,8 @@ nonisolated struct DailyUsage: Codable {
         correctAnswers = try c.decodeIfPresent(Int.self, forKey: .correctAnswers) ?? 0
         claimedMissionIds = try c.decodeIfPresent([String].self, forKey: .claimedMissionIds) ?? []
         rankedPlayed = try c.decodeIfPresent(Int.self, forKey: .rankedPlayed) ?? 0
+        extraLessonsBought = try c.decodeIfPresent(Int.self, forKey: .extraLessonsBought) ?? 0
+        diamondAdsWatched = try c.decodeIfPresent(Int.self, forKey: .diamondAdsWatched) ?? 0
     }
 }
 
@@ -240,6 +246,10 @@ nonisolated struct UserProgress: Codable {
     /// Free-tier duel tokens: one per duel, refilled to the max by a rewarded
     /// video. Ignored entirely while the player has Premium.
     var duelPoints: Int
+    /// Streak protections bought in advance; one is spent per missed day.
+    var streakFreezes: Int
+    /// Last time a broken streak was repaired with diamonds (1 per week).
+    var lastStreakRepairAt: Date?
 
     // MARK: - Multi-level progression (v2)
     /// Key: "disciplineId_chapterId_level" → ChapterProgress
@@ -261,13 +271,15 @@ nonisolated struct UserProgress: Codable {
         energyRegenAt: nil,
         dailyUsage: .empty(day: Calendar.current.startOfDay(for: .now)),
         duelPoints: 3,
+        streakFreezes: 0,
+        lastStreakRepairAt: nil,
         chapterProgress: [:]
     )
 
     private enum CodingKeys: String, CodingKey {
         case xp, streak, lastActiveDay, activeDays, chapterRecords, reviewItems, elo, duelsPlayed, duelsWon
         case livresBalance, lastLivreAwardDay, energy, energyRegenAt
-        case dailyUsage, duelPoints
+        case dailyUsage, duelPoints, streakFreezes, lastStreakRepairAt
         case chapterProgress
     }
 
@@ -287,6 +299,8 @@ nonisolated struct UserProgress: Codable {
         energyRegenAt: Date?,
         dailyUsage: DailyUsage,
         duelPoints: Int,
+        streakFreezes: Int,
+        lastStreakRepairAt: Date?,
         chapterProgress: [String: ChapterProgress]
     ) {
         self.xp = xp
@@ -304,6 +318,8 @@ nonisolated struct UserProgress: Codable {
         self.energyRegenAt = energyRegenAt
         self.dailyUsage = dailyUsage
         self.duelPoints = duelPoints
+        self.streakFreezes = streakFreezes
+        self.lastStreakRepairAt = lastStreakRepairAt
         self.chapterProgress = chapterProgress
     }
 
@@ -328,6 +344,8 @@ nonisolated struct UserProgress: Codable {
         dailyUsage = try container.decodeIfPresent(DailyUsage.self, forKey: .dailyUsage)
             ?? .empty(day: Calendar.current.startOfDay(for: .now))
         duelPoints = try container.decodeIfPresent(Int.self, forKey: .duelPoints) ?? 3
+        streakFreezes = try container.decodeIfPresent(Int.self, forKey: .streakFreezes) ?? 0
+        lastStreakRepairAt = try container.decodeIfPresent(Date.self, forKey: .lastStreakRepairAt)
         chapterProgress = try container.decodeIfPresent([String: ChapterProgress].self, forKey: .chapterProgress) ?? [:]
     }
 }

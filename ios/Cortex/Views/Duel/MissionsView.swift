@@ -8,6 +8,7 @@ struct MissionsView: View {
     @Environment(AppModel.self) private var model
     @State private var appeared: Bool = false
     @State private var reveal: RewardRevealItem?
+    @State private var isShopPresented: Bool = false
 
     private var missions: [DailyMission] {
         let usage = model.store.dailyUsage
@@ -41,18 +42,30 @@ struct MissionsView: View {
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
                     .foregroundStyle(Theme.ink)
                 Spacer()
-                HStack(spacing: 6) {
-                    Image(systemName: "diamond.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Theme.livres)
-                    Text("\(model.store.livresBalance)")
-                        .font(.system(size: 18, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.livres)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
+                Button {
+                    Haptics.tap()
+                    isShopPresented = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "diamond.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Theme.livres)
+                        Text("\(model.store.livresBalance)")
+                            .font(.system(size: 18, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.livres)
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(model.store.livresBalance) diamants")
+                .accessibilityHint("Ouvre la boutique")
+                .sheet(isPresented: $isShopPresented) {
+                    ShopView(progressStore: model.store) {}
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 10)

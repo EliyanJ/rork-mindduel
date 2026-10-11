@@ -11,6 +11,10 @@ struct ContentView: View {
     @State private var moreSheet: MoreSheet?
     @State private var isWelcomeBackPresented: Bool = false
     @State private var isTourPresented: Bool = false
+    @State private var brokenStreakOffer: ProgressStore.BrokenStreak?
+    /// Last active day for which the repair offer was already shown this session.
+    @State private var streakOfferShownFor: Date?
+    @State private var freezesUsedNotice: Int?
     @AppStorage("hasSeenAppTour") private var hasSeenAppTour: Bool = false
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
@@ -79,6 +83,26 @@ struct ContentView: View {
                 FeedbackBubble()
             }
 
+            if let broken = brokenStreakOffer, !showSplash, onboardingStore.isCompleted {
+                StreakRepairView(
+                    broken: broken,
+                    progressStore: model.store,
+                    onRepaired: closeStreakOffer,
+                    onRestart: {
+                        model.store.abandonBrokenStreak()
+                        Analytics.capture("streak_restarted", ["streak": broken.length])
+                        closeStreakOffer()
+                    },
+                    onOpenMissions: {
+                        closeStreakOffer()
+                        model.openMissions()
+                    }
+                )
+                .environment(model)
+                .transition(.opacity.combined(with: .scale(scale: 1.04)))
+                .zIndex(6)
+            }
+
             if isWelcomeBackPresented && !showSplash && onboardingStore.isCompleted {
                 WelcomeBackView(name: welcomeName) {
                     withAnimation(.easeInOut(duration: 0.35)) { isWelcomeBackPresented = false }
@@ -124,12 +148,31 @@ struct ContentView: View {
     /// Shows the guided tour once, on the Parcours, right after the
     /// onboarding (never over the splash or the welcome-back screen).
     private func presentTourIfNeeded() async {
-        guard !hasSeenAppTour, !showSplash, !isWelcomeBackPresented else { return }
+        guard !hasSeenAppTour, !showSplash, !isWelcomeBackPresented, brokenStreakOffer == nil else { return }
         try? await Task.sleep(for: .milliseconds(900))
         guard !Task.isCancelled, !hasSeenAppTour, onboardingStore.isCompleted else { return }
         selectedTab = .parcours
         isMoreMenuOpen = false
         withAnimation(.easeIn(duration: 0.3)) { isTourPresented = true }
+    }
+
+    private func closeStreakOffer() {
+        withAnimation(.easeInOut(duration: 0.35)) { brokenStreakOffer = nil }
+    }
+
+    /// Streak protections are spent first; a streak that still broke less
+    /// than 48 h ago gets the repair offer (once per session).
+    /// Returns true when the repair offer is shown.
+    private func checkStreak() -> Bool {
+        let used = model.store.applyStreakFreezesIfNeeded()
+        if used > 0 { freezesUsedNotice = used }
+        guard let broken = model.store.brokenStreak(),
+              let lastDay = model.store.progress.lastActiveDay,
+              streakOfferShownFor != lastDay else { return false }
+        streakOfferShownFor = lastDay
+        Analytics.capture("streak_repair_offered", ["streak": broken.length, "cost": broken.cost])
+        withAnimation(.easeInOut(duration: 0.35)) { brokenStreakOffer = broken }
+        return true
     }
 
     private func refreshReminders() async {
@@ -152,6 +195,10 @@ struct ContentView: View {
     /// after the onboarding, which records the first visit).
     private func checkWelcomeBack() {
         guard onboardingStore.isCompleted else {
+            ReturnTracker.touch()
+            return
+        }
+        if checkStreak() {
             ReturnTracker.touch()
             return
         }
@@ -259,6 +306,24 @@ struct ContentView: View {
                 }
             }
             .task(id: showSplash) { await presentTourIfNeeded() }
+            .onChange(of: model.requestedTab) { _, tab in
+                guard let tab else { return }
+                model.requestedTab = nil
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isMoreMenuOpen = false }
+                moreSheet = nil
+                selectedTab = tab
+            }
+            .alert("Série protégée 🧊", isPresented: Binding(
+                get: { freezesUsedNotice != nil && brokenStreakOffer == nil && !showSplash },
+                set: { if !$0 { freezesUsedNotice = nil } }
+            )) {
+                Button("Super !") { freezesUsedNotice = nil }
+            } message: {
+                let used = freezesUsedNotice ?? 1
+                Text(used > 1
+                     ? "Tu as raté \(used) jours : \(used) protections ont sauvé ta série de \(model.store.currentStreak) jours."
+                     : "Tu as raté un jour : une protection a sauvé ta série de \(model.store.currentStreak) jours.")
+            }
             .onAppear { Analytics.capture("screen_viewed", ["screen": selectedTab.rawValue]) }
             .onChange(of: selectedTab) { _, tab in
                 Analytics.capture("screen_viewed", ["screen": tab.rawValue])
