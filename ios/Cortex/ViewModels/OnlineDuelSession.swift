@@ -72,6 +72,7 @@ final class OnlineDuelSession {
     private var queueTask: Task<Void, Never>?
     private var receiveTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
+    private var leaveTask: Task<Void, Never>?
     private var roundStartedAt: Date?
     private var playerAnswerTime: Double?
     private var finishedHandled = false
@@ -115,15 +116,35 @@ final class OnlineDuelSession {
 
     // MARK: lifecycle
 
+    /// Safe to call again after a lifecycle `cancel()` (SwiftUI can briefly
+    /// tear the screen down while presentations settle): the search resumes,
+    /// or the match socket reconnects, instead of surfacing an error.
     func start() {
         guard queueTask == nil else { return }
+        if let ticket {
+            guard socket == nil else { return }
+            switch phase {
+            case .found, .countdown, .question, .reveal:
+                queueTask = Task { await reconnect(ticket: ticket) }
+            default:
+                break
+            }
+            return
+        }
+        guard phase == .searching else { return }
         Analytics.capture("duel_started", ["mode": "classe"])
         queueTask = Task { await runQueue() }
+    }
+
+    private func reconnect(ticket matchTicket: MatchTicket) async {
+        guard let token = await online.auth.validAccessToken() else { return }
+        openSocket(ticket: matchTicket, service: MultiplayerService(token: token))
     }
 
     /// Lifecycle cleanup is never reported as a voluntary forfeit.
     func cancel(voluntary: Bool = false) {
         queueTask?.cancel()
+        queueTask = nil
         receiveTask?.cancel()
         timerTask?.cancel()
         let closingSocket = socket
@@ -135,7 +156,8 @@ final class OnlineDuelSession {
         } else {
             closingSocket?.cancel(with: .goingAway, reason: nil)
         }
-        Task { [online] in
+        guard ticket == nil else { return }
+        leaveTask = Task { [online] in
             guard let token = await online.auth.validAccessToken() else { return }
             try? await MultiplayerService(token: token).leaveQueue()
         }
@@ -149,7 +171,11 @@ final class OnlineDuelSession {
             return
         }
         let service = MultiplayerService(token: token)
+        // A resumed search must not race the previous "leave" request.
+        await leaveTask?.value
+        leaveTask = nil
         do {
+            try Task.checkCancellation()
             var status = try await service.joinQueue(disciplineId: disciplineId, ranked: isRanked)
             let startedAt = Date()
             while case .searching = status {
@@ -165,9 +191,26 @@ final class OnlineDuelSession {
             }
         } catch is CancellationError {
             // user cancelled
+        } catch let error as URLError where error.code == .cancelled {
+            // Request torn down with the screen — not a real failure.
         } catch {
-            phase = .failed(error.localizedDescription)
+            guard !Task.isCancelled else { return }
+            phase = .failed(Self.friendlyMessage(for: error))
         }
+    }
+
+    static func friendlyMessage(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+                return "Pas de connexion internet. Vérifie ton réseau et réessaie."
+            case .timedOut:
+                return "Le serveur met trop de temps à répondre. Réessaie."
+            default:
+                return "Connexion au serveur impossible. Réessaie dans un instant."
+            }
+        }
+        return error.localizedDescription
     }
 
     private func beginMatch(ticket matchTicket: MatchTicket, service: MultiplayerService) async {
@@ -188,7 +231,10 @@ final class OnlineDuelSession {
         )
         phase = .found
         Haptics.success()
+        openSocket(ticket: matchTicket, service: service)
+    }
 
+    private func openSocket(ticket matchTicket: MatchTicket, service: MultiplayerService) {
         do {
             let request = try service.matchSocketRequest(ticket: matchTicket)
             let task = URLSession.shared.webSocketTask(with: request)
@@ -196,7 +242,7 @@ final class OnlineDuelSession {
             task.resume()
             receiveTask = Task { await receiveLoop(task) }
         } catch {
-            phase = .failed(error.localizedDescription)
+            phase = .failed(Self.friendlyMessage(for: error))
         }
     }
 
@@ -210,6 +256,7 @@ final class OnlineDuelSession {
                       let data = text.data(using: .utf8) else { continue }
                 handleServerMessage(data)
             } catch {
+                guard socket === task else { return }
                 if !Task.isCancelled && phase != .finished {
                     if case .cancelled = phase { return }
                     if case .failed = phase { return }

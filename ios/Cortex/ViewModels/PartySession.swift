@@ -236,11 +236,14 @@ final class PartySession {
             }
         } catch is CancellationError {
             // user cancelled
+        } catch let error as URLError where error.code == .cancelled {
+            // Request torn down with the screen — not a real failure.
         } catch MultiplayerService.ServiceError.partyUpdateRequired {
             requiresUpdate = true
             phase = .failed("Mets à jour Minduel pour jouer en groupe.")
         } catch {
-            phase = .failed(error.localizedDescription)
+            guard !Task.isCancelled else { return }
+            phase = .failed(OnlineDuelSession.friendlyMessage(for: error))
         }
     }
 
@@ -282,7 +285,7 @@ final class PartySession {
             task.resume()
             receiveTask = Task { await receiveLoop(task) }
         } catch {
-            phase = .failed(error.localizedDescription)
+            phase = .failed(OnlineDuelSession.friendlyMessage(for: error))
         }
     }
 

@@ -146,13 +146,9 @@ Sans ce changement, ce nouveau contenu créera juste plus d'étapes de 9 questio
 - Explication : L'ADN est une longue molécule en double hélice qui code l'ensemble des instructions génétiques d'un organisme, transmises de génération en génération.
 
 **[sc_ge_2]** (QCM) — Qui a co-découvert la structure en double hélice de l'ADN en 1953 ?
-- Choix : James Watson et Francis Crick / Charles Darwin et Gregor Mendel / Louis Pasteur et Robert Koch / Alexander Fleming et Marie Curie
+- Choix : James Watson et Francis Crick / Isaac Newton et Gregor Mendel / Louis Pasteur et Robert Koch / Alexander Fleming et Marie Curie
 - Réponse : **James Watson et Francis Crick**
 - Explication : Watson et Crick publièrent leur modèle en s'appuyant notamment sur les clichés de diffraction aux rayons X réalisés par Rosalind Franklin, dont le rôle fut longtemps sous-reconnu.
-
-**[sc_ge_3]** (Vrai ou Faux) — Un être humain partage plus de 90 % de son ADN avec un chimpanzé.
-- Réponse : **Vrai**
-- Explication : Les études génétiques estiment la similarité entre l'ADN humain et celui du chimpanzé à environ 98-99 %, reflet de notre proche parenté évolutive au sein des grands singes.
 
 **[sc_ge_4]** (Texte à trous) — Un ___ est un segment d'ADN qui porte l'information nécessaire à la fabrication d'une protéine.
 - Choix : gène / chromosome / neurone / ribosome
@@ -212,35 +208,6 @@ Sans ce changement, ce nouveau contenu créera juste plus d'étapes de 9 questio
 **[sc_gr_5]** (Anagramme) — Force qui retient les objets à la surface d'une planète et les empêche de s'envoler dans l'espace
 - Réponse : **GRAVITE**
 - Explication : Sans la gravité, rien ne resterait à la surface de la Terre. C'est cette même force qui maintient les planètes en orbite autour du Soleil.
-
-### L'Évolution (`sciences_evolution`)
-
-**[sc_ev_1]** (QCM) — Quel naturaliste britannique a formulé la théorie de l'évolution par sélection naturelle ?
-- Choix : Charles Darwin / Gregor Mendel / Alfred Wallace / Jean-Baptiste Lamarck
-- Réponse : **Charles Darwin**
-- Explication : Darwin publie « L'Origine des espèces » en 1859, après un voyage à bord du Beagle qui l'amena notamment aux îles Galápagos, où il observa la diversité des pinsons.
-
-**[sc_ev_2]** (QCM) — Quel est le nom du processus par lequel les individus les mieux adaptés à leur environnement survivent et se reproduisent davantage ?
-- Choix : La sélection naturelle / La mutation spontanée / La dérive génétique / L'adaptation forcée
-- Réponse : **La sélection naturelle**
-- Explication : Ce mécanisme central de la théorie de Darwin explique comment les caractéristiques favorables à la survie se transmettent plus souvent à la génération suivante.
-
-**[sc_ev_3]** (Vrai ou Faux) — L'être humain descend directement du chimpanzé.
-- Réponse : **Faux**
-- Explication : L'humain et le chimpanzé partagent un ancêtre commun, disparu il y a environ 6 à 7 millions d'années, mais aucune des deux espèces ne descend de l'autre.
-
-**[sc_ev_4]** (Texte à trous) — Les îles ___ ont fortement inspiré Charles Darwin dans l'élaboration de sa théorie de l'évolution.
-- Choix : Galápagos / Canaries / Baléares / Féroé
-- Réponse : **Galápagos**
-- Explication : Lors de son voyage sur le Beagle en 1835, Darwin observa que les pinsons de chaque île de l'archipel avaient un bec différent, adapté à leur nourriture locale.
-
-**[sc_ev_5]** (Anagramme) — Processus par lequel une espèce disparaît définitivement de la planète
-- Réponse : **EXTINCTION**
-- Explication : On estime que plus de 99 % des espèces ayant existé sur Terre sont aujourd'hui éteintes. Cinq grandes extinctions de masse ont marqué l'histoire de la vie.
-
----
-
-## Géographie (`geographie`)
 
 ### L'Amérique (`geo_amerique`)
 

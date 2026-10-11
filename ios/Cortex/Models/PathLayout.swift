@@ -124,7 +124,7 @@ nonisolated enum PathDefaults {
         ],
         "sciences": [
             "sciences_systeme_solaire", "sciences_terre", "sciences_corps_humain",
-            "sciences_evolution", "sciences_genetique", "sciences_chimie",
+            "sciences_genetique", "sciences_chimie",
             "sciences_atome", "sciences_energie", "sciences_gravite",
         ],
         "litterature": [

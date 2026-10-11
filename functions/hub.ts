@@ -5,6 +5,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { LEGACY_DEADLINE_MS } from "./security-rollout";
 import { PLAYER_FIRST_NAMES } from "./bot-names";
+import { countQuestions, stripExcludedContent, stripExcludedLayout } from "./content-filter";
 import { appConfig, partyUpdateRequired, pickQuestions, versionAtLeast, type GameCatalog, type GameQuestion, type VersionEnvironment } from "./game-security";
 
 export type PlayerProfile = {
@@ -552,6 +553,37 @@ export class Hub extends DurableObject {
         detail TEXT
       )
     `);
+    this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS content_migrations (id TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)`);
+    this.applyContentExclusions();
+  }
+
+  /**
+   * One-time rewrite of the live catalogue, every archived version and the
+   * path layouts so excluded topics disappear everywhere, history included.
+   */
+  private applyContentExclusions(): void {
+    const migrationId = "exclude_evolution_v1";
+    const sql = this.ctx.storage.sql;
+    if (sql.exec("SELECT id FROM content_migrations WHERE id = ?", migrationId).toArray().length > 0) return;
+    try {
+      for (const row of sql.exec<{ json: string }>("SELECT json FROM content WHERE id = 1").toArray()) {
+        const cleaned = stripExcludedContent(JSON.parse(row.json));
+        sql.exec("UPDATE content SET json = ?, question_count = ? WHERE id = 1", JSON.stringify(cleaned), countQuestions(cleaned));
+      }
+      for (const row of sql.exec<{ version: number; json: string }>("SELECT version, json FROM content_history").toArray()) {
+        const cleaned = stripExcludedContent(JSON.parse(row.json));
+        sql.exec("UPDATE content_history SET json = ?, question_count = ? WHERE version = ?", JSON.stringify(cleaned), countQuestions(cleaned), row.version);
+      }
+      for (const row of sql.exec<{ json: string }>("SELECT json FROM path_layout WHERE id = 1").toArray()) {
+        sql.exec("UPDATE path_layout SET json = ? WHERE id = 1", JSON.stringify(stripExcludedLayout(JSON.parse(row.json))));
+      }
+      for (const row of sql.exec<{ version: number; json: string }>("SELECT version, json FROM path_layout_history").toArray()) {
+        sql.exec("UPDATE path_layout_history SET json = ? WHERE version = ?", JSON.stringify(stripExcludedLayout(JSON.parse(row.json))), row.version);
+      }
+      sql.exec("INSERT INTO content_migrations (id, applied_at) VALUES (?, ?)", migrationId, Date.now());
+    } catch (error) {
+      console.error("content exclusion migration failed", error instanceof Error ? error.message : "unknown");
+    }
   }
 
   private gameQuestions(seed: string, count: number, themes: string[], elo: number): GameQuestion[] {
@@ -2262,6 +2294,7 @@ export class Hub extends DurableObject {
     if (!payload.layout || typeof payload.layout !== "object") {
       return Response.json({ error: "Organisation invalide" }, { status: 400 });
     }
+    stripExcludedLayout(payload.layout);
     const jsonStr = JSON.stringify(payload.layout);
     const existing = this.ctx.storage.sql
       .exec<{ version: number }>("SELECT version FROM path_layout WHERE id = 1")
@@ -2295,6 +2328,7 @@ export class Hub extends DurableObject {
     if (!payload.content || typeof payload.content !== "object") {
       return Response.json({ error: "Contenu invalide" }, { status: 400 });
     }
+    stripExcludedContent(payload.content);
     const jsonStr = JSON.stringify(payload.content);
     const content = payload.content as { disciplines?: Array<{ chapters?: Array<{ questions?: unknown[]; levels?: Record<string, { questions?: unknown[] }> }> }> };
     let questionCount = 0;

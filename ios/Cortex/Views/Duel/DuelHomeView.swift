@@ -131,11 +131,16 @@ struct DuelHomeView: View {
         .sheet(isPresented: $isCustomSetupPresented) {
             CustomPartySetupView { origin in
                 isCustomSetupPresented = false
-                guard online.isSignedIn else {
-                    isSignInPresented = true
-                    return
+                Task {
+                    // Let the sheet finish closing before the full-screen
+                    // lobby appears, or SwiftUI tears the lobby down again.
+                    try? await Task.sleep(for: .milliseconds(450))
+                    guard online.isSignedIn else {
+                        isSignInPresented = true
+                        return
+                    }
+                    pendingPartyOrigin = origin
                 }
-                pendingPartyOrigin = origin
             }
             .presentationDetents([.medium, .large])
         }
@@ -551,14 +556,20 @@ struct DuelHomeView: View {
         showThemePicker = true
     }
 
+    /// Runs once the theme sheet has fully closed: presenting a full-screen
+    /// match while the sheet is still animating out makes SwiftUI dismiss it
+    /// again, which cancelled the online search.
     private func proceedAfterThemePick() {
-        switch pendingMode {
-        case .ranked:
-            isRankedPresented = true
-        case .casualOnline:
-            isCasualOnlinePresented = true
-        case .training:
-            isTrainingPresented = true
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            switch pendingMode {
+            case .ranked:
+                isRankedPresented = true
+            case .casualOnline:
+                isCasualOnlinePresented = true
+            case .training:
+                isTrainingPresented = true
+            }
         }
     }
 }
