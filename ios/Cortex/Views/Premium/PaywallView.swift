@@ -188,13 +188,13 @@ struct PaywallView: View {
         let trial = store.freeTrial(for: package)
         let isCurrent = store.isPremium && store.activeProductId == package.storeProduct.productIdentifier
         let price = package.storeProduct.localizedPriceString
-        let perMonth = isAnnual ? (package.storeProduct.localizedPricePerMonth ?? price) : price
+        let perMonthEquivalent = isAnnual ? package.storeProduct.localizedPricePerMonth.map { "soit \($0)/mois" } : nil
         let billing = isAnnual ? "\(price) facturés en une fois par an" : "facturé chaque mois, sans engagement"
         let priceNote: String
         if let trial {
             priceNote = "\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(billing)"
         } else {
-            priceNote = isAnnual ? "Soit \(billing)" : "Facturé chaque mois, sans engagement"
+            priceNote = isAnnual ? "\(price) facturés en une fois par an" : "Facturé chaque mois, sans engagement"
         }
         let subtitle = isAnnual ? "12 mois de Minduel sans limite" : "1 mois de Minduel sans limite"
         let title: String
@@ -208,7 +208,7 @@ struct PaywallView: View {
         return PlanCard(
             title: isAnnual ? "Premium annuel" : "Premium mensuel",
             subtitle: subtitle,
-            price: PlanPrice(amount: perMonth, unit: "/mois", note: priceNote, strikethrough: isAnnual ? monthlyPriceText : nil),
+            price: PlanPrice(amount: price, unit: isAnnual ? "/an" : "/mois", note: priceNote, equivalent: perMonthEquivalent),
             perks: Self.premiumPerks,
             image: isAnnual ? "MascotTrophy" : "MascotGift",
             highlight: isAnnual ? Theme.primary : nil,
@@ -229,7 +229,7 @@ struct PaywallView: View {
         PlanCard(
             title: "Gratuit",
             subtitle: "Pour découvrir Minduel à ton rythme",
-            price: PlanPrice(amount: "0 €", unit: "", note: "Pour toujours", strikethrough: nil),
+            price: PlanPrice(amount: "0 €", unit: "", note: "Pour toujours", equivalent: nil),
             perks: Self.freePerks,
             image: "book_mascot_sitting",
             highlight: nil,
@@ -239,12 +239,6 @@ struct PaywallView: View {
             isButtonEnabled: false,
             isBusy: false
         ) {}
-    }
-
-    /// Monthly price, struck through on the annual card to show the saving.
-    private var monthlyPriceText: String? {
-        guard savingsPercent != nil else { return nil }
-        return store.monthlyPackage?.storeProduct.localizedPriceString
     }
 
     private var annualBadgeText: String {
@@ -332,12 +326,13 @@ struct PaywallView: View {
 
 /// One subscription formula, Duolingo-style: title, one line, blue checks,
 /// an illustration on the right and its own outlined button.
-/// Price block of a plan card: the big per-month figure and its small print.
+/// Price block of a plan card: the billed amount in big (App Store rule 3.1.2),
+/// an optional per-month equivalent and the billing small print.
 private struct PlanPrice {
     let amount: String
     let unit: String
     let note: String
-    let strikethrough: String?
+    let equivalent: String?
 }
 
 private struct PlanCard: View {
@@ -440,16 +435,14 @@ private struct PlanCard: View {
                         .font(.system(.title3, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.ink)
                 }
-                if let strike = price.strikethrough {
-                    Text(strike)
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.inkMuted)
-                        .strikethrough(true, color: Theme.inkMuted)
-                        .padding(.leading, 4)
-                }
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+            if let equivalent = price.equivalent {
+                Text(equivalent)
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+            }
             Text(price.note)
                 .font(.system(.footnote, design: .rounded, weight: .semibold))
                 .foregroundStyle(Theme.inkMuted)
