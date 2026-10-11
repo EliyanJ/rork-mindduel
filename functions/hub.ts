@@ -4,6 +4,7 @@
 
 import { DurableObject } from "cloudflare:workers";
 import { LEGACY_DEADLINE_MS } from "./security-rollout";
+import { PLAYER_FIRST_NAMES } from "./bot-names";
 import { appConfig, partyUpdateRequired, pickQuestions, versionAtLeast, type GameCatalog, type GameQuestion, type VersionEnvironment } from "./game-security";
 
 export type PlayerProfile = {
@@ -1595,12 +1596,20 @@ export class Hub extends DurableObject {
         .toArray();
       opponent = anyTheme[0] ?? null;
     }
-    if (!opponent) return;
-    if (Math.abs(opponent.elo - me.elo) > window) return;
+    if (opponent && Math.abs(opponent.elo - me.elo) > window) opponent = null;
 
     const myProfile = this.getProfile(me.user_id);
+    if (!myProfile) return;
+
+    if (!opponent) {
+      // Nobody compatible in the queue after a short wait: pair with a
+      // server-simulated opponent pitched at the player's level.
+      if (Date.now() - me.queued_at >= duelFillDelayMs(me)) this.pairWithFiller(me, myProfile);
+      return;
+    }
+
     const oppProfile = this.getProfile(opponent.user_id);
-    if (!myProfile || !oppProfile) return;
+    if (!oppProfile) return;
 
     const matchId = crypto.randomUUID();
     const seed = randomSeed();
@@ -1621,6 +1630,27 @@ export class Hub extends DurableObject {
     this.ctx.storage.sql.exec(
       "UPDATE queue SET match_payload = ?, last_seen_at = ? WHERE user_id = ?",
       forOpp, Date.now(), opponent.user_id,
+    );
+  }
+
+  /**
+   * Builds a 1v1 ticket against a simulated opponent. The client-facing
+   * payload is shaped exactly like a human match; only the stored room
+   * ticket carries `isBot`, which the match room uses to drive its answers.
+   */
+  private pairWithFiller(me: QueueRow, myProfile: PlayerProfile): void {
+    const filler = generateFillerProfile(myProfile);
+    const matchId = crypto.randomUUID();
+    const seed = randomSeed();
+    const theme = me.discipline_id ?? "all";
+    const themes = [theme, theme];
+    const ranked = me.ranked !== 0;
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes, ranked };
+    const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + filler.elo) / 2));
+    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, { ...filler, isBot: true }], questions });
+    this.ctx.storage.sql.exec(
+      "UPDATE queue SET match_payload = ?, last_seen_at = ? WHERE user_id = ?",
+      JSON.stringify({ ...base, you: myProfile, opponent: filler }), Date.now(), me.user_id,
     );
   }
 
@@ -2032,6 +2062,10 @@ export class Hub extends DurableObject {
       { userId: string; score: number },
     ];
 
+    const ticketPlayers = ticketRow ? (JSON.parse(ticketRow.payload) as { players?: { id: string; elo: number; points?: number; isBot?: boolean }[] }).players ?? [] : [];
+    const filler = ticketPlayers.find((p) => p.isBot);
+    if (filler) return this.settleFillerMatch(p1, p2, filler, payload.forfeitBy);
+
     const row1 = this.playerRow(p1.userId);
     const row2 = this.playerRow(p2.userId);
     if (!row1 || !row2) {
@@ -2071,6 +2105,42 @@ export class Hub extends DurableObject {
       pointsChanges: { [p1.userId]: pointsChange1, [p2.userId]: pointsChange2 },
       newPoints: { [p1.userId]: newPoints1, [p2.userId]: newPoints2 },
       hiddenRatings: { [p1.userId]: newElo1, [p2.userId]: newElo2 },
+    });
+  }
+
+  /** Ranked match against a simulated opponent: only the human's rating moves. */
+  private settleFillerMatch(
+    p1: { userId: string; score: number },
+    p2: { userId: string; score: number },
+    filler: { id: string; elo: number; points?: number },
+    forfeitBy: string | undefined,
+  ): Response {
+    const human = p1.userId === filler.id ? p2 : p1;
+    const bot = p1.userId === filler.id ? p1 : p2;
+    const row = this.playerRow(human.userId);
+    if (!row) return Response.json({ error: "unknown players" }, { status: 400 });
+
+    let outcome: number;
+    if (forfeitBy === human.userId) outcome = 0;
+    else if (human.score > bot.score) outcome = 1;
+    else if (human.score < bot.score) outcome = 0;
+    else outcome = 0.5;
+
+    const expected = 1 / (1 + Math.pow(10, (filler.elo - row.elo) / 400));
+    const change = Math.round(32 * (outcome - expected));
+    const newElo = clampElo(row.elo + change);
+    const pointsChange = ladderPointsChange(outcome, expected);
+    const newPoints = clampPoints(row.points + pointsChange);
+    this.applyResult(human.userId, newElo, newPoints, outcome);
+
+    const botPointsChange = ladderPointsChange(1 - outcome, 1 - expected);
+    const botPoints = clampPoints((filler.points ?? filler.elo) + botPointsChange);
+    return Response.json({
+      eloChanges: { [human.userId]: pointsChange, [filler.id]: botPointsChange },
+      newElos: { [human.userId]: newPoints, [filler.id]: botPoints },
+      pointsChanges: { [human.userId]: pointsChange, [filler.id]: botPointsChange },
+      newPoints: { [human.userId]: newPoints, [filler.id]: botPoints },
+      hiddenRatings: { [human.userId]: newElo },
     });
   }
 
@@ -2718,23 +2788,30 @@ function partyRankPoints(rank: number): number {
   return Math.max(10, Math.round(45 - (rank - 4) * (35 / 16)));
 }
 
-const BOT_FIRST_NAMES = [
-  "Lea", "Hugo", "Emma", "Nolan", "Chloe", "Liam", "Zoe", "Adam", "Lina", "Noah",
-  "Mila", "Ethan", "Rose", "Sacha", "Nina", "Leo", "Alice", "Malo", "Camille", "Theo",
-  "Jade", "Enzo", "Louise", "Yanis", "Manon", "Tom", "Sarah", "Nathan", "Anna", "Jules",
-];
 const BOT_WORDS = [
   "Panda", "Ninja", "Tigre", "Comete", "Pixel", "Faucon", "Renard", "Loup", "Eclair",
   "Nova", "Zenith", "Cobra", "Phenix", "Atlas", "Lynx", "Orage", "Vortex", "Onyx",
 ];
+const NAME_INITIALS = "ABCDEFGHJKLMNOPRSTVW";
+
+function pick<T>(items: readonly T[]): T {
+  return items[Math.floor(Math.random() * items.length)]!;
+}
 
 /** A plausible player-style handle, never distinguishable from a real one. */
 function generateBotName(used: Set<string>): string {
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const first = BOT_FIRST_NAMES[Math.floor(Math.random() * BOT_FIRST_NAMES.length)]!;
-    const candidate = Math.random() < 0.5
-      ? `${first}${Math.random() < 0.7 ? Math.floor(Math.random() * 99) : ""}`
-      : `${first}${BOT_WORDS[Math.floor(Math.random() * BOT_WORDS.length)]}`;
+    const first = pick(PLAYER_FIRST_NAMES);
+    const roll = Math.random();
+    const candidate = roll < 0.4
+      ? first
+      : roll < 0.65
+        ? `${first}${Math.floor(Math.random() * 99) + 1}`
+        : roll < 0.8
+          ? `${first} ${pick(NAME_INITIALS.split(""))}.`
+          : roll < 0.9
+            ? `${first.toLowerCase()}_${pick(["92", "95", "98", "01", "03", "05", "07", "09", "11"])}`
+            : `${first}${pick(BOT_WORDS)}`;
     const key = candidate.toLowerCase();
     if (!used.has(key)) {
       used.add(key);
@@ -2761,7 +2838,7 @@ function generateBotRoster(
   for (let i = 0; i < count; i += 1) {
     const jitter = Math.round((Math.random() - 0.5) * 240);
     bots.push({
-      id: `bot_${lobbyId}_${i}`,
+      id: crypto.randomUUID(),
       name: generateBotName(usedNames),
       emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠",
       elo: clampElo(avgElo + jitter),
@@ -2769,6 +2846,37 @@ function generateBotRoster(
     });
   }
   return bots;
+}
+
+/** 6 to 7.5 s, stable for one queue entry so polling doesn't reroll it. */
+function duelFillDelayMs(row: QueueRow): number {
+  return 6_000 + (row.queued_at % 1_500);
+}
+
+/**
+ * A complete, believable profile for a simulated 1v1 opponent: rating and
+ * ladder points near the player's, with a plausible match history.
+ */
+function generateFillerProfile(me: PlayerProfile): PlayerProfile {
+  const elo = clampElo(me.elo + Math.round((Math.random() - 0.5) * 160));
+  const points = clampPoints(me.points + Math.round((Math.random() - 0.5) * 140));
+  const games = 8 + Math.floor(Math.random() * 220);
+  const winRate = Math.min(0.75, Math.max(0.3, 0.5 + (elo - 1200) / 2000 + (Math.random() - 0.5) * 0.12));
+  const draws = Math.floor(games * Math.random() * 0.05);
+  const wins = Math.round((games - draws) * winRate);
+  return {
+    id: crypto.randomUUID(),
+    name: generateBotName(new Set([me.name.trim().toLowerCase()])),
+    emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)] ?? "🧠",
+    elo,
+    points,
+    wins,
+    losses: games - draws - wins,
+    draws,
+    friendCode: generateFriendCode(),
+    reputation: 5 + Math.floor(Math.random() * 60),
+    dailyGoal: 1 + Math.floor(Math.random() * 3),
+  };
 }
 
 /** Greedy balance: strongest player always joins whichever team is behind. */

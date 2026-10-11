@@ -1,18 +1,16 @@
 import SwiftUI
 
-/// "Flash" mode: answer as many different questions as fast as possible to
-/// rack up points. Fully local (no matchmaking needed) — the visual lobby
-/// fills with a handful of rival avatars for atmosphere, then it is a solo
-/// race against the clock, ranked against those rivals' simulated scores.
+/// "Flash" mode: a 1v1 speed race — answer as many questions as fast as
+/// possible to outscore one opponent. Runs locally: the opponent is
+/// simulated at the player's level.
 struct FlashDuelView: View {
     let catalog: ContentCatalog
     let store: ProgressStore
-    let isTeamFlavor: Bool
     let onExit: () -> Void
 
     @State private var session: FlashSession?
 
-    private var capacity: Int { isTeamFlavor ? 4 : 8 }
+    private let capacity: Int = 2
 
     var body: some View {
         ZStack {
@@ -55,13 +53,13 @@ struct FlashDuelView: View {
     private func content(_ session: FlashSession) -> some View {
         switch session.phase {
         case .filling:
-            FlashLobbyBody(session: session, isTeamFlavor: isTeamFlavor, onExit: onExit)
+            FlashLobbyBody(session: session, onExit: onExit)
         case .countdown:
             FlashCountdownBody(session: session)
         case .preview, .question:
             FlashQuestionBody(session: session)
         case .finished:
-            FlashResultsBody(session: session, isTeamFlavor: isTeamFlavor, onDone: onExit)
+            FlashResultsBody(session: session, onDone: onExit)
         }
     }
 }
@@ -166,12 +164,16 @@ private final class FlashSession {
     }
 
     private func fillLobby() {
+        // Skill tracks the player's rating so the race stays close.
+        let base = min(1.3, max(0.5, 0.55 + Double(store.progress.elo - 1000) / 1000))
         Task { [weak self] in
             guard let self else { return }
             for _ in 0..<(capacity - 1) {
-                try? await Task.sleep(for: .milliseconds(.random(in: 220...420)))
+                try? await Task.sleep(for: .milliseconds(.random(in: 1600...3800)))
                 await MainActor.run {
-                    self.rivals.append(Rival(name: Self.randomName(), emoji: Self.randomEmoji(), skill: Double.random(in: 0.5...1.3)))
+                    let skill = min(1.35, max(0.45, base + Double.random(in: -0.15...0.15)))
+                    self.rivals.append(Rival(name: PlayerNames.random(), emoji: Self.randomEmoji(), skill: skill))
+                    Haptics.success()
                 }
             }
         }
@@ -351,7 +353,7 @@ private final class FlashSession {
     /// their simulated votes and scores.
     func sendEmote(_ emote: QuizEmote) {
         pushFloatingEmote(FloatingEmote(senderName: "Toi", emote: emote))
-        for rival in rivals.shuffled().prefix(Int.random(in: 0...2)) {
+        for rival in rivals where Double.random(in: 0...1) < 0.4 {
             Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(.random(in: 300...900)))
                 guard let self else { return }
@@ -399,11 +401,6 @@ private final class FlashSession {
         }
     }
 
-    private static func randomName() -> String {
-        let names = ["Léa", "Hugo", "Emma", "Nolan", "Chloé", "Liam", "Zoé", "Adam", "Lina", "Noah", "Mila", "Sacha"]
-        return names.randomElement() ?? "Joueur"
-    }
-
     private static func randomEmoji() -> String {
         ["🦊", "🦉", "🐼", "🐸", "🐨", "🐯", "🦁", "🐙", "🦄", "🐺"].randomElement() ?? "🧠"
     }
@@ -413,7 +410,6 @@ private final class FlashSession {
 
 private struct FlashLobbyBody: View {
     let session: FlashSession
-    let isTeamFlavor: Bool
     let onExit: () -> Void
 
     var body: some View {
@@ -437,27 +433,25 @@ private struct FlashLobbyBody: View {
             Spacer(minLength: 8)
 
             VStack(spacing: 6) {
-                Text(isTeamFlavor ? "Flash 2 vs 2" : "Flash")
+                Text("Flash · 1 contre 1")
                     .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(Theme.quizInk)
-                Text("Réponds le plus vite possible !")
+                Text(session.rivals.isEmpty ? "Recherche d'un adversaire…" : "Adversaire trouvé ! Réponds le plus vite possible.")
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(Theme.quizInkMuted)
             }
 
-            Text("\(session.rivals.count + 1) / \(session.capacity)")
-                .font(.system(size: 44, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.duelAccent)
-                .contentTransition(.numericText())
-
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+            HStack(spacing: 18) {
                 avatarSlot(emoji: "🧠", name: "Toi", filled: true)
-                ForEach(0..<(session.capacity - 1), id: \.self) { index in
-                    if index < session.rivals.count {
-                        avatarSlot(emoji: session.rivals[index].emoji, name: session.rivals[index].name, filled: true)
-                    } else {
-                        avatarSlot(emoji: "", name: "", filled: false)
-                    }
+                Text("VS")
+                    .font(.system(size: 26, weight: .black, design: .rounded))
+                    .foregroundStyle(Theme.duelAccent)
+                if let rival = session.rivals.first {
+                    avatarSlot(emoji: rival.emoji, name: rival.name, filled: true)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                } else {
+                    avatarSlot(emoji: "", name: "…", filled: false)
+                        .overlay { ProgressView().tint(Theme.duelAccent).offset(y: -12) }
                 }
             }
             .padding(.horizontal, 24)
@@ -479,12 +473,12 @@ private struct FlashLobbyBody: View {
     private func avatarSlot(emoji: String, name: String, filled: Bool) -> some View {
         VStack(spacing: 4) {
             Text(emoji)
-                .font(.system(size: 20))
-                .frame(width: 44, height: 44)
+                .font(.system(size: 38))
+                .frame(width: 88, height: 88)
                 .background(Circle().fill(filled ? Theme.quizCanvas : Theme.quizCanvas.opacity(0.5)))
-                .overlay(Circle().stroke(filled ? Theme.duelAccent.opacity(0.5) : Theme.quizLine, lineWidth: filled ? 1.5 : 1))
+                .overlay(Circle().stroke(filled ? Theme.duelAccent.opacity(0.5) : Theme.quizLine, lineWidth: filled ? 2 : 1))
             Text(name)
-                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.quizInkMuted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -597,7 +591,6 @@ private struct FlashQuestionBody: View {
 
 private struct FlashResultsBody: View {
     let session: FlashSession
-    let isTeamFlavor: Bool
     let onDone: () -> Void
 
     private var myRank: Int {
@@ -610,7 +603,7 @@ private struct FlashResultsBody: View {
                 VStack(spacing: 8) {
                     Text(myRank == 1 ? "🏆" : "⚡️")
                         .font(.system(size: 64))
-                    Text(myRank == 1 ? "Tu es le plus rapide !" : "Partie terminée")
+                    Text(myRank == 1 ? "Tu es le plus rapide !" : "\(session.finalEntries.first?.name ?? "Ton adversaire") gagne")
                         .font(.system(.largeTitle, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.quizInk)
                         .multilineTextAlignment(.center)
@@ -621,7 +614,7 @@ private struct FlashResultsBody: View {
                 .padding(.top, 24)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Classement")
+                    Text("Résultat")
                         .font(.system(.headline, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.quizInk)
                     ForEach(Array(session.finalEntries.enumerated()), id: \.element.id) { index, entry in

@@ -1,0 +1,58 @@
+import json
+
+raw = """
+Lucas Hugo Louis Gabriel Arthur Jules Adam Raphaël Léo Paul Nathan Ethan Noah Tom Théo Sacha Mathis Maël Liam Nolan
+Gabin Timéo Aaron Martin Axel Enzo Robin Victor Antoine Baptiste Maxime Alexandre Clément Valentin Thomas Romain Julien Quentin Nicolas Pierre
+Simon Samuel Mathéo Evan Noé Malo Marius Eliott Isaac Naël Ayden Kylian Yanis Rayan Mohamed Amir Ilyes Ibrahim Ismaël Younes
+Bilal Mehdi Karim Sofiane Walid Nassim Hamza Anis Elias Milo Côme Oscar Augustin Basile Léon Lenny Lorenzo Ruben Tiago Diego
+Mateo Hector Achille Gaspard Félix Émile Eden Jean Florian Kevin Dylan Jordan Anthony Benjamin Guillaume Adrien Hadrien Bastien Loïc Yann
+Erwan Gaël Ronan Killian Tristan Corentin Damien Sébastien Jérôme Cédric Fabien Ludovic Olivier Laurent Stéphane Vincent David Mickaël Arnaud Grégory
+Christophe Franck Thierry Pascal Didier Patrick Philippe Michel Alain Bernard Gérard Daniel Frédéric Xavier Rémi Jonathan Steven Lilian Mathias Thibault
+Alexis Dorian Aurélien Benoît Charles Henri François Étienne Joseph Marc Luc Mathieu Lucien Albert Gilles Hervé Joël Yves René Serge
+Emma Jade Louise Alice Chloé Lina Léa Rose Anna Mila Inès Ambre Julia Mia Léna Manon Juliette Lou Zoé Camille
+Agathe Jeanne Romane Éva Nina Lola Sarah Charlotte Margaux Clara Lucie Victoire Adèle Iris Alix Capucine Apolline Héloïse Mathilde Pauline
+Marie Laura Océane Morgane Élodie Émilie Julie Céline Aurélie Sandrine Stéphanie Nathalie Isabelle Valérie Sophie Caroline Audrey Mélanie Amandine Virginie
+Laetitia Vanessa Jessica Jennifer Marion Justine Anaïs Elsa Maëlle Lilou Louna Lya Lana Kenza Yasmine Sofia Aya Maryam Salomé Gabrielle
+Constance Margot Clémence Eléonore Noémie Léonie Valentine Victoria Olivia Nour Assia Imane Sara Hanna Myriam Leïla Samia Nadia Fatima Amel
+Lisa Maya Elise Thaïs Ninon Suzanne Marguerite Joséphine Garance Diane Bérénice Faustine Blanche Celeste Cassandre Daphné Emy Mya Luna Alba
+Ava Nora Giulia Livia Elena Aurore Coline Fanny Estelle Laurine Solène Gwendoline Ophélie Mélissa Cindy Tiffany Coralie Floriane Inaya Naya
+Anaé Lyna Alya Kiara Thelma Ella Lily Maëva Sixtine Domitille Bertille Hortense Albane Philippine Marine Claire Hélène Catherine Christine Martine
+Brigitte Monique Françoise Annie Patricia Sylvie Corinne Véronique Nicole Chantal Danielle Jacqueline Odile Agnès Béatrice Karine Delphine Séverine Emeline Gaëlle
+Axelle Candice Chiara Lena Zélie Romy Naomi Salma Rania Ines Alicia Andréa Mathilda Tess Gaïa Liv Maddie Kim Joy Lilia
+Nathanaël Ewen Titouan Lohan Sohan Ilan Liam Owen Soan Swann Charly Jimmy Tony Willy Johnny Ryan Brandon Logan Mattéo Esteban
+Pablo Hugo Noa Kaïs Rayane Adem Ayoub Imran Zakaria Moussa Mamadou Ousmane Abdoulaye Idriss Souleymane Malik Aziz Farid Rachid Samir
+Djibril Issa Yacine Riad Selim Amine Nabil Khalil Omar Tarik Youssef Jawad Ali Hassan Hakim Lyes Zinedine Kader Mourad Redouane
+Chen Wei Lin Mei Hoa Minh Linh Kenji Yuki Haruto Akira Hana Sakura Mai Thao Anh Tuan Duc Long Kim
+Lukas Jonas Finn Felix Ben Niklas Leon Elias Matteo Luca Marco Alessandro Davide Andrea Federico Francesco Riccardo Lorenzo Giovanni Pietro
+Sofia Giulia Chiara Aurora Ginevra Beatrice Martina Alessia Carla Lucia Paula Marta Alba Irene Nerea Ainhoa Carmen Pilar Rocío Valeria
+Mateus João Pedro Rafael Thiago Bruno Diogo Rodrigo Gonçalo Tiago Beatriz Mariana Inês Leonor Matilde Carolina Joana Catarina Rita Margarida
+Oliver Harry Jack George Charlie James William Henry Alfie Archie Amelia Isla Grace Freya Poppy Evie Lily Ivy Willow Ruby
+Kévin Jordan Dylan Allan Yoann Mickael Johan Teddy Jessy Wesley Cyril Lionel Bruno Denis Éric Fabrice Gilbert Guy Jacques Marcel
+Raymond Roger Claude Georges André Maurice Robert Jean-Pierre Jean-Luc Marc-Antoine Pierre-Louis Louis-Marie Anne-Sophie Marie-Lou Lou-Anne Rose-Marie Anne-Laure Marie-Ange Paul-Henri Jean-Baptiste
+Alban Amaury Anatole Ange Aristide Armand Aubin Aurèle Barthélémy Benoit Bertrand Blaise Brice Brieuc Calixte Cassien Célestin Césaire Clovis Colin
+Constant Cyprien Edgar Edouard Elouan Elie Ernest Eudes Evrard Fernand Firmin Gauthier Gildas Gustave Gwenaël Hippolyte Honoré Ignace Joachim Jordy
+Josselin Kélian Lazare Léandre Léopold Lisandro Lothaire Lucas Marceau Maximilien Melvil Merlin Nils Octave Ulysse Pacôme Philémon Prosper Raoul Sacha
+Séraphin Sixte Talian Thaddée Tobias Valère Wandrille Yvon Zacharie Zéphyr Abel Abigaïl Alma Anouk Ariane Armelle Aude Ayla Bianca Calie
+Callie Cléo Clotilde Colombe Cyrielle Eloïse Elia Eline Emmy Enora Esther Eugénie Faustine Flavie Flore Gisèle Inès Jade Jasmine Josie
+Judith Kelly Klara Laly Lise Loane Louane Louisa Lucile Lyana Maddy Madeleine Mahaut Maïa Maïwenn Mailys Malia Maylis Mélia Mélyne
+Mona Nell Nelly Noélie Noémi Nolwenn Paloma Pénélope Perrine Prune Rachel Raphaëlle Rebecca Roxane Sabine Sacha Selma Shana Sienna Sybille
+Talia Tatiana Tiphaine Tina Ysé Yuna Zoé Zia Zara Zina Lili Mina Nais Thaïna Elyna Kayla Leya Rayna Tessa Lenna
+"""
+
+names = []
+seen = set()
+for n in raw.split():
+    k = n.lower()
+    if k in seen:
+        continue
+    seen.add(k)
+    names.append(n)
+
+print(len(names))
+json.dump(names, open("ios/Cortex/Resources/player_names.json", "w"), ensure_ascii=False)
+with open("functions/bot-names.ts", "w") as f:
+    f.write("// functions/bot-names.ts — first names used to label filler opponents.\n")
+    f.write("// Mirrors ios/Cortex/Resources/player_names.json (offline Flash mode).\n\n")
+    f.write("export const PLAYER_FIRST_NAMES: readonly string[] = ")
+    f.write(json.dumps(names, ensure_ascii=False))
+    f.write(";\n")

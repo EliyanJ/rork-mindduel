@@ -14,6 +14,8 @@ type PlayerInfo = {
   name: string;
   emoji: string;
   elo: number;
+  /** Server-simulated opponent (queue filler). Never sent to clients. */
+  isBot?: boolean;
 };
 
 type RoundAnswer = {
@@ -43,11 +45,15 @@ type Attachment = { userId: string };
 const REVEAL_MS = 2_600;
 const COUNTDOWN_MS = 3_200;
 const GRACE_MS = 1_200;
+/** The app hides the choices for this long at the start of every round. */
+const CLIENT_READING_MS = 8_000;
+const EMOTES = ["😂", "🔥", "👏", "😲", "😎", "🤔", "👍", "💯", "😭"];
 
 export class MatchRoom extends DurableObject<Env> {
   private state: MatchState | null = null;
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
   private legacyTimer: ReturnType<typeof setTimeout> | null = null;
+  private botTimers: ReturnType<typeof setTimeout>[] = [];
 
   override async fetch(request: Request): Promise<Response> {
     if (new URL(request.url).pathname === "/internal/initialize" && request.method === "POST") {
@@ -66,7 +72,7 @@ export class MatchRoom extends DurableObject<Env> {
     if (!state) return Response.json({ error: "Partie renouvelée. Relance une recherche.", code: "match_unavailable" }, { status: 400 });
 
     const current = await this.loadState();
-    if (!current || !current.players.some((p) => p.id === userId)) {
+    if (!current || !current.players.some((p) => p.id === userId && !p.isBot)) {
       return new Response("not a player of this match", { status: 403 });
     }
 
@@ -145,9 +151,10 @@ export class MatchRoom extends DurableObject<Env> {
     }
 
     const connectedIds = this.connectedUserIds();
-    this.broadcast({ type: "lobby", connected: connectedIds, players: state.players });
+    const publicPlayers = state.players.map(publicPlayer);
+    this.broadcast({ type: "lobby", connected: state.players.filter((p) => p.isBot || connectedIds.includes(p.id)).map((p) => p.id), players: publicPlayers });
 
-    const bothConnected = state.players.every((p) => connectedIds.includes(p.id));
+    const bothConnected = state.players.every((p) => p.isBot || connectedIds.includes(p.id));
     if (bothConnected && state.phase === "waiting") {
       state.phase = "playing";
       state.round = -1;
@@ -158,7 +165,7 @@ export class MatchRoom extends DurableObject<Env> {
         questions: state.questions,
         questionCount: state.questionCount,
         roundDuration: state.roundDuration,
-        players: state.players,
+        players: publicPlayers,
       });
       this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
     }
@@ -179,7 +186,62 @@ export class MatchRoom extends DurableObject<Env> {
     this.persist();
     const endsInMs = state.roundDuration * 1000;
     this.broadcast({ type: "round", index, durationMs: endsInMs });
+    this.scheduleBotAnswers(index, endsInMs);
     this.armTimer(endsInMs + GRACE_MS, () => this.closeRound(index));
+  }
+
+  /**
+   * The simulated opponent answers after the app's reading beat, faster and
+   * more accurately the higher its rating, with a light rubber band so a
+   * match rarely turns into a blowout either way.
+   */
+  private scheduleBotAnswers(index: number, durationMs: number): void {
+    const state = this.state;
+    if (!state) return;
+    this.clearBotTimers();
+    for (const bot of state.players.filter((p) => p.isBot)) {
+      if (Math.random() < 0.04) continue; // occasionally runs out of time
+      const human = state.players.find((p) => !p.isBot);
+      const lead = (state.scores[bot.id] ?? 0) - (human ? state.scores[human.id] ?? 0 : 0);
+      const rubberBand = lead > 400 ? -0.12 : lead < -400 ? 0.06 : 0;
+      const successProb = clamp(0.42 + (bot.elo - 1000) / 1500 + rubberBand, 0.3, 0.9);
+      const speed = clamp(0.6 - (bot.elo - 1000) / 2500 + (Math.random() - 0.5) * 0.45, 0.06, 0.95);
+      const window = Math.max(1_000, durationMs - CLIENT_READING_MS - 400);
+      const answerAt = CLIENT_READING_MS + 500 + speed * window;
+      const question = state.questions?.[index];
+      this.botTimers.push(setTimeout(() => {
+        const correct = Math.random() < successProb;
+        this.recordAnswer(bot.id, index, botAnswer(question, correct), correct, Math.min(answerAt, durationMs));
+      }, answerAt));
+    }
+  }
+
+  private clearBotTimers(): void {
+    for (const t of this.botTimers) clearTimeout(t);
+    this.botTimers = [];
+  }
+
+  private recordAnswer(userId: string, index: number, answer: string | null, correct: boolean, timeMs: number): void {
+    const state = this.state;
+    if (!state || state.phase !== "playing" || index !== state.round) return;
+    const roundAnswers = state.answers[index];
+    if (!roundAnswers || roundAnswers[userId]) return;
+    const fraction = 1 - timeMs / (state.roundDuration * 1000);
+    const points = correct ? 100 + Math.round(fraction * 100) : 0;
+    roundAnswers[userId] = { answer, correct, timeMs, points };
+    this.persist();
+
+    // Tell the opponent (without leaking the answer).
+    for (const peer of this.ctx.getWebSockets()) {
+      const meta = peer.deserializeAttachment() as Attachment | null;
+      if (meta && meta.userId !== userId) {
+        trySend(peer, { type: "opponent_answered", index });
+      }
+    }
+
+    if (state.players.every((p) => roundAnswers[p.id] !== undefined)) {
+      this.closeRound(index);
+    }
   }
 
   override async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
@@ -203,6 +265,7 @@ export class MatchRoom extends DurableObject<Env> {
           trySend(peer, { type: "emote", emote: msg.emote.slice(0, 8) });
         }
       }
+      this.maybeBotEmoteBack(attachment.userId);
       return;
     }
 
@@ -226,29 +289,17 @@ export class MatchRoom extends DurableObject<Env> {
       const { timeMs, correct } = verdict;
       const reason = verdict.reason ?? (msg.correct === true && !correct ? "false_correct_claim" : undefined);
       if (reason) this.ctx.waitUntil(flagAnswer(this.env, attachment.userId, this.ctx.id.name ?? this.ctx.id.toString(), msg.index, reason));
-      const fraction = 1 - timeMs / (state.roundDuration * 1000);
-      const points = correct ? 100 + Math.round(fraction * 100) : 0;
-      roundAnswers[attachment.userId] = {
-        answer: typeof msg.answer === "string" ? msg.answer.slice(0, 200) : null,
-        correct,
-        timeMs,
-        points,
-      };
-      this.persist();
-
-      // Tell the opponent (without leaking the answer).
-      for (const peer of this.ctx.getWebSockets()) {
-        const meta = peer.deserializeAttachment() as Attachment | null;
-        if (meta && meta.userId !== attachment.userId) {
-          trySend(peer, { type: "opponent_answered", index: msg.index });
-        }
-      }
-
-      const everyone = state.players.every((p) => roundAnswers[p.id] !== undefined);
-      if (everyone) {
-        this.closeRound(msg.index);
-      }
+      this.recordAnswer(attachment.userId, msg.index, typeof msg.answer === "string" ? msg.answer.slice(0, 200) : null, correct, timeMs);
     }
+  }
+
+  /** A simulated opponent sometimes reacts to the player's emote. */
+  private maybeBotEmoteBack(fromUserId: string): void {
+    const state = this.state;
+    if (!state?.players.some((p) => p.isBot) || Math.random() > 0.35) return;
+    setTimeout(() => {
+      this.sendTo(fromUserId, { type: "emote", emote: EMOTES[Math.floor(Math.random() * EMOTES.length)] });
+    }, 600 + Math.random() * 1_200);
   }
 
   private closeRound(index: number): void {
@@ -256,6 +307,7 @@ export class MatchRoom extends DurableObject<Env> {
     if (!state || state.phase !== "playing" || state.round !== index) return;
     if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
     this.clearTimer();
+    this.clearBotTimers();
 
     const roundAnswers = state.answers[index] ?? {};
     for (const player of state.players) {
@@ -291,6 +343,7 @@ export class MatchRoom extends DurableObject<Env> {
     state.settled = true;
     if (this.legacyTimer) clearTimeout(this.legacyTimer);
     this.clearTimer();
+    this.clearBotTimers();
     this.persist();
 
     const results = state.players.map((p) => ({
@@ -375,6 +428,7 @@ export class MatchRoom extends DurableObject<Env> {
     state.noResult = true;
     state.settled = true;
     this.clearTimer();
+    this.clearBotTimers();
     if (this.legacyTimer) clearTimeout(this.legacyTimer);
     this.persist();
     // No Hub settlement: no rating, reputation, win/loss or forfeit write for anyone.
@@ -427,6 +481,25 @@ export class MatchRoom extends DurableObject<Env> {
       this.roundTimer = null;
     }
   }
+}
+
+function publicPlayer(p: PlayerInfo): Omit<PlayerInfo, "isBot"> {
+  return { id: p.id, name: p.name, emoji: p.emoji, elo: p.elo };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/** The text the simulated opponent "picked": the answer, or a plausible wrong option. */
+function botAnswer(question: GameQuestion | undefined, correct: boolean): string | null {
+  if (!question) return null;
+  if (correct) return question.answer;
+  const key = (s: string) => s.trim().toLowerCase();
+  if (question.type === "trueFalse") return key(question.answer) === "vrai" ? "Faux" : "Vrai";
+  const options = Array.isArray(question.options) ? (question.options as unknown[]).filter((o): o is string => typeof o === "string") : [];
+  const wrong = options.filter((o) => key(o) !== key(question.answer));
+  return wrong.length ? wrong[Math.floor(Math.random() * wrong.length)]! : null;
 }
 
 function trySend(ws: WebSocket, msg: unknown): void {
