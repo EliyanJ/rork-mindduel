@@ -6,23 +6,23 @@ import Navbar from "@/components/Navbar";
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="mb-8">
-    <h2 className="mb-3 text-xl font-semibold">{title}</h2>
-    <div className="space-y-3 text-white/70">{children}</div>
+    <h2 className="mb-3 text-xl font-extrabold">{title}</h2>
+    <div className="space-y-3 text-site-muted">{children}</div>
   </div>
 );
 
 const Privacy = () => {
   return (
-    <div className="min-h-screen bg-[#0b0f1a] text-white">
+    <div className="min-h-screen bg-site-bg font-body text-site-ink">
       <Navbar />
       <div className="mx-auto max-w-2xl px-6 pb-16 pt-32">
-        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white">
+        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-site-muted hover:text-site-orange">
           <ArrowLeft className="h-4 w-4" />
           Retour
         </Link>
 
-        <h1 className="mb-2 text-3xl font-bold">Politique de confidentialité</h1>
-        <p className="mb-10 text-sm text-white/40">Dernière mise à jour : juillet 2026</p>
+        <h1 className="mb-2 font-display text-4xl font-extrabold tracking-tight">Politique de confidentialité</h1>
+        <p className="mb-10 text-sm text-site-muted/70">Dernière mise à jour : juillet 2026</p>
 
         <Section title="Qui nous sommes">
           <p>
@@ -35,26 +35,26 @@ const Privacy = () => {
         <Section title="Données que nous collectons">
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <span className="text-white">Compte</span> : si tu te connectes avec Google ou Apple,
+              <span className="font-semibold text-site-ink">Compte</span> : si tu te connectes avec Google ou Apple,
               nous recevons ton identifiant, ton adresse email, ton nom et ta photo de profil
               (lorsqu'elle est fournie par Apple ou Google).
             </li>
             <li>
-              <span className="text-white">Progression de jeu</span> : chapitres terminés, score,
+              <span className="font-semibold text-site-ink">Progression de jeu</span> : chapitres terminés, score,
               séries de réussite, éléments à réviser — stockés sur ton appareil et, pour les
               fonctions en ligne, sur nos serveurs.
             </li>
             <li>
-              <span className="text-white">Duels en ligne et classement</span> : ton score ELO,
+              <span className="font-semibold text-site-ink">Duels en ligne et classement</span> : ton score ELO,
               l'historique de tes duels, ta liste d'amis et ton code ami, afin de proposer le
               matchmaking et le classement mondial.
             </li>
             <li>
-              <span className="text-white">Données techniques</span> : informations minimales de
+              <span className="font-semibold text-site-ink">Données techniques</span> : informations minimales de
               connexion réseau nécessaires au fonctionnement des duels en temps réel.
             </li>
             <li>
-              <span className="text-white">Statistiques d'usage anonymisées</span> : avec PostHog
+              <span className="font-semibold text-site-ink">Statistiques d'usage anonymisées</span> : avec PostHog
               (hébergé dans l'Union européenne), nous mesurons les ouvertures de l'app, la durée des
               sessions, les écrans consultés et les actions de jeu (manches, duels, objectifs), ainsi
               que des enregistrements d'écran de l'utilisation dont les champs de saisie sont masqués.
@@ -62,20 +62,20 @@ const Privacy = () => {
               servent pas à la publicité. Tu peux les désactiver dans Réglages.
             </li>
             <li>
-              <span className="text-white">Statut du compte</span> : un rôle administratif
+              <span className="font-semibold text-site-ink">Statut du compte</span> : un rôle administratif
               (standard, bêta-testeur, accès offert, suspendu) et, le cas échéant, l'état de ton
               abonnement et l'historique des remboursements accordés par Apple.
             </li>
           </ul>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <span className="text-white">Abonnement Minduel Premium</span> : RevenueCat reçoit
+              <span className="font-semibold text-site-ink">Abonnement Minduel Premium</span> : RevenueCat reçoit
               d'Apple l'historique de tes achats dans l'app (produit, dates, renouvellement) et
               l'associe à l'identifiant technique de ton compte Minduel, afin d'activer Premium sur
               tes appareils.
             </li>
             <li>
-              <span className="text-white">Vidéos récompensées</span> : lorsque tu choisis de
+              <span className="font-semibold text-site-ink">Vidéos récompensées</span> : lorsque tu choisis de
               regarder une vidéo (pour des rubis, des cœurs, des points de duel ou rejouer un niveau),
               Google AdMob la diffuse et traite des données techniques de l'appareil. L'identifiant
               publicitaire n'est utilisé que si tu l'autorises dans la fenêtre d'iOS ; dans l'Union

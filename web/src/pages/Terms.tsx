@@ -6,23 +6,23 @@ import Navbar from "@/components/Navbar";
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="mb-8">
-    <h2 className="mb-3 text-xl font-semibold">{title}</h2>
-    <div className="space-y-3 text-white/70">{children}</div>
+    <h2 className="mb-3 text-xl font-extrabold">{title}</h2>
+    <div className="space-y-3 text-site-muted">{children}</div>
   </div>
 );
 
 const Terms = () => {
   return (
-    <div className="min-h-screen bg-[#0b0f1a] text-white">
+    <div className="min-h-screen bg-site-bg font-body text-site-ink">
       <Navbar />
       <div className="mx-auto max-w-2xl px-6 pb-16 pt-32">
-        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white">
+        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-site-muted hover:text-site-orange">
           <ArrowLeft className="h-4 w-4" />
           Retour
         </Link>
 
-        <h1 className="mb-2 text-3xl font-bold">Conditions d'utilisation</h1>
-        <p className="mb-10 text-sm text-white/40">Dernière mise à jour : juillet 2026</p>
+        <h1 className="mb-2 font-display text-4xl font-extrabold tracking-tight">Conditions d'utilisation</h1>
+        <p className="mb-10 text-sm text-site-muted/70">Dernière mise à jour : juillet 2026</p>
 
         <Section title="Acceptation des conditions">
           <p>
