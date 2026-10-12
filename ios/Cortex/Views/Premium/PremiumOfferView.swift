@@ -46,8 +46,7 @@ struct PremiumOfferView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 34) {
                     heroSection
                     plansSection
@@ -60,14 +59,15 @@ struct PremiumOfferView: View {
                     faqSection
                     legalFooter
                 }
+                .frame(maxWidth: 620)
                 .padding(.horizontal, 20)
                 .padding(.top, 64)
-                .padding(.bottom, 210)
-            }
-            .scrollIndicators(.hidden)
-
-            bottomBar
+                .padding(.bottom, 24)
+                .frame(maxWidth: .infinity)
         }
+        .scrollIndicators(.hidden)
+        // The sticky bar is a safe-area inset, so it never covers the plan rows.
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
         .overlay(alignment: .topLeading) { closeButton }
         .background(background.ignoresSafeArea())
         .task {
@@ -287,7 +287,7 @@ struct PremiumOfferView: View {
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(annual ? "Annuel" : "Mensuel")
-                        .font(.system(size: 19, weight: .heavy, design: .rounded))
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .foregroundStyle(Theme.ink)
                     if let subtitle {
                         Text(subtitle)
@@ -299,12 +299,12 @@ struct PremiumOfferView: View {
                 }
                 Spacer(minLength: 8)
                 Text("\(product.localizedPriceString)\(annual ? "/an" : "/mois")")
-                    .font(.system(size: 17, weight: .black, design: .rounded))
+                    .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(Theme.ink)
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .padding(.bottom, annual && store.annualSavingsPercent != nil ? 18 : 0)
+                    .minimumScaleFactor(0.8)
+                    .layoutPriority(1)
             }
             .padding(.horizontal, 18)
             .frame(minHeight: 78)
@@ -312,19 +312,6 @@ struct PremiumOfferView: View {
                 RoundedRectangle(cornerRadius: 22)
                     .fill(isSelected ? Theme.primary.opacity(0.16) : Theme.card)
             )
-            .overlay(alignment: .bottomTrailing) {
-                if annual, let savings = store.annualSavingsPercent {
-                    Text("−\(savings) %")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundStyle(isSelected ? .white : Theme.ink)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(
-                            UnevenRoundedRectangle(topLeadingRadius: 14, bottomTrailingRadius: 22)
-                                .fill(isSelected ? Theme.primary : Theme.raised)
-                        )
-                }
-            }
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
                     .stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 3 : 2)
@@ -343,7 +330,7 @@ struct PremiumOfferView: View {
         let endText = end.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "fr_FR")))
         let reminderText = reminderDay.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "fr_FR")))
         let steps: [(icon: String, color: Color, title: String, text: String)] = [
-            ("lock.open.fill", Theme.primary, "Aujourd'hui", "Tout Minduel est débloqué, 0,00 € à payer."),
+            ("lock.open.fill", Theme.primary, "Aujourd'hui", "Tout Minduel est débloqué."),
             ("bell.fill", Theme.gold, "Jusqu'au \(reminderText)", "Annule en 2 touchers dans les réglages Apple, sans frais."),
             ("crown.fill", Theme.success, "Le \(endText)", "Début de l'abonnement : \(package.storeProduct.localizedPriceString) \(periodWord(package)).")
         ]
@@ -672,9 +659,16 @@ struct PremiumOfferView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 10) {
-            Text("Annule à tout moment, 0 pénalité, 0 frais")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(Theme.ink)
+            if let selected {
+                Text(billedAmount(selected))
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: selectedId)
+            }
             Button {
                 guard let selected else { return }
                 Haptics.medium()
@@ -685,7 +679,7 @@ struct PremiumOfferView: View {
                     if store.isPurchasing {
                         ProgressView().tint(.white)
                     } else {
-                        Text(ctaTitle)
+                        Text("CONTINUER")
                     }
                 }
             }
@@ -693,13 +687,13 @@ struct PremiumOfferView: View {
             .disabled(selected == nil || store.isPurchasing || store.isRestoring)
             if let selected {
                 Text(disclosure(selected))
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(Theme.inkMuted)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .contentTransition(.numericText())
             }
         }
+        .frame(maxWidth: 560)
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .padding(.bottom, 8)
@@ -714,11 +708,6 @@ struct PremiumOfferView: View {
                 .shadow(color: .black.opacity(0.12), radius: 16, y: -4)
                 .ignoresSafeArea(edges: .bottom)
         }
-    }
-
-    private var ctaTitle: String {
-        guard let selected else { return "S'ABONNER" }
-        return store.freeTrial(for: selected) != nil ? "ESSAIE POUR 0,00 €" : "S'ABONNER"
     }
 
     // MARK: - Pieces
@@ -768,12 +757,18 @@ struct PremiumOfferView: View {
         isAnnual(package) ? "par an" : "par mois"
     }
 
+    /// The amount actually billed, e.g. "29,99 € par an": always the most
+    /// prominent price on screen (App Store rule 3.1.2(c)).
+    private func billedAmount(_ package: Package) -> String {
+        "\(package.storeProduct.localizedPriceString) \(periodWord(package))"
+    }
+
     private func disclosure(_ package: Package) -> String {
-        let price = "\(package.storeProduct.localizedPriceString) \(periodWord(package))"
+        let renewal = "Renouvellement automatique, résiliable à tout moment dans les réglages Apple."
         if let trial = store.freeTrial(for: package) {
-            return "\(PaywallView.durationText(trial.subscriptionPeriod)) gratuits, puis \(price). Renouvellement automatique."
+            return "\(PaywallView.durationText(trial.subscriptionPeriod)) gratuits, puis \(billedAmount(package)). \(renewal)"
         }
-        return "Sans essai gratuit, \(price). Renouvellement automatique."
+        return "\(billedAmount(package)). \(renewal)"
     }
 
     private func trialEndDate(_ period: SubscriptionPeriod) -> Date {

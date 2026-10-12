@@ -40,9 +40,11 @@ struct PaywallView: View {
                     plans
                     legalFooter
                 }
+                .frame(maxWidth: 620)
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
                 .padding(.bottom, 32)
+                .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
         }
@@ -194,23 +196,18 @@ struct PaywallView: View {
 
     private func premiumCard(_ package: Package) -> some View {
         let isAnnual = package.identifier == store.annualPackage?.identifier
-        let hasTrial = store.freeTrial(for: package) != nil
+        let trial = store.freeTrial(for: package)
         let isCurrent = store.isPremium && store.activeProductId == package.storeProduct.productIdentifier
-        let title: String
-        if isCurrent {
-            title = "FORMULE ACTUELLE"
-        } else if hasTrial {
-            title = "ESSAIE POUR 0,00 €"
-        } else {
-            title = "S'ABONNER"
-        }
+        let title = isCurrent ? "FORMULE ACTUELLE" : "CHOISIR"
         return PlanCard(
             title: isAnnual ? "Premium annuel" : "Premium mensuel",
+            billedAmount: "\(package.storeProduct.localizedPriceString) \(isAnnual ? "par an" : "par mois")",
+            priceNote: trial.map { "\(Self.durationText($0.subscriptionPeriod)) gratuits" },
             subtitle: isAnnual ? "12 mois de Minduel sans limite" : "Sans engagement, mois par mois",
             perks: Self.premiumPerks,
             image: isAnnual ? "MascotTrophy" : "MascotGift",
             highlight: isAnnual ? Theme.primary : nil,
-            badge: isAnnual ? annualBadgeText : nil,
+            badge: isAnnual ? "RECOMMANDÉ" : nil,
             buttonTitle: title,
             isButtonEnabled: !isCurrent && !store.isPurchasing && !store.isRestoring,
             isBusy: false
@@ -224,6 +221,8 @@ struct PaywallView: View {
     private var freeCard: some View {
         PlanCard(
             title: "Gratuit",
+            billedAmount: nil,
+            priceNote: nil,
             subtitle: "Pour découvrir Minduel à ton rythme",
             perks: Self.freePerks,
             image: "book_mascot_sitting",
@@ -233,11 +232,6 @@ struct PaywallView: View {
             isButtonEnabled: false,
             isBusy: false
         ) {}
-    }
-
-    private var annualBadgeText: String {
-        if let savings = store.annualSavingsPercent { return "RECOMMANDÉ · −\(savings) %" }
-        return "RECOMMANDÉ"
     }
 
     private var legalFooter: some View {
@@ -296,6 +290,10 @@ struct PaywallView: View {
 /// an illustration on the right and its own outlined button.
 private struct PlanCard: View {
     let title: String
+    /// Amount actually billed ("29,99 € par an"), the most prominent price.
+    let billedAmount: String?
+    /// Secondary, muted line under the amount (free trial).
+    let priceNote: String?
     let subtitle: String
     let perks: [String]
     let image: String
@@ -313,6 +311,19 @@ private struct PlanCard: View {
                     Text(title)
                         .font(.system(.title3, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.ink)
+                    if let billedAmount {
+                        Text(billedAmount)
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    if let priceNote {
+                        Text(priceNote)
+                            .font(.system(.footnote, design: .rounded, weight: .semibold))
+                            .foregroundStyle(Theme.inkMuted)
+                    }
                     Text(subtitle)
                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .foregroundStyle(Theme.inkMuted)
