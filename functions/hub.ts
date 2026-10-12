@@ -80,10 +80,10 @@ const PARTY_STALE_TICKET_MS = 120_000;
 const STARTING_POINTS = 400;
 /** Lowest visible ladder score (chess.com-style floor). */
 const POINTS_FLOOR = 100;
-/** Party rounds: 8 s reading beat in the app + 6 s to answer. */
-const PARTY_ROUND_SECONDS = 14;
-/** 1v1 rounds: 8 s reading beat in the app + 7 s to answer. */
-const DUEL_ROUND_SECONDS = 15;
+/** Party rounds: 4.5 s reading beat in the app + 4.5 s to answer. */
+const PARTY_ROUND_SECONDS = 9;
+/** 1v1 rounds: 4.5 s reading beat in the app + 4.5 s to answer. */
+const DUEL_ROUND_SECONDS = 9;
 // "team10" (10v10), "solo" (1v19), "oneVsTen" (1v9 — wire name kept for older builds), or a free-form
 // `custom:<allies>:<opponents>` room where the host picked both team sizes
 // and invited people with a share code.
@@ -602,6 +602,26 @@ export class Hub extends DurableObject {
     return questions;
   }
 
+  /** Four random themes (with enough questions) offered in a 1v1 theme draft. */
+  private draftThemes(): string[] {
+    const row = this.ctx.storage.sql.exec<{ json: string }>("SELECT json FROM content WHERE id = 1").toArray()[0];
+    if (!row) throw new Error("Published catalog unavailable");
+    const catalog = JSON.parse(row.json) as GameCatalog;
+    const eligible = catalog.disciplines.filter((d) => {
+      let count = 0;
+      for (const c of d.chapters as { questions?: unknown[]; levels?: Record<string, { questions?: unknown[] }> }[]) {
+        count += c.questions?.length ?? 0;
+        for (const level of Object.values(c.levels ?? {})) count += level.questions?.length ?? 0;
+      }
+      return count >= 60;
+    }).map((d) => d.id);
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j]!, eligible[i]!];
+    }
+    return eligible.slice(0, 4);
+  }
+
   private saveRoomTicket(id: string, kind: string, ticket: unknown): void {
     this.ctx.storage.sql.exec("INSERT OR IGNORE INTO room_tickets (id, kind, payload, created_at) VALUES (?, ?, ?, ?)", id, kind, JSON.stringify(ticket), Date.now());
   }
@@ -630,6 +650,15 @@ export class Hub extends DurableObject {
       const ticket = JSON.parse(row.payload) as { players: { id: string; isBot?: boolean }[] };
       if (!ticket.players.some(p => p.id === body.userId && !p.isBot)) return Response.json({ error: "not a participant" }, { status: 403 });
       return Response.json(ticket);
+    }
+    if (path === "/internal/game-questions" && request.method === "POST") {
+      const b = await request.json() as { matchId?: string; seed: string; count: number; themes: string[]; elo: number };
+      const ticket = b.matchId ? this.ctx.storage.sql.exec<{ payload: string }>("SELECT payload FROM room_tickets WHERE id = ? AND kind = 'duel'", b.matchId).toArray()[0] : undefined;
+      if (!ticket) return Response.json({ error: "ticket unavailable" }, { status: 404 });
+      const offered = (JSON.parse(ticket.payload) as { draftThemes?: string[] }).draftThemes ?? [];
+      const themes = (b.themes ?? []).filter((t) => offered.includes(t)).slice(0, 2);
+      if (themes.length === 0) return Response.json({ error: "invalid themes" }, { status: 400 });
+      return Response.json({ questions: this.gameQuestions(b.seed, Math.min(30, Math.max(1, b.count)), themes, b.elo) });
     }
     if (path === "/internal/cheat-flag" && request.method === "POST") {
       const b = await request.json() as { userId: string; matchId: string; index: number; reason: string };
@@ -1663,13 +1692,13 @@ export class Hub extends DurableObject {
 
     const matchId = crypto.randomUUID();
     const seed = randomSeed();
-    // Both players receive the same sorted theme list so their clients derive
-    // an identical mixed question set from the shared seed.
-    const themes = [me.discipline_id ?? "all", opponent.discipline_id ?? "all"].sort();
+    // Themes are drafted in the match room: both players pick one of four
+    // random themes, and the questions are drawn once the picks are in.
+    const draftThemes = this.draftThemes();
+    const themes = ["all"];
     const ranked = me.ranked !== 0;
-    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: DUEL_ROUND_SECONDS, themes, ranked };
-    const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + oppProfile.elo) / 2));
-    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, oppProfile], questions });
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: DUEL_ROUND_SECONDS, themes, draftThemes, ranked };
+    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, oppProfile] });
     const forMe = JSON.stringify({ ...base, you: myProfile, opponent: oppProfile });
     const forOpp = JSON.stringify({ ...base, you: oppProfile, opponent: myProfile });
 
@@ -1692,15 +1721,14 @@ export class Hub extends DurableObject {
     const filler = generateFillerProfile(myProfile);
     const matchId = crypto.randomUUID();
     const seed = randomSeed();
-    const theme = me.discipline_id ?? "all";
-    const themes = [theme, theme];
+    const draftThemes = this.draftThemes();
+    const themes = ["all"];
     const ranked = me.ranked !== 0;
-    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: DUEL_ROUND_SECONDS, themes, ranked };
-    const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + filler.elo) / 2));
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: DUEL_ROUND_SECONDS, themes, draftThemes, ranked };
     // `skill` (server-only) pitches the simulated opponent at the player's
     // ladder level, so climbing means beating ever sharper opponents.
     const skill = clampSkill(myProfile.points + Math.round((Math.random() - 0.5) * 120));
-    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, { ...filler, isBot: true, skill }], questions });
+    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, { ...filler, isBot: true, skill }] });
     this.ctx.storage.sql.exec(
       "UPDATE queue SET match_payload = ?, last_seen_at = ? WHERE user_id = ?",
       JSON.stringify({ ...base, you: myProfile, opponent: filler }), Date.now(), me.user_id,

@@ -103,10 +103,6 @@ struct ContentView: View {
             Task { await refreshReminders() }
         }
 
-            if onboardingStore.isCompleted && !showSplash && !updates.requiresUpdate {
-                FeedbackBubble()
-            }
-
             if let broken = brokenStreakOffer, !showSplash, onboardingStore.isCompleted {
                 StreakRepairView(
                     broken: broken,

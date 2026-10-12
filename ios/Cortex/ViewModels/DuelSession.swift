@@ -34,7 +34,7 @@ final class DuelSession {
         let botTime: Double
     }
 
-    static let roundDuration: Double = 15
+    static let roundDuration: Double = 4.5
     static let questionCount: Int = 15
 
     let questions: [Question]
@@ -66,7 +66,7 @@ final class DuelSession {
     private(set) var floatingEmotes: [FloatingEmote] = []
 
     static let totalVoters: Int = 2
-    static let readingBeat: Double = 8
+    static let readingBeat: Double = 4.5
 
     private var playerAnswerTime: Double?
     private var runTask: Task<Void, Never>?
@@ -157,7 +157,7 @@ final class DuelSession {
         try await Task.sleep(for: .seconds(Self.readingBeat))
 
         timeRemaining = Self.roundDuration
-        let botTime = Double.random(in: 2.5...12.5)
+        let botTime = Double.random(in: 0.9...4.3)
         let botCorrect = Double.random(in: 0...1) < 0.6
         botAnswer = botCorrect
             ? question.answer
@@ -235,18 +235,6 @@ final class DuelSession {
 
         phase = .reveal
         try await Task.sleep(for: .seconds(4.0))
-
-        if (index + 1) % 2 == 0, index < questions.count - 1 {
-            leaderboardEntries = [
-                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: "\u{1F9E0}", score: playerScore, isYou: true, previousRank: previousRanks["you"]),
-                QuizLeaderboardEntry(id: "bot", name: opponent.name, emoji: opponent.emoji, score: botScore, isYou: false, previousRank: previousRanks["bot"])
-            ]
-            SoundManager.shared.startLeaderboardMusic()
-            withAnimation(.spring(duration: 0.7)) { showScoreboard = true }
-            try await Task.sleep(for: .seconds(7.0))
-            showScoreboard = false
-            SoundManager.shared.stopLeaderboardMusic()
-        }
     }
 
     // MARK: - Emotes

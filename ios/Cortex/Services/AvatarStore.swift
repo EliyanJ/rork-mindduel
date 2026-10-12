@@ -12,7 +12,7 @@ final class AvatarStore {
     init() {
         if let data = UserDefaults.standard.data(forKey: Self.key),
            let saved = try? JSONDecoder().decode(AvatarConfig.self, from: data) {
-            config = saved
+            config = saved.normalized
         } else {
             config = .default
         }

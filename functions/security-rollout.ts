@@ -2,8 +2,9 @@
 export const LEGACY_DEADLINE_MS = 1789746147520; // 2026-09-18 15:42:27.520 UTC
 
 /** Compatibility is limited to already-persisted, already-started rooms, never client init payloads. */
-export function isLegacyExpired(state: { questions?: unknown[]; phase: string }, now = Date.now()): boolean {
-  return !state.questions && state.phase !== "finished" && (now >= LEGACY_DEADLINE_MS || state.phase === "waiting");
+export function isLegacyExpired(state: { questions?: unknown[]; draftThemes?: unknown[]; phase: string }, now = Date.now()): boolean {
+  // A theme-draft match fetches its questions once both players have picked.
+  return !state.questions && !state.draftThemes && state.phase !== "finished" && (now >= LEGACY_DEADLINE_MS || state.phase === "waiting");
 }
 
 /** Only used by the bounded, explicitly approved legacy drain. New games never call this. */

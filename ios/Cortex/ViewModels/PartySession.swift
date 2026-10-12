@@ -104,7 +104,7 @@ final class PartySession {
     /// Bonus granted for a win (empty otherwise).
     private(set) var winRewards: [Reward] = []
 
-    static let readingBeat: Double = 8
+    static let readingBeat: Double = 4.5
 
     /// Seconds left to answer once the choices are visible.
     var answerWindow: Double { max(1, roundDuration - Self.readingBeat) }
@@ -578,7 +578,8 @@ final class PartySession {
 
         // The server pauses the game while the ranking page is up (`pauseMs`).
         // Older servers don't: the page then keeps its former, shorter length.
-        let isRankingRound = (revealIndex + 1) % 2 == 0 && revealIndex + 1 < totalQuestions
+        // Only the 1 vs 9 has a ranking page between questions.
+        let isRankingRound = mode == .oneVsTen && (revealIndex + 1) % 2 == 0 && revealIndex + 1 < totalQuestions
         guard isRankingRound else { return }
         let newTop = Array(ranked.prefix(5))
         // Small rooms list everyone; big ones the top 5 plus the player's own
@@ -601,7 +602,7 @@ final class PartySession {
             previousBoardScores[entry.id] = entry.score
         }
         topBoard = newTop
-        let pause = pauseSeconds ?? 9.3
+        let pause = pauseSeconds ?? 10.4
         let visible = max(4, pause - 2.4)
         leaderboardTask?.cancel()
         leaderboardTask = Task { [weak self] in

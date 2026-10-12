@@ -10,6 +10,8 @@ final class OnlineDuelSession {
     enum Phase: Equatable {
         case searching
         case found
+        /// Both players pick one of four themes before the first question.
+        case draft
         case countdown
         case question
         case reveal
@@ -63,17 +65,26 @@ final class OnlineDuelSession {
     private(set) var answeredCount: Int = 0
     private(set) var wasFastestCorrect: Bool = false
     private(set) var floatingEmotes: [FloatingEmote] = []
+    /// Theme draft: the four offered themes, the player's pick and the outcome.
+    private(set) var draftThemes: [String] = []
+    private(set) var draftEndsAt: Date?
+    private(set) var myPick: String?
+    private(set) var opponentPicked: Bool = false
+    private(set) var opponentPick: String?
+    private(set) var chosenThemes: [String] = []
+    /// Set while the opponent's connection dropped: when their grace period ends.
+    private(set) var opponentAwayUntil: Date?
+    /// The player's own connection dropped and the app is trying to rejoin.
+    private(set) var isReconnecting: Bool = false
+    private var reconnectAttempts: Int = 0
 
     static let totalVoters: Int = 2
-    static let readingBeat: Double = 8
+    static let readingBeat: Double = 4.5
 
     /// Seconds left to answer once the choices are visible.
     var answerWindow: Double { max(1, roundDuration - Self.readingBeat) }
 
     private var previousRanks: [String: Int] = [:]
-    private var previousScores: [String: Int] = [:]
-    /// Standings at the previous ranking page, for the overtake animation.
-    private var boardRanks: [String: Int] = [:]
     private var scoreboardTask: Task<Void, Never>?
     private var socket: URLSessionWebSocketTask?
     private var queueTask: Task<Void, Never>?
@@ -105,6 +116,11 @@ final class OnlineDuelSession {
         self.questionDiscipline = map
     }
 
+    /// Catalog entry for a drafted theme id (name, colour, illustration).
+    func discipline(for id: String) -> Discipline? {
+        catalog.disciplines.first { $0.id == id }
+    }
+
     var opponent: PlayerProfile? { ticket?.opponent }
     var you: PlayerProfile? { ticket?.you }
     var playerHasAnswered: Bool { playerAnswer != nil }
@@ -112,7 +128,8 @@ final class OnlineDuelSession {
     /// Human-readable theme readout for the leaderboard header — falls back
     /// to a generic label for mixed/unset theme tickets.
     var themeName: String {
-        guard let ids = ticket?.themes, ids != ["all"] else { return "Tous thèmes" }
+        let ids = chosenThemes.isEmpty ? (ticket?.themes ?? []) : chosenThemes
+        guard !ids.isEmpty, ids != ["all"] else { return "Tous thèmes" }
         let names = ids.compactMap { id in catalog.disciplines.first { $0.id == id }?.name }
         return names.isEmpty ? "Tous thèmes" : names.joined(separator: " · ")
     }
@@ -131,7 +148,7 @@ final class OnlineDuelSession {
         if let ticket {
             guard socket == nil else { return }
             switch phase {
-            case .found, .countdown, .question, .reveal:
+            case .found, .draft, .countdown, .question, .reveal:
                 queueTask = Task { await reconnect(ticket: ticket) }
             default:
                 break
@@ -144,9 +161,42 @@ final class OnlineDuelSession {
     }
 
     private func reconnect(ticket matchTicket: MatchTicket) async {
+        defer { queueTask = nil }
         guard let token = await online.auth.validAccessToken() else { return }
+        guard !Task.isCancelled else { return }
         openSocket(ticket: matchTicket, service: MultiplayerService(token: token))
     }
+
+    private var isMatchActive: Bool {
+        switch phase {
+        case .found, .draft, .countdown, .question, .reveal: return true
+        default: return false
+        }
+    }
+
+    /// The server keeps the seat for 10 s: a few quick retries bring the
+    /// player back into the same match.
+    private func handleSocketDrop() {
+        socket = nil
+        guard isMatchActive, let ticket else { return }
+        reconnectAttempts += 1
+        guard reconnectAttempts <= 4 else {
+            isReconnecting = false
+            timerTask?.cancel()
+            SoundManager.shared.stopAmbience()
+            phase = .cancelled("Connexion perdue. Faute de reconnexion à temps, la partie revient à ton adversaire.")
+            return
+        }
+        isReconnecting = true
+        let delay = reconnectAttempts == 1 ? 0.6 : 2
+        queueTask?.cancel()
+        queueTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard let self, !Task.isCancelled else { return }
+            await self.reconnect(ticket: ticket)
+        }
+    }
+
 
     /// Lifecycle cleanup is never reported as a voluntary forfeit.
     func cancel(voluntary: Bool = false) {
@@ -157,7 +207,7 @@ final class OnlineDuelSession {
         scoreboardTask?.cancel()
         let closingSocket = socket
         socket = nil
-        if voluntary, let closingSocket, phase == .question || phase == .reveal || phase == .countdown {
+        if voluntary, let closingSocket, phase == .question || phase == .reveal || phase == .countdown || phase == .draft {
             closingSocket.send(.string("{\"type\":\"leave\"}")) { _ in
                 closingSocket.cancel(with: .normalClosure, reason: nil)
             }
@@ -260,6 +310,10 @@ final class OnlineDuelSession {
         while !Task.isCancelled {
             do {
                 let message = try await task.receive()
+                if isReconnecting {
+                    isReconnecting = false
+                    reconnectAttempts = 0
+                }
                 guard case .string(let text) = message,
                       let data = text.data(using: .utf8) else { continue }
                 handleServerMessage(data)
@@ -268,7 +322,7 @@ final class OnlineDuelSession {
                 if !Task.isCancelled && phase != .finished {
                     if case .cancelled = phase { return }
                     if case .failed = phase { return }
-                    phase = .cancelled("Connexion interrompue. Partie sans résultat, sans perte de points.")
+                    handleSocketDrop()
                 }
                 return
             }
@@ -280,12 +334,34 @@ final class OnlineDuelSession {
               let type = raw["type"] as? String else { return }
 
         switch type {
+        case "draft":
+            handleDraft(raw)
+        case "opponent_picked":
+            withAnimation(.spring(duration: 0.4)) { opponentPicked = true }
+        case "draft_result":
+            handleDraftResult(raw)
+        case "opponent_disconnected":
+            let grace = (raw["graceMs"] as? Double ?? 10_000) / 1000
+            withAnimation(.spring(duration: 0.4)) { opponentAwayUntil = Date().addingTimeInterval(grace) }
+        case "opponent_reconnected":
+            withAnimation(.spring(duration: 0.4)) { opponentAwayUntil = nil }
         case "start":
             if let payload = raw["questions"],
                let encoded = try? JSONSerialization.data(withJSONObject: payload),
                let authoritative = try? JSONDecoder().decode([Question].self, from: encoded),
                authoritative.count == ticket?.questionCount {
                 questions = authoritative
+            }
+            if let themes = raw["themes"] as? [String], !themes.isEmpty {
+                chosenThemes = themes
+            }
+            if raw["resumed"] as? Bool == true {
+                if let scores = raw["scores"] as? [String: Int], let you, let opp = opponent {
+                    playerScore = scores[you.id] ?? playerScore
+                    opponentScore = scores[opp.id] ?? opponentScore
+                }
+                if phase != .question && phase != .reveal { phase = .reveal }
+                return
             }
             phase = .countdown
             Haptics.medium()
@@ -303,6 +379,8 @@ final class OnlineDuelSession {
         case "finish":
             handleFinish(raw)
         case "cancelled":
+            isReconnecting = false
+            opponentAwayUntil = nil
             phase = .cancelled(raw["noResult"] as? Bool == true
                 ? "Partie interrompue sans résultat. Aucun point perdu ni pénalité."
                 : "Ton adversaire a quitté avant le début")
@@ -318,6 +396,38 @@ final class OnlineDuelSession {
         default:
             break
         }
+    }
+
+    // MARK: theme draft
+
+    private func handleDraft(_ raw: [String: Any]) {
+        guard let themes = raw["themes"] as? [String], !themes.isEmpty else { return }
+        draftThemes = themes
+        let duration = (raw["durationMs"] as? Double ?? 10_000) / 1000
+        draftEndsAt = Date().addingTimeInterval(duration)
+        if let picked = raw["picked"] as? String { myPick = picked }
+        if phase != .draft {
+            withAnimation(.spring(duration: 0.5)) { phase = .draft }
+            Haptics.medium()
+        }
+    }
+
+    /// Picks one of the four offered themes (once).
+    func pick(_ themeId: String) {
+        guard phase == .draft, myPick == nil, chosenThemes.isEmpty, draftThemes.contains(themeId) else { return }
+        Haptics.medium()
+        withAnimation(.spring(duration: 0.4, bounce: 0.35)) { myPick = themeId }
+        send(["type": "pick", "theme": themeId])
+    }
+
+    private func handleDraftResult(_ raw: [String: Any]) {
+        guard let themes = raw["themes"] as? [String] else { return }
+        let picks = raw["picks"] as? [String: String] ?? [:]
+        if let you { myPick = picks[you.id] ?? myPick }
+        if let opp = opponent { opponentPick = picks[opp.id] }
+        opponentPicked = true
+        Haptics.success()
+        withAnimation(.spring(duration: 0.6, bounce: 0.3)) { chosenThemes = themes }
     }
 
     private func startRound(index: Int, durationMs: Double) {
@@ -448,37 +558,6 @@ final class OnlineDuelSession {
         ))
         if myCorrect { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
         phase = .reveal
-
-        // The server pauses the match while the ranking page is up
-        // (`pauseMs`); older servers don't, so the page keeps its old length.
-        let isRankingRound = (index + 1) % 2 == 0 && index + 1 < questions.count
-        if isRankingRound {
-            let entries = [
-                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: you.emoji, score: playerScore, isYou: true,
-                                     previousRank: boardRanks["you"], previousScore: previousScores["you"] ?? 0),
-                QuizLeaderboardEntry(id: "opp", name: opp.name, emoji: opp.emoji, score: opponentScore, isYou: false,
-                                     previousRank: boardRanks["opp"], previousScore: previousScores["opp"] ?? 0)
-            ]
-            boardRanks = [
-                "you": playerScore >= opponentScore ? 1 : 2,
-                "opp": opponentScore > playerScore ? 1 : 2
-            ]
-            previousScores = ["you": playerScore, "opp": opponentScore]
-            let pause = (raw["pauseMs"] as? Double).map { $0 / 1000 } ?? 9.4
-            let visible = max(4, pause - 2.4)
-            scoreboardTask?.cancel()
-            scoreboardTask = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(1.8))
-                guard let self, !Task.isCancelled, self.phase == .reveal else { return }
-                self.leaderboardEntries = entries
-                SoundManager.shared.startLeaderboardMusic()
-                withAnimation(.spring(duration: 0.7)) { self.showScoreboard = true }
-                try? await Task.sleep(for: .seconds(visible))
-                guard !Task.isCancelled else { return }
-                withAnimation(.spring(duration: 0.5)) { self.showScoreboard = false }
-                SoundManager.shared.stopLeaderboardMusic()
-            }
-        }
     }
 
     // MARK: - Emotes
@@ -499,6 +578,8 @@ final class OnlineDuelSession {
     }
 
     private func handleFinish(_ raw: [String: Any]) {
+        opponentAwayUntil = nil
+        isReconnecting = false
         if raw["noResult"] as? Bool == true {
             phase = .cancelled("Partie sans résultat. Aucun point perdu ni pénalité.")
             return

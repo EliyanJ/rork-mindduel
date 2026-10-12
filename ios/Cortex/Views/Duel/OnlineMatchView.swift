@@ -17,6 +17,9 @@ struct OnlineMatchView: View {
                     session.cancel(voluntary: true)
                     dismiss()
                 })
+            case .draft:
+                OnlineDraftStage(session: session)
+                    .transition(.opacity)
             case .countdown:
                 OnlineCountdownStage()
             case .question, .reveal:
@@ -54,7 +57,14 @@ struct OnlineMatchView: View {
                 .padding(.bottom, 140)
                 .allowsHitTesting(false)
         }
+        .overlay(alignment: .top) {
+            ConnectionBanner(awayUntil: session.opponentAwayUntil, isReconnecting: session.isReconnecting, opponentName: session.opponent?.name ?? "Ton adversaire")
+                .padding(.top, 6)
+                .padding(.horizontal, 16)
+        }
         .animation(.spring(duration: 0.6), value: session.showScoreboard)
+        .animation(.spring(duration: 0.4), value: session.opponentAwayUntil)
+        .animation(.spring(duration: 0.4), value: session.isReconnecting)
         .task { session.start() }
         .onDisappear { session.cancel() }
     }
@@ -346,5 +356,51 @@ private struct OnlineQuestionStage: View {
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.quizCanvas))
         .animation(.easeOut(duration: 0.2), value: session.opponentHasAnswered)
         .animation(.easeOut(duration: 0.2), value: session.playerHasAnswered)
+    }
+}
+
+/// Top banner while a connection is down: the opponent's 10 s reconnection
+/// countdown, or the player's own reconnection attempt.
+private struct ConnectionBanner: View {
+    let awayUntil: Date?
+    let isReconnecting: Bool
+    let opponentName: String
+
+    var body: some View {
+        Group {
+            if isReconnecting {
+                banner(icon: "wifi.exclamationmark", text: "Reconnexion en cours…", color: Theme.kahootYellow)
+            } else if let awayUntil {
+                TimelineView(.periodic(from: .now, by: 0.25)) { context in
+                    let seconds = Int(ceil(max(0, awayUntil.timeIntervalSince(context.date))))
+                    banner(
+                        icon: "antenna.radiowaves.left.and.right.slash",
+                        text: seconds > 0
+                            ? "\(opponentName) s'est déconnecté… \(seconds) s pour revenir"
+                            : "\(opponentName) n'est pas revenu…",
+                        color: Theme.danger
+                    )
+                }
+            }
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private func banner(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .bold))
+            Text(text)
+                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                .lineLimit(2)
+                .contentTransition(.numericText())
+            Spacer(minLength: 0)
+            if isReconnecting { ProgressView().tint(.white) }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 16).fill(color.gradient))
+        .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
     }
 }

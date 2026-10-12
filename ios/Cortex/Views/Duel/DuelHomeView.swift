@@ -521,9 +521,12 @@ struct DuelHomeView: View {
         pendingPartyOrigin = .matchmaking(mode)
     }
 
+    /// Online 1v1: themes are drafted in the match (four random themes, each
+    /// player picks one), so there is no picker beforehand.
     private func presentRankedDuel() {
         pendingMode = .ranked
-        showThemePicker = true
+        selectedDuelDisciplineId = nil
+        isRankedPresented = true
     }
 
     /// Free player's daily ranked match: imposed theme mix, no picker.
@@ -534,15 +537,11 @@ struct DuelHomeView: View {
         isRankedPresented = true
     }
 
-    /// Free players get an imposed theme mix; choosing a theme is Premium.
+    /// Themes are drafted in the match itself, for everyone.
     private func presentCasualOnline() {
         pendingMode = .casualOnline
-        guard store.isPremium else {
-            selectedDuelDisciplineId = nil
-            isCasualOnlinePresented = true
-            return
-        }
-        showThemePicker = true
+        selectedDuelDisciplineId = nil
+        isCasualOnlinePresented = true
     }
 
     /// Free players get an imposed mix of every theme; choosing is Premium.

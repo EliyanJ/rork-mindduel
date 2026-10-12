@@ -27,13 +27,12 @@ struct BadgeMedalView: View {
     }
 }
 
-/// "BADGES" card of the profile: earned count, a progress bar and the
-/// collection grid. Tapping a badge opens its detail.
+/// "BADGES" card of the profile: earned count, a progress bar and a row
+/// of three badges that becomes a horizontal slider past three earned. Tapping a badge opens its detail.
 struct BadgesSection: View {
     @Environment(AppModel.self) private var model
     @State private var selected: Badge?
 
-    private let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
 
     var body: some View {
         let badges = model.visibleBadges
@@ -68,44 +67,26 @@ struct BadgesSection: View {
             }
             .frame(height: 8)
 
-            LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(badges) { badge in
-                    Button {
-                        Haptics.tap()
-                        selected = badge
-                    } label: {
-                        VStack(spacing: 4) {
-                            BadgeMedalView(badge: badge, isEarned: model.badges.isEarned(badge), size: 92)
-                                .overlay(alignment: .topTrailing) {
-                                    if model.badges.unseen.contains(badge.id) {
-                                        Circle()
-                                            .fill(Theme.danger)
-                                            .frame(width: 12, height: 12)
-                                            .overlay(Circle().stroke(Theme.card, lineWidth: 2))
-                                    }
-                                }
-                            if !badge.hasNameInArt {
-                                Text(badge.name)
-                                    .font(.system(size: 12, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(model.badges.isEarned(badge) ? Theme.ink : Theme.inkMuted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.75)
-                            }
-                            if !model.badges.isEarned(badge) {
-                                let progress = model.badgeProgress(badge)
-                                Text(badge.progressUnit == nil ? "À débloquer" : "\(progress.done)/\(progress.required)")
-                                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(Theme.inkMuted)
-                                    .monospacedDigit()
-                            } else {
-                                Text(badge.rarity.label)
-                                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(badge.rarity.color)
-                            }
+            let shown = shownBadges(from: badges)
+            if shown.count > 3 {
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(shown) { badge in
+                            badgeTile(badge)
+                                .frame(width: 104)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(BadgePressStyle())
+                    .scrollTargetLayout()
+                }
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.viewAligned)
+                .contentMargins(.horizontal, 18, for: .scrollContent)
+                .padding(.horizontal, -18)
+            } else {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(shown) { badge in
+                        badgeTile(badge)
+                    }
                 }
             }
         }
@@ -119,6 +100,70 @@ struct BadgesSection: View {
                 .presentationDragIndicator(.visible)
         }
         .onDisappear { model.badges.markAllSeen() }
+    }
+
+    /// Earned badges first (oldest to newest). If fewer than three are earned,
+    /// the closest locked badges fill the row so there are always three.
+    private func shownBadges(from badges: [Badge]) -> [Badge] {
+        let earned = badges
+            .filter { model.badges.isEarned($0) }
+            .sorted { (model.badges.earnedDate($0) ?? .distantPast) < (model.badges.earnedDate($1) ?? .distantPast) }
+        let missing = max(0, 3 - earned.count)
+        guard missing > 0 else { return earned }
+        let locked = badges.enumerated()
+            .filter { !model.badges.isEarned($0.element) }
+            .sorted { lhs, rhs in
+                let l = ratio(lhs.element), r = ratio(rhs.element)
+                return l == r ? lhs.offset < rhs.offset : l > r
+            }
+            .prefix(missing)
+            .map(\.element)
+        return earned + locked
+    }
+
+    private func ratio(_ badge: Badge) -> Double {
+        let progress = model.badgeProgress(badge)
+        guard progress.required > 0 else { return 0 }
+        return min(1, Double(progress.done) / Double(progress.required))
+    }
+
+    private func badgeTile(_ badge: Badge) -> some View {
+        Button {
+            Haptics.tap()
+            selected = badge
+        } label: {
+            VStack(spacing: 4) {
+                BadgeMedalView(badge: badge, isEarned: model.badges.isEarned(badge), size: 92)
+                    .overlay(alignment: .topTrailing) {
+                        if model.badges.unseen.contains(badge.id) {
+                            Circle()
+                                .fill(Theme.danger)
+                                .frame(width: 12, height: 12)
+                                .overlay(Circle().stroke(Theme.card, lineWidth: 2))
+                        }
+                    }
+                if !badge.hasNameInArt {
+                    Text(badge.name)
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundStyle(model.badges.isEarned(badge) ? Theme.ink : Theme.inkMuted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                if !model.badges.isEarned(badge) {
+                    let progress = model.badgeProgress(badge)
+                    Text(badge.progressUnit == nil ? "À débloquer" : "\(progress.done)/\(progress.required)")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.inkMuted)
+                        .monospacedDigit()
+                } else {
+                    Text(badge.rarity.label)
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .foregroundStyle(badge.rarity.color)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(BadgePressStyle())
     }
 }
 

@@ -67,10 +67,10 @@ type PartyState = {
 type Attachment = { userId: string };
 
 const REVEAL_MS = 2_600;
-/** Every 2 questions the app shows the ranking page: the next round waits for it. */
-const LEADERBOARD_PAUSE_MS = 16_400;
+/** 1 vs 9 only: every 2 questions the app shows the ranking page, and the next round waits for it. */
+const LEADERBOARD_PAUSE_MS = 10_400;
 /** The app hides the choices for this long at the start of every round. */
-const CLIENT_READING_MS = 8_000;
+const CLIENT_READING_MS = 4_500;
 const EMOTES = ["👏", "🔥", "😂", "😲", "❤️", "😎", "😭", "🎉", "😡", "💯", "🤩", "👍"];
 const COUNTDOWN_MS = 3_200;
 const GRACE_MS = 1_200;
@@ -406,7 +406,7 @@ export class PartyRoom extends DurableObject<Env> {
 
     const teamScores = isTeamMode(state.mode) ? this.finalTeamScores(state) : undefined;
     const isLast = globalIndex + 1 >= this.totalQuestions(state);
-    const showsRanking = (globalIndex + 1) % 2 === 0 && !isLast;
+    const showsRanking = state.mode === "oneVsTen" && (globalIndex + 1) % 2 === 0 && !isLast;
     const pauseMs = showsRanking ? LEADERBOARD_PAUSE_MS : REVEAL_MS;
 
     this.broadcast({
@@ -420,7 +420,7 @@ export class PartyRoom extends DurableObject<Env> {
       pauseMs,
     });
     // The ranking page is a social moment: a few seats react on it.
-    if (showsRanking) this.scheduleBotEmotes(1 + Math.floor(Math.random() * 3), 2_600, 12_000);
+    if (showsRanking) this.scheduleBotEmotes(1 + Math.floor(Math.random() * 3), 2_600, 8_000);
 
     this.armTimer(pauseMs, () => {
       const s = this.state;

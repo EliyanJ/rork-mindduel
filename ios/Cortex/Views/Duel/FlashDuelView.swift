@@ -115,7 +115,7 @@ private final class FlashSession {
     /// Bonus granted when finishing first (empty otherwise).
     private(set) var winRewards: [Reward] = []
 
-    static let readingBeat: Double = 8
+    static let readingBeat: Double = 4.5
 
     private let store: ProgressStore
     private let questionDiscipline: [String: String]
@@ -324,26 +324,6 @@ private final class FlashSession {
             }
         } else {
             wasFastestCorrect = false
-        }
-        if (currentIndex + 1) % 2 == 0 {
-            let ranked = liveLeaderboard
-            for (index, entry) in ranked.enumerated() { previousRanks[entry.id] = index + 1 }
-            revealScoreboardSoon()
-        }
-    }
-
-    private func revealScoreboardSoon() {
-        Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(1200))
-            await MainActor.run {
-                SoundManager.shared.startLeaderboardMusic()
-                withAnimation(.spring(duration: 0.7)) { self?.showScoreboard = true }
-            }
-            try? await Task.sleep(for: .seconds(7.5))
-            await MainActor.run {
-                self?.showScoreboard = false
-                SoundManager.shared.stopLeaderboardMusic()
-            }
         }
     }
 

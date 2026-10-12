@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Full "build your avatar" screen: a live preview up top, then either a
-/// face-part picker (skin tone, eyes, mouth, background) or a big emoji grid
-/// to swap the whole face for a fun stand-in (an octopus, a robot...).
+/// Avatar picker: a live preview up top, then either the hand-drawn
+/// characters or a big emoji grid (with a background colour).
 struct AvatarEditorView: View {
     let store: AvatarStore
     let onDone: () -> Void
@@ -12,7 +11,7 @@ struct AvatarEditorView: View {
     init(store: AvatarStore, onDone: @escaping () -> Void) {
         self.store = store
         self.onDone = onDone
-        _draft = State(initialValue: store.config)
+        _draft = State(initialValue: store.config.normalized)
     }
 
     var body: some View {
@@ -26,7 +25,6 @@ struct AvatarEditorView: View {
 
                     Picker("Mode", selection: $draft.mode) {
                         Text("Persos").tag(AvatarMode.illustration)
-                        Text("Visage").tag(AvatarMode.face)
                         Text("Emoji").tag(AvatarMode.emoji)
                     }
                     .pickerStyle(.segmented)
@@ -35,13 +33,11 @@ struct AvatarEditorView: View {
                     switch draft.mode {
                     case .illustration:
                         illustrationGrid
-                    case .face:
-                        faceEditor
-                    case .emoji:
+                    case .emoji, .face:
                         emojiGrid
                     }
 
-                    if draft.mode != .illustration {
+                    if draft.mode == .emoji {
                         backgroundPicker
                     }
                 }
@@ -64,49 +60,6 @@ struct AvatarEditorView: View {
                 }
             }
         }
-    }
-
-    private var faceEditor: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            section("Teint") {
-                HStack(spacing: 12) {
-                    ForEach(AvatarSkinTone.allCases) { tone in
-                        Circle()
-                            .fill(tone.color)
-                            .frame(width: 40, height: 40)
-                            .overlay(Circle().stroke(draft.skinTone == tone ? Theme.primary : .clear, lineWidth: 3))
-                            .onTapGesture {
-                                Haptics.tap()
-                                draft.skinTone = tone
-                            }
-                    }
-                }
-            }
-            section("Yeux") {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 10) {
-                    ForEach(AvatarEyeStyle.allCases) { style in
-                        pickerTile(isSelected: draft.eyeStyle == style) {
-                            Image(systemName: style.symbol)
-                                .font(.system(size: 16, weight: .bold))
-                        } action: {
-                            draft.eyeStyle = style
-                        }
-                    }
-                }
-            }
-            section("Bouche") {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 10) {
-                    ForEach(AvatarMouthStyle.allCases) { style in
-                        pickerTile(isSelected: draft.mouthStyle == style) {
-                            Text(mouthEmoji(style)).font(.system(size: 18))
-                        } action: {
-                            draft.mouthStyle = style
-                        }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 24)
     }
 
     private var illustrationGrid: some View {
@@ -188,17 +141,6 @@ struct AvatarEditorView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 2 : 1))
         }
         .buttonStyle(.plain)
-    }
-
-    private func mouthEmoji(_ style: AvatarMouthStyle) -> String {
-        switch style {
-        case .smile: return "🙂"
-        case .grin: return "😁"
-        case .surprised: return "😮"
-        case .cool: return "😎"
-        case .shy: return "☺️"
-        case .laugh: return "😂"
-        }
     }
 }
 

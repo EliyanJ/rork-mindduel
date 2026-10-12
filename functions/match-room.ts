@@ -34,23 +34,34 @@ type MatchState = {
   questionCount: number;
   roundDuration: number;
   players: PlayerInfo[];
-  phase: "waiting" | "playing" | "reveal" | "finished";
+  phase: "waiting" | "draft" | "playing" | "reveal" | "finished";
   round: number;
   scores: Record<string, number>;
   answers: Record<string, RoundAnswer>[];
   settled: boolean;
   noResult?: boolean;
+  /** Four themes offered to both players before the first question. */
+  draftThemes?: string[];
+  /** Theme each player picked during the draft. */
+  picks?: Record<string, string>;
+  draftEndsAt?: number;
+  /** The two themes the questions are drawn from once the draft is over. */
+  themes?: string[];
 };
 
 type Attachment = { userId: string };
 
 const REVEAL_MS = 2_600;
-/** Every 2 questions the app shows the ranking page: the next round waits for it. */
-const LEADERBOARD_PAUSE_MS = 16_400;
 const COUNTDOWN_MS = 3_200;
 const GRACE_MS = 1_200;
 /** The app hides the choices for this long at the start of every round. */
-const CLIENT_READING_MS = 8_000;
+const CLIENT_READING_MS = 4_500;
+/** Time both players get to pick one of the four offered themes. */
+const DRAFT_MS = 10_000;
+/** How long the app shows the two chosen themes before the countdown. */
+const DRAFT_REVEAL_MS = 3_000;
+/** A player who drops mid-game has this long to come back before forfeiting. */
+const RECONNECT_GRACE_MS = 10_000;
 const EMOTES = ["😂", "🔥", "👏", "😲", "😎", "🤔", "👍", "💯", "😭"];
 
 export class MatchRoom extends DurableObject<Env> {
@@ -58,6 +69,8 @@ export class MatchRoom extends DurableObject<Env> {
   private roundTimer: ReturnType<typeof setTimeout> | null = null;
   private legacyTimer: ReturnType<typeof setTimeout> | null = null;
   private botTimers: ReturnType<typeof setTimeout>[] = [];
+  private draftTimer: ReturnType<typeof setTimeout> | null = null;
+  private disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   override async fetch(request: Request): Promise<Response> {
     if (new URL(request.url).pathname === "/internal/initialize" && request.method === "POST") {
@@ -91,7 +104,7 @@ export class MatchRoom extends DurableObject<Env> {
 
   private async initialize(request: Request): Promise<boolean> {
     try {
-      const ticket = await request.json() as { seed: string; questionCount: number; roundDuration: number; players: PlayerInfo[]; questions: GameQuestion[] };
+      const ticket = await request.json() as { seed: string; questionCount: number; roundDuration: number; players: PlayerInfo[]; questions?: GameQuestion[]; draftThemes?: string[] };
       const [you, opponent] = ticket.players;
       if (!you || !opponent) return false;
       const state: MatchState = {
@@ -105,6 +118,7 @@ export class MatchRoom extends DurableObject<Env> {
         scores: { [you.id]: 0, [opponent.id]: 0 },
         answers: [],
         settled: false,
+        draftThemes: Array.isArray(ticket.draftThemes) && ticket.draftThemes.length >= 2 ? ticket.draftThemes.slice(0, 4) : undefined,
       };
       // First write wins — a duplicated ticket can't overwrite a started game.
       const existing = await this.ctx.storage.get<MatchState>("state");
@@ -123,7 +137,7 @@ export class MatchRoom extends DurableObject<Env> {
     this.state = stored ?? null;
     if (this.state && isLegacyExpired(this.state)) {
       this.cancelWithoutResult("security_transition_expired");
-    } else if (this.state && !this.state.questions && this.state.phase !== "finished") {
+    } else if (this.state && !this.state.questions && !this.state.draftThemes && this.state.phase !== "finished") {
       this.legacyTimer = setTimeout(() => this.cancelWithoutResult("security_transition_expired"), Math.max(0, LEGACY_DEADLINE_MS - Date.now()));
       this.ctx.waitUntil(this.env.DO.setAlarm("MatchRoom", this.ctx.id.name ?? "", LEGACY_DEADLINE_MS));
     }
@@ -134,6 +148,7 @@ export class MatchRoom extends DurableObject<Env> {
         if (s.round < 0) this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
         else this.armTimer(Math.max(0, (s.roundStartedAt ?? Date.now()) + s.roundDuration * 1000 + GRACE_MS - Date.now()), () => this.closeRound(s.round));
       } else if (s.phase === "reveal") this.armTimer(REVEAL_MS, () => { s.phase = "playing"; this.startRound(s.round + 1); });
+      else if (s.phase === "draft" && !this.draftTimer) this.armDraftTimer(Math.max(0, (s.draftEndsAt ?? Date.now()) - Date.now()));
     }
     return this.state;
   }
@@ -158,21 +173,152 @@ export class MatchRoom extends DurableObject<Env> {
     const publicPlayers = state.players.map(publicPlayer);
     this.broadcast({ type: "lobby", connected: state.players.filter((p) => p.isBot || connectedIds.includes(p.id)).map((p) => p.id), players: publicPlayers });
 
+    // Back within the grace period: the match simply carries on.
+    const pending = this.disconnectTimers.get(userId);
+    if (pending) {
+      clearTimeout(pending);
+      this.disconnectTimers.delete(userId);
+      this.broadcastExcept(userId, { type: "opponent_reconnected" });
+      this.resync(userId);
+      return;
+    }
+
     const bothConnected = state.players.every((p) => p.isBot || connectedIds.includes(p.id));
     if (bothConnected && state.phase === "waiting") {
-      state.phase = "playing";
-      state.round = -1;
-      this.persist();
-      this.broadcast({
+      if (state.draftThemes) this.startDraft();
+      else this.startMatch();
+    } else if (state.phase !== "waiting") {
+      this.resync(userId);
+    }
+  }
+
+  /** Brings a (re)connected player back to where the match is. */
+  private resync(userId: string): void {
+    const state = this.state;
+    if (!state) return;
+    if (state.phase === "draft" && state.draftThemes) {
+      this.sendTo(userId, {
+        type: "draft",
+        themes: state.draftThemes,
+        durationMs: Math.max(0, (state.draftEndsAt ?? Date.now()) - Date.now()),
+        picked: state.picks?.[userId] ?? null,
+      });
+      if (state.themes) this.sendTo(userId, { type: "draft_result", picks: state.picks ?? {}, themes: state.themes });
+    } else if (state.phase === "playing" || state.phase === "reveal") {
+      this.sendTo(userId, {
         type: "start",
         seed: state.seed,
         questions: state.questions,
         questionCount: state.questionCount,
         roundDuration: state.roundDuration,
-        players: publicPlayers,
+        players: state.players.map(publicPlayer),
+        themes: state.themes,
+        resumed: true,
+        scores: state.scores,
       });
-      this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
+      if (state.phase === "playing" && state.round >= 0 && state.roundStartedAt) {
+        const remaining = state.roundStartedAt + state.roundDuration * 1000 - Date.now();
+        if (remaining > 1_500) this.sendTo(userId, { type: "round", index: state.round, durationMs: remaining });
+      }
     }
+  }
+
+  private startMatch(): void {
+    const state = this.state;
+    if (!state || state.phase === "finished") return;
+    state.phase = "playing";
+    state.round = -1;
+    this.persist();
+    this.broadcast({
+      type: "start",
+      seed: state.seed,
+      questions: state.questions,
+      questionCount: state.questionCount,
+      roundDuration: state.roundDuration,
+      players: state.players.map(publicPlayer),
+      themes: state.themes,
+    });
+    this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
+  }
+
+  // MARK: theme draft
+
+  /** Both players see the same four themes and each picks one. */
+  private startDraft(): void {
+    const state = this.state;
+    if (!state?.draftThemes) return;
+    state.phase = "draft";
+    state.picks = {};
+    state.draftEndsAt = Date.now() + DRAFT_MS;
+    this.persist();
+    this.broadcast({ type: "draft", themes: state.draftThemes, durationMs: DRAFT_MS, picked: null });
+    for (const bot of state.players.filter((p) => p.isBot)) {
+      const delay = 1_800 + Math.random() * 4_500;
+      this.botTimers.push(setTimeout(() => this.recordPick(bot.id, randomItem(state.draftThemes ?? [])), delay));
+    }
+    this.armDraftTimer(DRAFT_MS + 400);
+  }
+
+  private armDraftTimer(delayMs: number): void {
+    if (this.draftTimer) clearTimeout(this.draftTimer);
+    this.draftTimer = setTimeout(() => {
+      this.draftTimer = null;
+      this.ctx.waitUntil(this.resolveDraft());
+    }, delayMs);
+  }
+
+  private recordPick(userId: string, theme: string | undefined): void {
+    const state = this.state;
+    if (!state || state.phase !== "draft" || state.themes || !theme) return;
+    if (!state.draftThemes?.includes(theme) || state.picks?.[userId]) return;
+    state.picks = { ...(state.picks ?? {}), [userId]: theme };
+    this.persist();
+    this.broadcastExcept(userId, { type: "opponent_picked" });
+    if (state.players.every((p) => state.picks?.[p.id])) {
+      if (this.draftTimer) clearTimeout(this.draftTimer);
+      this.draftTimer = null;
+      this.ctx.waitUntil(this.resolveDraft());
+    }
+  }
+
+  /**
+   * Each player's pick becomes one of the two themes. Same pick on both
+   * sides: that theme plus a random one among the three others offered.
+   * A player who didn't pick in time gets a random offered theme.
+   */
+  private async resolveDraft(): Promise<void> {
+    const state = this.state;
+    if (!state || state.phase !== "draft" || state.themes || !state.draftThemes) return;
+    const offered = state.draftThemes;
+    const picks: Record<string, string> = { ...(state.picks ?? {}) };
+    for (const p of state.players) picks[p.id] ??= randomItem(offered)!;
+    const [a, b] = state.players.map((p) => picks[p.id]!);
+    const themes = a === b ? [a!, randomItem(offered.filter((t) => t !== a))!] : [a!, b!];
+    state.picks = picks;
+    state.themes = themes;
+    this.persist();
+    this.broadcast({ type: "draft_result", picks, themes });
+
+    const startedAt = Date.now();
+    try {
+      const elo = Math.trunc(state.players.reduce((sum, p) => sum + p.elo, 0) / state.players.length);
+      const response = await this.env.DO.fetch(new Request("https://internal/internal/game-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Rork-DO-Class": "Hub", "X-Rork-DO-Id": "global" },
+        body: JSON.stringify({ matchId: this.ctx.id.name ?? "", seed: state.seed, count: state.questionCount, themes, elo }),
+      }));
+      if (!response.ok) throw new Error(`questions ${response.status}`);
+      const body = await response.json() as { questions?: GameQuestion[] };
+      if (!body.questions || body.questions.length < state.questionCount) throw new Error("questions missing");
+      state.questions = body.questions;
+      this.persist();
+    } catch (err) {
+      console.error("draft questions unavailable", err instanceof Error ? err.message : "unknown");
+      this.cancelWithoutResult("server_interruption");
+      return;
+    }
+    const wait = Math.max(0, DRAFT_REVEAL_MS - (Date.now() - startedAt));
+    this.armTimer(wait, () => this.startMatch());
   }
 
   private startRound(index: number): void {
@@ -257,7 +403,7 @@ export class MatchRoom extends DurableObject<Env> {
     const attachment = ws.deserializeAttachment() as Attachment | null;
     if (!attachment) return;
 
-    let msg: { type?: string; index?: number; answer?: string; correct?: boolean; timeMs?: number; emote?: string };
+    let msg: { type?: string; index?: number; answer?: string; correct?: boolean; timeMs?: number; emote?: string; theme?: string };
     try {
       msg = JSON.parse(raw);
       if (!msg || typeof msg !== "object") return;
@@ -279,8 +425,12 @@ export class MatchRoom extends DurableObject<Env> {
     const state = await this.loadState();
     if (!state || state.phase === "finished") return;
     if (isLegacyExpired(state)) { this.cancelWithoutResult("security_transition_expired"); return; }
+    if (msg.type === "pick" && typeof msg.theme === "string") {
+      this.recordPick(attachment.userId, msg.theme);
+      return;
+    }
     if (msg.type === "leave") {
-      if (state.phase === "waiting") this.cancelWithoutResult("player_left_before_start");
+      if (state.phase === "waiting" || state.phase === "draft") this.cancelWithoutResult("player_left_before_start");
       else await this.finishMatch(attachment.userId);
       return;
     }
@@ -332,8 +482,8 @@ export class MatchRoom extends DurableObject<Env> {
     state.phase = "reveal";
     this.persist();
 
-    const isLast = index + 1 >= state.questionCount;
-    const pauseMs = (index + 1) % 2 === 0 && !isLast ? LEADERBOARD_PAUSE_MS : REVEAL_MS;
+    // 1v1: no ranking page between questions (only the 1 vs 9 shows one).
+    const pauseMs = REVEAL_MS;
     this.broadcast({ type: "reveal", index, answers: roundAnswers, scores: state.scores, pauseMs });
 
     this.armTimer(pauseMs, () => {
@@ -353,6 +503,7 @@ export class MatchRoom extends DurableObject<Env> {
     if (this.legacyTimer) clearTimeout(this.legacyTimer);
     this.clearTimer();
     this.clearBotTimers();
+    this.clearDraftAndDisconnectTimers();
     this.persist();
 
     const results = state.players.map((p) => ({
@@ -374,6 +525,7 @@ export class MatchRoom extends DurableObject<Env> {
           matchId: this.ctx.id.name ?? "",
           results,
           forfeitBy: forfeitBy ?? undefined,
+          // Leaving and not coming back within the grace period both count as a forfeit.
           voluntaryLeave: forfeitBy !== null,
         }),
       });
@@ -415,14 +567,55 @@ export class MatchRoom extends DurableObject<Env> {
     }
   }
 
-  override async webSocketClose(_ws: WebSocket): Promise<void> {
-    await this.loadState();
-    this.cancelWithoutResult("server_interruption");
+  override async webSocketClose(ws: WebSocket): Promise<void> {
+    await this.handleDrop(ws);
   }
 
-  override async webSocketError(_ws: WebSocket, _error: unknown): Promise<void> {
-    await this.loadState();
-    this.cancelWithoutResult("server_interruption");
+  override async webSocketError(ws: WebSocket, _error: unknown): Promise<void> {
+    await this.handleDrop(ws);
+  }
+
+  /**
+   * A dropped socket before the start cancels the match. Once it has
+   * started, the player gets a grace period to reconnect; past it, the one
+   * still there wins by forfeit.
+   */
+  private async handleDrop(ws: WebSocket): Promise<void> {
+    const state = await this.loadState();
+    if (!state || state.phase === "finished") return;
+    const meta = ws.deserializeAttachment() as Attachment | null;
+    if (state.phase === "waiting" || !meta) {
+      this.cancelWithoutResult("server_interruption");
+      return;
+    }
+    const userId = meta.userId;
+    if (this.openSocketCount(userId, ws) > 0 || this.disconnectTimers.has(userId)) return;
+    const othersOnline = state.players.some((p) => !p.isBot && p.id !== userId && this.openSocketCount(p.id, ws) > 0);
+    if (!othersOnline) {
+      this.cancelWithoutResult("server_interruption");
+      return;
+    }
+    this.broadcastExcept(userId, { type: "opponent_disconnected", graceMs: RECONNECT_GRACE_MS });
+    this.disconnectTimers.set(userId, setTimeout(() => {
+      this.disconnectTimers.delete(userId);
+      if (this.openSocketCount(userId) > 0) return;
+      if (this.state?.phase === "draft" || !this.state?.questions) {
+        this.cancelWithoutResult("player_left_before_start");
+        return;
+      }
+      this.ctx.waitUntil(this.finishMatch(userId));
+    }, RECONNECT_GRACE_MS));
+  }
+
+  private openSocketCount(userId: string, excluding?: WebSocket): number {
+    return this.ctx.getWebSockets(`user:${userId}`).filter((s) => s !== excluding && s.readyState === 1).length;
+  }
+
+  private clearDraftAndDisconnectTimers(): void {
+    if (this.draftTimer) clearTimeout(this.draftTimer);
+    this.draftTimer = null;
+    for (const t of this.disconnectTimers.values()) clearTimeout(t);
+    this.disconnectTimers.clear();
   }
 
   async onAlarm(): Promise<void> {
@@ -438,6 +631,7 @@ export class MatchRoom extends DurableObject<Env> {
     state.settled = true;
     this.clearTimer();
     this.clearBotTimers();
+    this.clearDraftAndDisconnectTimers();
     if (this.legacyTimer) clearTimeout(this.legacyTimer);
     this.persist();
     // No Hub settlement: no rating, reputation, win/loss or forfeit write for anyone.
@@ -462,6 +656,15 @@ export class MatchRoom extends DurableObject<Env> {
       } catch {
         // socket mid-close
       }
+    }
+  }
+
+  private broadcastExcept(userId: string, msg: unknown): void {
+    const data = JSON.stringify(msg);
+    for (const ws of this.ctx.getWebSockets()) {
+      const meta = ws.deserializeAttachment() as Attachment | null;
+      if (meta?.userId === userId) continue;
+      try { ws.send(data); } catch { /* socket mid-close */ }
     }
   }
 
@@ -494,6 +697,10 @@ export class MatchRoom extends DurableObject<Env> {
 
 function publicPlayer(p: PlayerInfo): Omit<PlayerInfo, "isBot"> {
   return { id: p.id, name: p.name, emoji: p.emoji, elo: p.elo };
+}
+
+function randomItem<T>(items: T[]): T | undefined {
+  return items.length ? items[Math.floor(Math.random() * items.length)] : undefined;
 }
 
 function clamp(value: number, min: number, max: number): number {
