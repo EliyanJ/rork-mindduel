@@ -12,7 +12,7 @@ struct PaywallView: View {
 
     @Environment(StoreViewModel.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var purchasingPackageId: String?
+    @State private var offerPackage: OfferLaunch?
     @State private var legalLink: LegalLink?
     @State private var isMascotUp: Bool = false
 
@@ -21,6 +21,10 @@ struct PaywallView: View {
         var id: String { rawValue }
         var title: String { self == .terms ? "Conditions d'utilisation" : "Confidentialité" }
         var url: URL { self == .terms ? WebLinks.terms : WebLinks.privacy }
+    }
+
+    private struct OfferLaunch: Identifiable {
+        let id: String
     }
 
     private var packages: [Package] {
@@ -54,6 +58,11 @@ struct PaywallView: View {
         }
         .sheet(item: $legalLink) { link in
             LegalWebView(title: link.title, url: link.url)
+        }
+        .fullScreenCover(item: $offerPackage) { launch in
+            PremiumOfferView(source: source, initialPackageId: launch.id) {
+                offerPackage = nil
+            }
         }
         .alert("Oups", isPresented: Binding(
             get: { store.error != nil },
@@ -185,43 +194,30 @@ struct PaywallView: View {
 
     private func premiumCard(_ package: Package) -> some View {
         let isAnnual = package.identifier == store.annualPackage?.identifier
-        let trial = store.freeTrial(for: package)
+        let hasTrial = store.freeTrial(for: package) != nil
         let isCurrent = store.isPremium && store.activeProductId == package.storeProduct.productIdentifier
-        let price = package.storeProduct.localizedPriceString
-        let perMonthEquivalent = isAnnual ? package.storeProduct.localizedPricePerMonth.map { "soit \($0)/mois" } : nil
-        let billing = isAnnual ? "\(price) facturés en une fois par an" : "facturé chaque mois, sans engagement"
-        let priceNote: String
-        if let trial {
-            priceNote = "\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(billing)"
-        } else {
-            priceNote = isAnnual ? "\(price) facturés en une fois par an" : "Facturé chaque mois, sans engagement"
-        }
-        let subtitle = isAnnual ? "12 mois de Minduel sans limite" : "1 mois de Minduel sans limite"
         let title: String
         if isCurrent {
             title = "FORMULE ACTUELLE"
-        } else if let trial {
-            title = "ESSAIE \(Self.durationText(trial.subscriptionPeriod).uppercased()) GRATUITS"
+        } else if hasTrial {
+            title = "ESSAIE POUR 0,00 €"
         } else {
             title = "S'ABONNER"
         }
         return PlanCard(
             title: isAnnual ? "Premium annuel" : "Premium mensuel",
-            subtitle: subtitle,
-            price: PlanPrice(amount: price, unit: isAnnual ? "/an" : "/mois", note: priceNote, equivalent: perMonthEquivalent),
+            subtitle: isAnnual ? "12 mois de Minduel sans limite" : "Sans engagement, mois par mois",
             perks: Self.premiumPerks,
             image: isAnnual ? "MascotTrophy" : "MascotGift",
             highlight: isAnnual ? Theme.primary : nil,
             badge: isAnnual ? annualBadgeText : nil,
-            disclosure: disclosure(for: package),
             buttonTitle: title,
             isButtonEnabled: !isCurrent && !store.isPurchasing && !store.isRestoring,
-            isBusy: store.isPurchasing && purchasingPackageId == package.identifier
+            isBusy: false
         ) {
             Haptics.medium()
-            purchasingPackageId = package.identifier
-            Analytics.capture("paywall_plan_tapped", ["plan": isAnnual ? "annual" : "monthly", "source": source])
-            Task { await store.purchase(package) }
+            Analytics.capture("paywall_card_tapped", ["plan": isAnnual ? "annual" : "monthly", "source": source])
+            offerPackage = OfferLaunch(id: package.identifier)
         }
     }
 
@@ -229,12 +225,10 @@ struct PaywallView: View {
         PlanCard(
             title: "Gratuit",
             subtitle: "Pour découvrir Minduel à ton rythme",
-            price: PlanPrice(amount: "0 €", unit: "", note: "Pour toujours", equivalent: nil),
             perks: Self.freePerks,
             image: "book_mascot_sitting",
             highlight: nil,
             badge: nil,
-            disclosure: nil,
             buttonTitle: store.isPremium ? "INCLUS DANS PREMIUM" : "FORMULE ACTUELLE",
             isButtonEnabled: false,
             isBusy: false
@@ -242,8 +236,8 @@ struct PaywallView: View {
     }
 
     private var annualBadgeText: String {
-        if let savings = savingsPercent { return "MEILLEURE OFFRE · −\(savings) %" }
-        return "MEILLEURE OFFRE"
+        if let savings = store.annualSavingsPercent { return "RECOMMANDÉ · −\(savings) %" }
+        return "RECOMMANDÉ"
     }
 
     private var legalFooter: some View {
@@ -280,32 +274,6 @@ struct PaywallView: View {
 
     // MARK: - Copy
 
-    private func priceLine(_ package: Package) -> String {
-        let isAnnual = package.identifier == store.annualPackage?.identifier
-        return "\(package.storeProduct.localizedPriceString)/\(isAnnual ? "an" : "mois")"
-    }
-
-    private func disclosure(for package: Package) -> String {
-        let isAnnual = package.identifier == store.annualPackage?.identifier
-        let period = isAnnual ? "par an" : "par mois"
-        let price = package.storeProduct.localizedPriceString
-        if let trial = store.freeTrial(for: package) {
-            return "\(Self.durationText(trial.subscriptionPeriod)) gratuits, puis \(price) \(period), renouvellement automatique."
-        }
-        return "\(price) \(period), renouvellement automatique."
-    }
-
-    /// Annual saving versus twelve monthly payments, from the store prices.
-    private var savingsPercent: Int? {
-        guard let annual = store.annualPackage?.storeProduct.price,
-              let monthly = store.monthlyPackage?.storeProduct.price else { return nil }
-        let yearlyFromMonthly = NSDecimalNumber(decimal: monthly * 12).doubleValue
-        let annualValue = NSDecimalNumber(decimal: annual).doubleValue
-        guard yearlyFromMonthly > 0, annualValue < yearlyFromMonthly else { return nil }
-        let percent = Int(((1 - annualValue / yearlyFromMonthly) * 100).rounded())
-        return percent >= 5 ? percent : nil
-    }
-
     /// "7 jours", "1 mois"… from the App Store intro offer period.
     static func durationText(_ period: SubscriptionPeriod) -> String {
         switch period.unit {
@@ -326,24 +294,13 @@ struct PaywallView: View {
 
 /// One subscription formula, Duolingo-style: title, one line, blue checks,
 /// an illustration on the right and its own outlined button.
-/// Price block of a plan card: the billed amount in big (App Store rule 3.1.2),
-/// an optional per-month equivalent and the billing small print.
-private struct PlanPrice {
-    let amount: String
-    let unit: String
-    let note: String
-    let equivalent: String?
-}
-
 private struct PlanCard: View {
     let title: String
     let subtitle: String
-    let price: PlanPrice
     let perks: [String]
     let image: String
     let highlight: Color?
     let badge: String?
-    let disclosure: String?
     let buttonTitle: String
     let isButtonEnabled: Bool
     let isBusy: Bool
@@ -368,7 +325,6 @@ private struct PlanCard: View {
                     .frame(width: 76, height: 76)
                     .accessibilityHidden(true)
             }
-            priceBlock
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(perks, id: \.self) { perk in
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -394,64 +350,28 @@ private struct PlanCard: View {
             .buttonStyle(PlanButtonStyle(isActive: isButtonEnabled || isBusy))
             .disabled(!isButtonEnabled)
             .padding(.top, 4)
-            if let disclosure {
-                Text(disclosure)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(Theme.inkMuted)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-            }
         }
         .padding(20)
+        .padding(.top, badge == nil ? 0 : 36)
         .background(RoundedRectangle(cornerRadius: 22).fill(Theme.background))
+        .overlay(alignment: .top) {
+            if let badge, let highlight {
+                Text(badge)
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .tracking(0.6)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+                    .background(
+                        LinearGradient(colors: [highlight, Theme.gold], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 22)
                 .stroke(highlight ?? Theme.line, lineWidth: highlight == nil ? 2 : 2.5)
         )
-        .overlay(alignment: .topLeading) {
-            if let badge, let highlight {
-                Text(badge)
-                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .tracking(0.4)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(highlight))
-                    .offset(x: 18, y: -11)
-            }
-        }
-        .padding(.top, badge == nil ? 0 : 8)
-    }
-
-    private var priceBlock: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(price.amount)
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                    .foregroundStyle(highlight ?? Theme.ink)
-                    .monospacedDigit()
-                if !price.unit.isEmpty {
-                    Text(price.unit)
-                        .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                }
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            if let equivalent = price.equivalent {
-                Text(equivalent)
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-            }
-            Text(price.note)
-                .font(.system(.footnote, design: .rounded, weight: .semibold))
-                .foregroundStyle(Theme.inkMuted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16).fill((highlight ?? Theme.inkMuted).opacity(0.08)))
-        .accessibilityElement(children: .combine)
     }
 }
 

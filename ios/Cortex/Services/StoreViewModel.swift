@@ -39,6 +39,17 @@ final class StoreViewModel {
         offering?.monthly ?? offering?.availablePackages.first { $0.storeProduct.subscriptionPeriod?.unit == .month }
     }
 
+    /// Annual saving versus twelve monthly payments, from the store prices.
+    var annualSavingsPercent: Int? {
+        guard let annual = annualPackage?.storeProduct.price,
+              let monthly = monthlyPackage?.storeProduct.price else { return nil }
+        let yearlyFromMonthly = NSDecimalNumber(decimal: monthly * 12).doubleValue
+        let annualValue = NSDecimalNumber(decimal: annual).doubleValue
+        guard yearlyFromMonthly > 0, annualValue < yearlyFromMonthly else { return nil }
+        let percent = Int(((1 - annualValue / yearlyFromMonthly) * 100).rounded())
+        return percent >= 5 ? percent : nil
+    }
+
     init() {
         Self.configureIfNeeded()
         guard Purchases.isConfigured else { return }

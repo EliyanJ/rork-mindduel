@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Ordered steps of the first-run onboarding flow (v3).
 private enum OnboardingStep: Int, CaseIterable {
-    case welcome, nickname, goal, topics, dailyGoal, qualification, screenTime, miniQuiz, quizResult, diagnosticPropose, diagnosticQuiz, diagnosticResult, commitment, plan, account
+    case welcome, nickname, goal, topics, dailyGoal, qualification, screenTime, miniQuiz, quizResult, diagnosticPropose, diagnosticQuiz, diagnosticResult, commitment, plan, offer, account
 }
 
 /// First-run onboarding: collects light preferences, a nickname, a qualification,
@@ -33,7 +33,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if step != .welcome && step != .account {
+            if step != .welcome && step != .account && step != .offer {
                 header
             }
 
@@ -118,6 +118,8 @@ struct OnboardingView: View {
                         dailyGoal: dailyGoal,
                         onFinish: goNext
                     )
+                case .offer:
+                    PremiumOfferView(source: "onboarding", closeTitle: "Plus tard", onClose: goNext)
                 case .account:
                     OnboardingAccountStep(dailyGoal: dailyGoal, onFinished: finish)
                 }
@@ -200,6 +202,8 @@ struct OnboardingView: View {
         switch candidate {
         case .diagnosticPropose, .diagnosticQuiz, .diagnosticResult:
             return false
+        case .offer:
+            return Monetization.isEnabled && !storeViewModel.isPremium
         default:
             return true
         }
