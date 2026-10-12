@@ -42,7 +42,8 @@ struct OnlineMatchView: View {
                     roundLabel: "Question \(session.currentIndex + 1)/\(session.questions.count)",
                     themeLabel: session.themeName,
                     autoDismissAfter: nil,
-                    onDismiss: nil
+                    onDismiss: nil,
+                    onReact: { emote in session.sendEmote(emote) }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -176,6 +177,7 @@ private struct OnlineErrorStage: View {
 private struct OnlineQuestionStage: View {
     let session: OnlineDuelSession
     @State private var isEmotePickerPresented = false
+    @Environment(AvatarStore.self) private var avatarStore: AvatarStore?
 
     private var isReveal: Bool { session.phase == .reveal }
     private var isPreview: Bool { session.isPreviewing }
@@ -250,6 +252,7 @@ private struct OnlineQuestionStage: View {
         HStack {
             playerBadge(
                 emoji: session.you?.emoji ?? "🧠",
+                avatar: avatarStore?.config,
                 name: "Toi",
                 score: session.playerScore,
                 points: session.lastPlayerPoints,
@@ -257,7 +260,7 @@ private struct OnlineQuestionStage: View {
             )
             Spacer()
             if !isPreview {
-                QuizTimerRing(remaining: session.timeRemaining, total: max(1, session.roundDuration))
+                QuizTimerRing(remaining: min(session.timeRemaining, session.answerWindow), total: session.answerWindow)
             } else {
                 Text("VS")
                     .font(.system(.caption, design: .rounded, weight: .heavy))
@@ -266,6 +269,7 @@ private struct OnlineQuestionStage: View {
             Spacer()
             playerBadge(
                 emoji: session.opponent?.emoji ?? "🎯",
+                avatar: nil,
                 name: session.opponent?.name ?? "Adversaire",
                 score: session.opponentScore,
                 points: session.lastOpponentPoints,
@@ -274,13 +278,17 @@ private struct OnlineQuestionStage: View {
         }
     }
 
-    private func playerBadge(emoji: String, name: String, score: Int, points: Int, alignment: HorizontalAlignment) -> some View {
+    private func playerBadge(emoji: String, avatar: AvatarConfig?, name: String, score: Int, points: Int, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 3) {
             HStack(spacing: 6) {
                 if alignment == .trailing, isReveal, points > 0 {
                     AnimatedPointsBadge(points: points)
                 }
-                Text(emoji).font(.system(size: 26))
+                if let avatar {
+                    AvatarView(config: avatar, size: 30)
+                } else {
+                    Text(emoji).font(.system(size: 26))
+                }
                 Text(name)
                     .font(.system(.subheadline, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.quizInk)

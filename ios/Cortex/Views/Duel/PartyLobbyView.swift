@@ -11,9 +11,8 @@ struct PartyLobbyView: View {
     let origin: PartySession.Origin
 
     @State private var session: PartySession?
-    @State private var countdown: Int = 3
-    @State private var isCountingDown = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(AvatarStore.self) private var avatarStore: AvatarStore?
 
     var body: some View {
         ZStack {
@@ -40,7 +39,7 @@ struct PartyLobbyView: View {
         case .queued, .connecting:
             waitingBody(session)
         case .countdown:
-            countdownBody
+            PartyCountdownStage()
         case .cancelled(let reason):
             statusBody(icon: "xmark.circle.fill", color: Theme.danger, title: "Partie annulée", message: reason)
         case .failed(let reason):
@@ -53,7 +52,7 @@ struct PartyLobbyView: View {
     /// Human-friendly label for whatever format the session is currently in.
     private func formatLabel(_ mode: PartyMode) -> String {
         if mode == .team10 { return "10 vs 10" }
-        if mode == .oneVsTen { return "1 vs 10" }
+        if mode == .oneVsTen { return "1 vs 9" }
         if mode.isCustom { return "\(mode.allyCount + 1) vs \(mode.opponentCount)" }
         return "1 vs 19"
     }
@@ -101,53 +100,32 @@ struct PartyLobbyView: View {
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 5), spacing: 10) {
                 ForEach(0..<capacity, id: \.self) { index in
-                    if index < players.count {
-                        VStack(spacing: 4) {
-                            Text(players[index].emoji)
-                                .font(.system(size: 20))
-                                .frame(width: 44, height: 44)
-                                .background(Circle().fill(Theme.quizCanvas))
-                                .overlay(Circle().stroke(Theme.duelAccent.opacity(0.5), lineWidth: 1.5))
-                            Text(players[index].name)
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .foregroundStyle(Theme.quizInkMuted)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                        }
-                    } else {
-                        Circle()
-                            .fill(Theme.quizCanvas)
-                            .frame(width: 44, height: 44)
-                            .overlay(Circle().stroke(Theme.quizLine, lineWidth: 1, antialiased: true))
-                    }
+                    LobbySeat(
+                        player: index < players.count ? players[index] : nil,
+                        isYou: index < players.count && players[index].id == online.profile?.id,
+                        avatar: avatarStore?.config
+                    )
                 }
             }
             .padding(.horizontal, 24)
+            .animation(.spring(response: 0.45, dampingFraction: 0.7), value: players.map(\.id))
 
             Spacer(minLength: 8)
 
             if session.isHost {
-                VStack(spacing: 10) {
-                    Button("Démarrer maintenant") {
-                        Haptics.medium()
-                        session.forceStart()
-                    }
-                    .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
-                    Text("Les places vides seront comblées par des bots")
-                        .font(.system(.caption, design: .rounded, weight: .semibold))
-                        .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
+                Button("Démarrer maintenant") {
+                    Haptics.medium()
+                    session.forceStart()
                 }
+                .buttonStyle(ChunkyButtonStyle(color: Theme.duelAccent, textColor: .white))
                 .padding(.horizontal, 32)
                 .padding(.bottom, 24)
             } else {
-                Text("Les places vides seront comblées automatiquement")
-                    .font(.system(.caption, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Theme.quizInkMuted.opacity(0.8))
-                    .padding(.bottom, 24)
+                Color.clear.frame(height: 24)
             }
         }
-        .onChange(of: session.phase) { _, phase in
-            if phase == .countdown { runCountdown() }
+        .onChange(of: players.count) { oldCount, newCount in
+            if newCount > oldCount { Haptics.tap() }
         }
     }
 
@@ -171,27 +149,6 @@ struct PartyLobbyView: View {
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.duelAccent.opacity(0.1)))
     }
 
-    private var countdownBody: some View {
-        VStack(spacing: 12) {
-            Text("La partie commence")
-                .font(.system(.headline, design: .rounded, weight: .heavy))
-                .foregroundStyle(Theme.quizInkMuted)
-            CountdownDigits(value: countdown)
-        }
-    }
-
-    private func runCountdown() {
-        guard !isCountingDown else { return }
-        isCountingDown = true
-        countdown = 3
-        Task {
-            for value in stride(from: 2, through: 1, by: -1) {
-                try? await Task.sleep(for: .seconds(1))
-                countdown = value
-                Haptics.tap()
-            }
-        }
-    }
 
     private func statusBody(icon: String, color: Color, title: String, message: String) -> some View {
         VStack(spacing: 16) {
@@ -214,5 +171,67 @@ struct PartyLobbyView: View {
             .padding(.horizontal, 60)
             .padding(.top, 8)
         }
+    }
+}
+
+/// "3-2-1" before the first question. Owns its own clock so it always ticks,
+/// whatever the parent was doing when the server started the game.
+private struct PartyCountdownStage: View {
+    @State private var count: Int = 3
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("La partie commence")
+                .font(.system(.headline, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.quizInkMuted)
+            CountdownDigits(value: count)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            Haptics.medium()
+            for value in [2, 1] {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                count = value
+                Haptics.tap()
+            }
+        }
+    }
+}
+
+/// One chair of the waiting room: empty ring, or the seated player's face
+/// popping in. The local player wears their own avatar.
+private struct LobbySeat: View {
+    let player: PlayerProfile?
+    let isYou: Bool
+    let avatar: AvatarConfig?
+
+    var body: some View {
+        VStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .fill(Theme.quizCanvas)
+                    .overlay(Circle().stroke(player == nil ? Theme.quizLine : Theme.duelAccent.opacity(isYou ? 0.9 : 0.5), lineWidth: isYou ? 2.5 : 1.5))
+                if let player {
+                    Group {
+                        if isYou, let avatar {
+                            AvatarView(config: avatar, size: 40)
+                        } else {
+                            Text(player.emoji)
+                                .font(.system(size: 22))
+                        }
+                    }
+                    .transition(.scale(scale: 0.3).combined(with: .opacity))
+                }
+            }
+            .frame(width: 44, height: 44)
+            Text(player.map { isYou ? "Toi" : $0.name } ?? " ")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(isYou ? Theme.duelAccent : Theme.quizInkMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(player.map { isYou ? "Toi" : $0.name } ?? "Place libre")
     }
 }

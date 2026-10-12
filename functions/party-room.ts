@@ -6,7 +6,7 @@
 // game ends.
 
 import { DurableObject } from "cloudflare:workers";
-import { flagAnswer, verifyAnswer, type GameQuestion } from "./game-security";
+import { flagAnswer, standInLevel, verifyAnswer, type GameQuestion } from "./game-security";
 import { isLegacyExpired, legacyAnswer, LEGACY_DEADLINE_MS } from "./security-rollout";
 
 type Env = { DO: Fetcher & { setAlarm(className: string, id: string, time: number): Promise<void> } };
@@ -26,7 +26,16 @@ type PlayerInfo = {
   elo: number;
   isBot: boolean;
   team?: "A" | "B";
+  /** Server-only ladder level a stand-in plays at. */
+  skill?: number;
 };
+
+/** What clients see of a seat: never whether it is simulated. */
+function publicPlayer(p: PlayerInfo): PlayerInfo {
+  const seat: PlayerInfo = { id: p.id, name: p.name, emoji: p.emoji, elo: p.elo, isBot: false };
+  if (p.team) seat.team = p.team;
+  return seat;
+}
 
 type RoundAnswer = {
   correct: boolean;
@@ -58,6 +67,11 @@ type PartyState = {
 type Attachment = { userId: string };
 
 const REVEAL_MS = 2_600;
+/** Every 2 questions the app shows the ranking page: the next round waits for it. */
+const LEADERBOARD_PAUSE_MS = 16_400;
+/** The app hides the choices for this long at the start of every round. */
+const CLIENT_READING_MS = 8_000;
+const EMOTES = ["👏", "🔥", "😂", "😲", "❤️", "😎", "😭", "🎉", "😡", "💯", "🤩", "👍"];
 const COUNTDOWN_MS = 3_200;
 const GRACE_MS = 1_200;
 /** A real player who never opens the socket after being matched is forfeited
@@ -189,7 +203,7 @@ export class PartyRoom extends DurableObject<Env> {
     }
 
     const connectedIds = this.connectedUserIds();
-    this.broadcast({ type: "lobby", connected: connectedIds, players: state.players });
+    this.broadcast({ type: "lobby", connected: connectedIds, players: state.players.map(publicPlayer) });
 
     if (state.phase !== "waiting") return;
 
@@ -233,7 +247,7 @@ export class PartyRoom extends DurableObject<Env> {
       rounds: state.rounds,
       questionsPerRound: state.questionsPerRound,
       roundDuration: state.roundDuration,
-      players: state.players,
+      players: state.players.map(publicPlayer),
     });
     this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
   }
@@ -259,22 +273,33 @@ export class PartyRoom extends DurableObject<Env> {
       round: Math.floor(globalIndex / state.questionsPerRound),
       question: globalIndex % state.questionsPerRound,
       durationMs,
+      readingMs: this.readingMs(state),
     });
     this.scheduleBotAnswers(globalIndex, durationMs);
     this.armTimer(durationMs + GRACE_MS, () => this.closeRound(globalIndex));
+  }
+
+  /** Reading beat shown by the app; short legacy rounds keep 3 s to answer. */
+  private readingMs(state: PartyState): number {
+    return Math.min(CLIENT_READING_MS, Math.max(0, state.roundDuration * 1000 - 3_000));
   }
 
   /** Bots "answer" on their own schedule — simulated, never omniscient. */
   private scheduleBotAnswers(globalIndex: number, durationMs: number): void {
     const state = this.state;
     if (!state) return;
+    const reading = this.readingMs(state);
+    const window = Math.max(1_000, durationMs - reading - 450);
     for (const bot of state.players.filter((p) => p.isBot)) {
-      // Higher-rated bots answer faster and more accurately, but never
-      // instantly and never with certainty.
-      const successProb = clamp(0.35 + (bot.elo - 1000) / 1600, 0.25, 0.9);
-      const speedFraction = clamp(0.75 - (bot.elo - 1000) / 3000, 0.22, 0.85);
-      const jitter = (Math.random() - 0.5) * 0.3;
-      const answerAt = clamp((speedFraction + jitter) * durationMs, 400, durationMs - 150);
+      // Stand-ins play at their ladder level: sharper and faster the higher
+      // it is, but never instantly and never with certainty. They answer
+      // once the choices are visible in the app, like everyone else.
+      const level = bot.skill !== undefined
+        ? standInLevel(bot.skill)
+        : { accuracy: 0.35 + (bot.elo - 1000) / 1600, speed: 0.75 - (bot.elo - 1000) / 3000 };
+      const successProb = clamp(level.accuracy, 0.2, 0.97);
+      const speedFraction = clamp(level.speed + (Math.random() - 0.5) * 0.4, 0.04, 0.97);
+      const answerAt = clamp(reading + 300 + speedFraction * window, 400, durationMs - 150);
       const timer = setTimeout(() => {
         this.recordAnswer(bot.id, globalIndex, Math.random() < successProb, answerAt);
       }, answerAt);
@@ -307,6 +332,8 @@ export class PartyRoom extends DurableObject<Env> {
           }
         }
       }
+      // Other seats sometimes react back, like a real lobby would.
+      if (Math.random() < 0.45) this.scheduleBotEmotes(1, 700, 2_400);
       return;
     }
     const loaded = await this.loadState();
@@ -342,8 +369,11 @@ export class PartyRoom extends DurableObject<Env> {
     const roundAnswers = state.answers[globalIndex];
     if (!roundAnswers || roundAnswers[userId]) return;
 
+    // Speed bonus counts from the moment the choices appear in the app.
     const durationMs = state.roundDuration * 1000;
-    const fraction = 1 - clamp(timeMs, 0, durationMs) / durationMs;
+    const reading = this.readingMs(state);
+    const window = Math.max(1, durationMs - reading);
+    const fraction = 1 - clamp(timeMs - reading, 0, window) / window;
     const points = correct ? 100 + Math.round(fraction * 100) : 0;
     roundAnswers[userId] = { correct, timeMs, points };
     this.persist();
@@ -374,14 +404,10 @@ export class PartyRoom extends DurableObject<Env> {
     state.phase = "reveal";
     this.persist();
 
-    let teamScores: { A: number; B: number } | undefined;
-    if (isTeamMode(state.mode)) {
-      teamScores = { A: 0, B: 0 };
-      for (const p of state.players) {
-        if (p.team === "A") teamScores.A += state.scores[p.id] ?? 0;
-        else if (p.team === "B") teamScores.B += state.scores[p.id] ?? 0;
-      }
-    }
+    const teamScores = isTeamMode(state.mode) ? this.finalTeamScores(state) : undefined;
+    const isLast = globalIndex + 1 >= this.totalQuestions(state);
+    const showsRanking = (globalIndex + 1) % 2 === 0 && !isLast;
+    const pauseMs = showsRanking ? LEADERBOARD_PAUSE_MS : REVEAL_MS;
 
     this.broadcast({
       type: "reveal",
@@ -391,9 +417,12 @@ export class PartyRoom extends DurableObject<Env> {
       answers: roundAnswers,
       scores: state.scores,
       teamScores,
+      pauseMs,
     });
+    // The ranking page is a social moment: a few seats react on it.
+    if (showsRanking) this.scheduleBotEmotes(1 + Math.floor(Math.random() * 3), 2_600, 12_000);
 
-    this.armTimer(REVEAL_MS, () => {
+    this.armTimer(pauseMs, () => {
       const s = this.state;
       if (!s || s.phase === "finished") return;
       s.phase = "playing";
@@ -475,13 +504,38 @@ export class PartyRoom extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Each side's average score per player: a lone challenger against a team
+   * of nine is measured against the team's average, not its sum.
+   */
   private finalTeamScores(state: PartyState): { A: number; B: number } {
     const totals = { A: 0, B: 0 };
+    const counts = { A: 0, B: 0 };
     for (const p of state.players) {
-      if (p.team === "A") totals.A += state.scores[p.id] ?? 0;
-      else if (p.team === "B") totals.B += state.scores[p.id] ?? 0;
+      if (p.team === "A" || p.team === "B") {
+        totals[p.team] += state.scores[p.id] ?? 0;
+        counts[p.team] += 1;
+      }
     }
-    return totals;
+    return {
+      A: counts.A ? Math.round(totals.A / counts.A) : 0,
+      B: counts.B ? Math.round(totals.B / counts.B) : 0,
+    };
+  }
+
+  /** A few simulated seats send a reaction between `minMs` and `maxMs` from now. */
+  private scheduleBotEmotes(count: number, minMs: number, maxMs: number): void {
+    const bots = this.state?.players.filter((p) => p.isBot) ?? [];
+    if (bots.length === 0) return;
+    for (let i = 0; i < count; i += 1) {
+      const bot = bots[Math.floor(Math.random() * bots.length)]!;
+      const emote = EMOTES[Math.floor(Math.random() * EMOTES.length)]!;
+      const delay = minMs + Math.random() * (maxMs - minMs);
+      this.botTimers.push(setTimeout(() => {
+        if (!this.state || this.state.phase === "finished") return;
+        this.broadcast({ type: "emote", emote, from: bot.id });
+      }, delay));
+    }
   }
 
   override async webSocketClose(ws: WebSocket): Promise<void> {

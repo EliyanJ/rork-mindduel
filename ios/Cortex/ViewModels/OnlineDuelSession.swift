@@ -67,7 +67,14 @@ final class OnlineDuelSession {
     static let totalVoters: Int = 2
     static let readingBeat: Double = 8
 
+    /// Seconds left to answer once the choices are visible.
+    var answerWindow: Double { max(1, roundDuration - Self.readingBeat) }
+
     private var previousRanks: [String: Int] = [:]
+    private var previousScores: [String: Int] = [:]
+    /// Standings at the previous ranking page, for the overtake animation.
+    private var boardRanks: [String: Int] = [:]
+    private var scoreboardTask: Task<Void, Never>?
     private var socket: URLSessionWebSocketTask?
     private var queueTask: Task<Void, Never>?
     private var receiveTask: Task<Void, Never>?
@@ -147,6 +154,7 @@ final class OnlineDuelSession {
         queueTask = nil
         receiveTask?.cancel()
         timerTask?.cancel()
+        scoreboardTask?.cancel()
         let closingSocket = socket
         socket = nil
         if voluntary, let closingSocket, phase == .question || phase == .reveal || phase == .countdown {
@@ -441,18 +449,33 @@ final class OnlineDuelSession {
         if myCorrect { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
         phase = .reveal
 
-        if (index + 1) % 2 == 0 {
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(4.0))
-                guard let self, self.phase == .reveal else { return }
-                self.leaderboardEntries = [
-                    QuizLeaderboardEntry(id: "you", name: "Toi", emoji: you.emoji, score: self.playerScore, isYou: true, previousRank: self.previousRanks["you"]),
-                    QuizLeaderboardEntry(id: "opp", name: opp.name, emoji: opp.emoji, score: self.opponentScore, isYou: false, previousRank: self.previousRanks["opp"])
-                ]
+        // The server pauses the match while the ranking page is up
+        // (`pauseMs`); older servers don't, so the page keeps its old length.
+        let isRankingRound = (index + 1) % 2 == 0 && index + 1 < questions.count
+        if isRankingRound {
+            let entries = [
+                QuizLeaderboardEntry(id: "you", name: "Toi", emoji: you.emoji, score: playerScore, isYou: true,
+                                     previousRank: boardRanks["you"], previousScore: previousScores["you"] ?? 0),
+                QuizLeaderboardEntry(id: "opp", name: opp.name, emoji: opp.emoji, score: opponentScore, isYou: false,
+                                     previousRank: boardRanks["opp"], previousScore: previousScores["opp"] ?? 0)
+            ]
+            boardRanks = [
+                "you": playerScore >= opponentScore ? 1 : 2,
+                "opp": opponentScore > playerScore ? 1 : 2
+            ]
+            previousScores = ["you": playerScore, "opp": opponentScore]
+            let pause = (raw["pauseMs"] as? Double).map { $0 / 1000 } ?? 9.4
+            let visible = max(4, pause - 2.4)
+            scoreboardTask?.cancel()
+            scoreboardTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(1.8))
+                guard let self, !Task.isCancelled, self.phase == .reveal else { return }
+                self.leaderboardEntries = entries
                 SoundManager.shared.startLeaderboardMusic()
                 withAnimation(.spring(duration: 0.7)) { self.showScoreboard = true }
-                try? await Task.sleep(for: .seconds(7.0))
-                self.showScoreboard = false
+                try? await Task.sleep(for: .seconds(visible))
+                guard !Task.isCancelled else { return }
+                withAnimation(.spring(duration: 0.5)) { self.showScoreboard = false }
                 SoundManager.shared.stopLeaderboardMusic()
             }
         }

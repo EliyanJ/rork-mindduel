@@ -7,12 +7,13 @@ struct LeaguesView: View {
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
     @Environment(AppModel.self) private var model
+    @Environment(AvatarStore.self) private var avatarStore
     @State private var selected: RankLeague?
     @State private var isPaywallPresented: Bool = false
     @State private var isSignInPresented: Bool = false
     @State private var isFriendsPresented: Bool = false
 
-    private var points: Int { online.profile?.displayPoints ?? model.store.progress.elo }
+    private var points: Int { online.profile?.displayPoints ?? 400 }
     private var myLeague: RankLeague { RankLeague.league(for: points) }
     private var shown: RankLeague { selected ?? myLeague }
 
@@ -316,10 +317,14 @@ struct LeaguesView: View {
                 .font(.system(.headline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.inkMuted)
                 .frame(width: 32)
-            Text(player.emoji)
-                .font(.system(size: 26))
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Theme.canvas))
+            if isMe {
+                AvatarView(config: avatarStore.config, size: 44)
+            } else {
+                Text(player.emoji)
+                    .font(.system(size: 26))
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Theme.canvas))
+            }
             Text(isMe ? "\(player.name) (toi)" : player.name)
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.ink)

@@ -9,6 +9,7 @@ struct PartyMatchView: View {
     let onExit: () -> Void
 
     @State private var isEmotePickerPresented = false
+    @Environment(AvatarStore.self) private var avatarStore: AvatarStore?
 
     private var isReveal: Bool { session.phase == .reveal }
 
@@ -35,11 +36,12 @@ struct PartyMatchView: View {
             if session.showLeaderboard {
                 QuizLeaderboardOverlay(
                     entries: session.leaderboardEntries,
-                    title: "Top 5",
+                    title: session.leaderboardEntries.count > 6 ? "Classement" : "Top 5",
                     roundLabel: "Question \(session.currentQuestionInRound + 1)/\(session.ticket?.questionsPerRound ?? 20)",
                     themeLabel: session.themeName,
                     autoDismissAfter: nil,
-                    onDismiss: nil
+                    onDismiss: nil,
+                    onReact: { emote in session.sendEmote(emote) }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -119,19 +121,23 @@ struct PartyMatchView: View {
     private var scoreHeader: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(session.you?.emoji ?? "🧠")
-                    .font(.system(size: 24))
+                if let config = avatarStore?.config {
+                    AvatarView(config: config, size: 32)
+                } else {
+                    Text(session.you?.emoji ?? "🧠")
+                        .font(.system(size: 24))
+                }
                 Text("\(session.myScore) pts")
                     .font(.system(.title3, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.duelAccent)
                     .contentTransition(.numericText())
-                Text(mode.isTeam ? "Équipe \(session.you?.team ?? "—")" : "#\(session.myRank) / 20")
+                Text(mode.isTeam ? "Équipe \(session.you?.team ?? "—")" : "#\(session.myRank) / \(session.ticket?.players.count ?? 20)")
                     .font(.system(.caption2, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.quizInkMuted)
             }
             Spacer()
             if !session.isPreviewing {
-                QuizTimerRing(remaining: session.timeRemaining, total: max(1, session.roundDuration))
+                QuizTimerRing(remaining: min(session.timeRemaining, session.answerWindow), total: session.answerWindow)
             }
             Spacer()
             if mode.isTeam, let teamScores = session.teamScores {

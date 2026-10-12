@@ -343,7 +343,7 @@ struct DuelHomeView: View {
     }
 
     private var rankedPoints: Int {
-        online.profile?.displayPoints ?? model.store.progress.elo
+        online.profile?.displayPoints ?? 400
     }
 
     /// The main event: one bold card for the ranked 1v1, with the player's

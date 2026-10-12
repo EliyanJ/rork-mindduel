@@ -505,13 +505,17 @@ struct QuizLeaderboardEntry: Identifiable, Hashable {
     let score: Int
     let isYou: Bool
     var previousRank: Int? = nil
+    /// Score at the previous board, so the number visibly climbs.
+    var previousScore: Int? = nil
+    /// Overall rank when the page lists only part of the field.
+    var rank: Int? = nil
 }
 
 /// A real, full-screen "classement" page — not a dismissible popup — shown
-/// between questions. Rows reorder with a spring as scores change (pass the
-/// update through `withAnimation` at the call site), each carries an up/down
-/// arrow versus its rank before this round, and the biggest riser gets a
-/// callout banner at the bottom, Kahoot-style.
+/// between questions. It opens on the previous standings, then the rows
+/// slide into the new order: when the player climbs, their card lifts and
+/// passes over the people they just overtook. A reaction bar lets everyone
+/// cheer (or sulk) while the page is up.
 struct QuizLeaderboardOverlay: View {
     let entries: [QuizLeaderboardEntry]
     var title: String = "Classement"
@@ -522,13 +526,37 @@ struct QuizLeaderboardOverlay: View {
     var themeLabel: String? = nil
     var autoDismissAfter: Double? = 4.0
     var onDismiss: (() -> Void)?
+    /// When set, a row of quick reactions is shown at the bottom.
+    var onReact: ((QuizEmote) -> Void)? = nil
+
+    @Environment(AvatarStore.self) private var avatarStore: AvatarStore?
+    @State private var isSettled: Bool = false
+    @State private var isLifting: Bool = false
+
+    static let reactions: [QuizEmote] = [.clap, .heart, .fire, .laugh, .angry, .cry]
 
     private var ranked: [QuizLeaderboardEntry] {
         entries.sorted { $0.score > $1.score }
     }
 
+    /// The standings as they were at the previous board (newcomers last).
+    private var previousOrder: [QuizLeaderboardEntry] {
+        guard entries.contains(where: { $0.previousRank != nil }) else { return ranked }
+        return entries.sorted {
+            let a = $0.previousRank ?? Int.max
+            let b = $1.previousRank ?? Int.max
+            return a == b ? ($0.previousScore ?? $0.score) > ($1.previousScore ?? $1.score) : a < b
+        }
+    }
+
+    private var displayed: [QuizLeaderboardEntry] { isSettled ? ranked : previousOrder }
+
+    private var hasMovement: Bool {
+        previousOrder.map(\.id) != ranked.map(\.id)
+    }
+
     private var you: (entry: QuizLeaderboardEntry, rank: Int)? {
-        ranked.enumerated().first { $0.element.isYou }.map { (entry: $0.element, rank: $0.offset + 1) }
+        ranked.enumerated().first { $0.element.isYou }.map { (entry: $0.element, rank: $0.element.rank ?? $0.offset + 1) }
     }
 
     /// The entry that gained the most ranks since the previous board, if any.
@@ -536,7 +564,7 @@ struct QuizLeaderboardOverlay: View {
         ranked.enumerated()
             .compactMap { index, entry -> (QuizLeaderboardEntry, Int)? in
                 guard let previous = entry.previousRank else { return nil }
-                let delta = previous - (index + 1)
+                let delta = previous - (entry.rank ?? index + 1)
                 return delta > 0 ? (entry, delta) : nil
             }
             .max { $0.1 < $1.1 }
@@ -547,31 +575,60 @@ struct QuizLeaderboardOverlay: View {
             header
             ScrollView {
                 VStack(spacing: 10) {
-                    ForEach(Array(ranked.enumerated()), id: \.element.id) { index, entry in
-                        LeaderboardRow(entry: entry, rank: index + 1, appearDelay: Double(index) * 0.07)
+                    ForEach(Array(displayed.enumerated()), id: \.element.id) { index, entry in
+                        LeaderboardRow(
+                            entry: entry,
+                            rank: isSettled ? (entry.rank ?? index + 1) : (entry.previousRank ?? index + 1),
+                            score: isSettled ? entry.score : (entry.previousScore ?? entry.score),
+                            isLifted: entry.isYou && isLifting,
+                            avatar: entry.isYou ? avatarStore?.config : nil,
+                            appearDelay: Double(index) * 0.07
+                        )
+                        .zIndex(entry.isYou ? 10 : Double(-index))
                     }
                 }
                 .padding(16)
                 .padding(.top, 46)
                 .padding(.bottom, 16)
             }
+            if let onReact {
+                reactionBar(onReact)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.quizBackground)
         .overlay(alignment: .top) {
-            if let biggestRiser {
+            if isSettled, let biggestRiser {
                 riserToast(biggestRiser.entry, delta: biggestRiser.delta)
                     .padding(.horizontal, 16)
                     .padding(.top, 210)
                     .transition(.move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
             }
         }
-        .animation(.spring(duration: 0.7), value: biggestRiser?.entry.id)
+        .animation(.spring(duration: 0.7), value: isSettled)
         .task {
+            await playOvertake()
             guard let autoDismissAfter else { return }
-            try? await Task.sleep(for: .seconds(autoDismissAfter))
+            try? await Task.sleep(for: .seconds(max(0, autoDismissAfter - 1)))
             onDismiss?()
         }
+    }
+
+    /// Holds the old standings for a beat, then lets the rows trade places.
+    private func playOvertake() async {
+        try? await Task.sleep(for: .seconds(1.0))
+        guard !Task.isCancelled else { return }
+        guard hasMovement else {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { isSettled = true }
+            return
+        }
+        let youRose = you.map { current in (current.entry.previousRank ?? Int.max) > current.rank } ?? false
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { isLifting = youRose }
+        try? await Task.sleep(for: .seconds(0.25))
+        withAnimation(.spring(response: 0.85, dampingFraction: 0.78)) { isSettled = true }
+        if youRose { Haptics.success() } else { Haptics.tap() }
+        try? await Task.sleep(for: .seconds(0.9))
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.65)) { isLifting = false }
     }
 
     private var header: some View {
@@ -604,20 +661,25 @@ struct QuizLeaderboardOverlay: View {
             }
             if let you {
                 HStack(spacing: 12) {
-                    Text(you.entry.emoji)
-                        .font(.system(size: 24))
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(Theme.primary.opacity(0.12)))
+                    if let config = avatarStore?.config {
+                        AvatarView(config: config, size: 44)
+                    } else {
+                        Text(you.entry.emoji)
+                            .font(.system(size: 24))
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(Theme.primary.opacity(0.12)))
+                    }
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Toi")
                             .font(.system(.subheadline, design: .rounded, weight: .heavy))
                             .foregroundStyle(Theme.primary)
-                        Text("\(you.entry.score) pts")
+                        Text("\(isSettled ? you.entry.score : (you.entry.previousScore ?? you.entry.score)) pts")
                             .font(.system(.caption, design: .rounded, weight: .bold))
                             .foregroundStyle(Theme.quizInkMuted)
+                            .contentTransition(.numericText())
                     }
                     Spacer()
-                    rankBadge(you.rank)
+                    rankBadge(isSettled ? you.rank : (you.entry.previousRank ?? you.rank))
                 }
                 .padding(12)
                 .background(RoundedRectangle(cornerRadius: 16).fill(Theme.primary.opacity(0.08)))
@@ -628,6 +690,23 @@ struct QuizLeaderboardOverlay: View {
         .padding(.bottom, 14)
     }
 
+    private func reactionBar(_ onReact: @escaping (QuizEmote) -> Void) -> some View {
+        VStack(spacing: 8) {
+            Text("Réagis")
+                .font(.system(.caption, design: .rounded, weight: .heavy))
+                .foregroundStyle(Theme.quizInkMuted)
+            HStack(spacing: 10) {
+                ForEach(Self.reactions) { emote in
+                    ReactionButton(emote: emote) { onReact(emote) }
+                }
+            }
+        }
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity)
+        .background(Theme.quizBackground.shadow(.drop(color: .black.opacity(0.06), radius: 10, y: -4)))
+    }
+
     private func rankBadge(_ rank: Int) -> some View {
         Text("#\(rank)")
             .font(.system(.subheadline, design: .rounded, weight: .heavy))
@@ -635,13 +714,16 @@ struct QuizLeaderboardOverlay: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Capsule().fill(Theme.primary))
+            .contentTransition(.numericText())
     }
 
     private func riserToast(_ entry: QuizLeaderboardEntry, delta: Int) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "arrow.up")
                 .font(.system(size: 14, weight: .heavy))
-            Text("\(entry.name) est monté de \(delta) place\(delta > 1 ? "s" : "") !")
+            Text(entry.isYou
+                 ? "Tu es monté de \(delta) place\(delta > 1 ? "s" : "") !"
+                 : "\(entry.name) est monté de \(delta) place\(delta > 1 ? "s" : "") !")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .lineLimit(1)
         }
@@ -655,16 +737,45 @@ struct QuizLeaderboardOverlay: View {
     }
 }
 
+/// One big emoji button of the leaderboard reaction bar, with a pop on tap.
+private struct ReactionButton: View {
+    let emote: QuizEmote
+    let action: () -> Void
+
+    @State private var popCount: Int = 0
+
+    var body: some View {
+        Button {
+            Haptics.tap()
+            popCount += 1
+            action()
+        } label: {
+            Text(emote.rawValue)
+                .font(.system(size: 26))
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(Theme.quizCanvas))
+                .overlay(Circle().stroke(Theme.quizLine, lineWidth: 1.5))
+                .phaseAnimator([1.0, 1.3, 1.0], trigger: popCount) { content, scale in
+                    content.scaleEffect(scale)
+                } animation: { _ in .spring(response: 0.22, dampingFraction: 0.5) }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Envoyer \(emote.rawValue)")
+    }
+}
+
 /// One leaderboard row, extracted as its own view so it can hold the small
-/// per-row entrance state (staggered fade + rise-in, plus a little bounce
-/// whenever its rank actually changes) that a plain function body can't.
+/// per-row entrance state (staggered fade + rise-in) that a plain function
+/// body can't. The player's own row can be lifted while it overtakes.
 private struct LeaderboardRow: View {
     let entry: QuizLeaderboardEntry
     let rank: Int
+    let score: Int
+    let isLifted: Bool
+    let avatar: AvatarConfig?
     let appearDelay: Double
 
     @State private var appeared = false
-    @State private var bounced = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -672,44 +783,46 @@ private struct LeaderboardRow: View {
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .frame(width: 30)
                 .foregroundStyle(rank <= 3 ? Theme.gold.mix(with: .black, by: 0.2) : Theme.quizInkMuted)
-            Text(entry.emoji).font(.system(size: 20))
-            Text(entry.name)
+                .contentTransition(.numericText())
+            if let avatar {
+                AvatarView(config: avatar, size: 32)
+            } else {
+                Text(entry.emoji)
+                    .font(.system(size: 20))
+                    .frame(width: 32, height: 32)
+            }
+            Text(entry.isYou ? "Toi" : entry.name)
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .foregroundStyle(entry.isYou ? Theme.primary : Theme.quizInk)
                 .lineLimit(1)
             Spacer()
             rankArrow
-            Text("\(entry.score)")
+            Text("\(score)")
                 .font(.system(.subheadline, design: .rounded, weight: .heavy))
                 .foregroundStyle(Theme.quizInkMuted)
                 .contentTransition(.numericText())
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(entry.isYou ? Theme.primary.opacity(0.1) : Theme.quizCanvas)
+                .fill(entry.isYou ? Theme.quizCard : Theme.quizCanvas)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(entry.isYou ? Theme.primary.opacity(0.35) : .clear, lineWidth: 1.5)
+                        .fill(entry.isYou ? Theme.primary.opacity(0.1) : .clear)
                 )
-                .shadow(color: .black.opacity(entry.isYou ? 0.1 : 0), radius: 8, y: 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(entry.isYou ? Theme.primary.opacity(isLifted ? 0.8 : 0.35) : .clear, lineWidth: isLifted ? 2.5 : 1.5)
+                )
+                .shadow(color: .black.opacity(isLifted ? 0.22 : (entry.isYou ? 0.1 : 0)), radius: isLifted ? 16 : 8, y: isLifted ? 8 : 3)
         )
-        .zIndex(entry.isYou ? 1 : 0)
-        .scaleEffect(appeared ? (bounced ? 1.03 : 1) : 0.9)
+        .scaleEffect(appeared ? (isLifted ? 1.07 : 1) : 0.9)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 14)
-        .id(entry.id)
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.68).delay(appearDelay)) {
                 appeared = true
-            }
-            guard entry.previousRank != nil, entry.previousRank != rank else { return }
-            Task {
-                try? await Task.sleep(for: .seconds(appearDelay + 0.55))
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) { bounced = true }
-                try? await Task.sleep(for: .seconds(0.22))
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { bounced = false }
             }
         }
     }
@@ -722,10 +835,12 @@ private struct LeaderboardRow: View {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 11, weight: .heavy))
                     .foregroundStyle(Theme.success)
+                    .transition(.scale.combined(with: .opacity))
             } else if delta < 0 {
                 Image(systemName: "arrow.down")
                     .font(.system(size: 11, weight: .heavy))
                     .foregroundStyle(Theme.danger)
+                    .transition(.scale.combined(with: .opacity))
             }
         }
     }

@@ -76,6 +76,14 @@ export const PARTY_CAPACITY = 20;
 const PARTY_FILL_MS = 15_000;
 /** A finalized-but-never-connected lobby is abandoned after this long. */
 const PARTY_STALE_TICKET_MS = 120_000;
+/** Every new ranked profile starts at the bottom of Bronze. */
+const STARTING_POINTS = 400;
+/** Lowest visible ladder score (chess.com-style floor). */
+const POINTS_FLOOR = 100;
+/** Party rounds: 8 s reading beat in the app + 6 s to answer. */
+const PARTY_ROUND_SECONDS = 14;
+/** 1v1 rounds: 8 s reading beat in the app + 7 s to answer. */
+const DUEL_ROUND_SECONDS = 15;
 // "team10" (10v10), "solo" (1v19), "oneVsTen" (1v9 — wire name kept for older builds), or a free-form
 // `custom:<allies>:<opponents>` room where the host picked both team sizes
 // and invited people with a share code.
@@ -908,7 +916,7 @@ export class Hub extends DurableObject {
     this.ctx.storage.sql.exec(
       `INSERT INTO players (user_id, name, emoji, elo, points, wins, losses, draws, friend_code, last_seen_at, created_at, daily_goal)
        VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?)`,
-      userId, name.slice(0, 24), emoji, elo, elo, code, now, now, goal,
+      userId, name.slice(0, 24), emoji, elo, STARTING_POINTS, code, now, now, goal,
     );
     return rowToProfile(this.playerRow(userId)!);
   }
@@ -1649,7 +1657,7 @@ export class Hub extends DurableObject {
     // an identical mixed question set from the shared seed.
     const themes = [me.discipline_id ?? "all", opponent.discipline_id ?? "all"].sort();
     const ranked = me.ranked !== 0;
-    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes, ranked };
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: DUEL_ROUND_SECONDS, themes, ranked };
     const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + oppProfile.elo) / 2));
     this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, oppProfile], questions });
     const forMe = JSON.stringify({ ...base, you: myProfile, opponent: oppProfile });
@@ -1677,9 +1685,12 @@ export class Hub extends DurableObject {
     const theme = me.discipline_id ?? "all";
     const themes = [theme, theme];
     const ranked = me.ranked !== 0;
-    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: 15, themes, ranked };
+    const base = { status: "matched", matchId, seed, questionCount: 15, roundDuration: DUEL_ROUND_SECONDS, themes, ranked };
     const questions = this.gameQuestions(seed, base.questionCount, themes, Math.trunc((myProfile.elo + filler.elo) / 2));
-    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, { ...filler, isBot: true }], questions });
+    // `skill` (server-only) pitches the simulated opponent at the player's
+    // ladder level, so climbing means beating ever sharper opponents.
+    const skill = clampSkill(myProfile.points + Math.round((Math.random() - 0.5) * 120));
+    this.saveRoomTicket(matchId, "duel", { ...base, players: [myProfile, { ...filler, isBot: true, skill }], questions });
     this.ctx.storage.sql.exec(
       "UPDATE queue SET match_payload = ?, last_seen_at = ? WHERE user_id = ?",
       JSON.stringify({ ...base, you: myProfile, opponent: filler }), Date.now(), me.user_id,
@@ -1740,12 +1751,16 @@ export class Hub extends DurableObject {
       .toArray()
       .map((m) => this.getProfile(m.user_id))
       .filter((p): p is PlayerProfile => p !== null);
+    // Matchmade lobbies seat their stand-ins progressively during the wait,
+    // so every chair visibly fills up; they are the exact players of the game.
+    const capacity = partyCapacity(row.mode as PartyMode);
+    const seated = lobby && !lobby.room_code ? this.seatedStandIns(lobby, members, capacity) : [];
     return Response.json({
       status: "waiting",
       lobbyId: row.lobby_id,
       mode: row.mode,
-      capacity: partyCapacity(row.mode as PartyMode),
-      players: members,
+      capacity,
+      players: [...members, ...seated.map(standInProfile)],
       waitingSince: lobby?.created_at ?? row.queued_at,
       roomCode: lobby?.room_code ?? null,
       isHost: lobby?.host_user_id === userId,
@@ -1891,6 +1906,23 @@ export class Hub extends DurableObject {
   }
 
   /**
+   * Stand-ins already seated in a waiting matchmade lobby: they sit down one
+   * by one over the fill window, so the grid is complete just before launch.
+   */
+  private seatedStandIns(lobby: PartyLobbyRow, members: PlayerProfile[], capacity: number): PartyPlayer[] {
+    const free = Math.max(0, capacity - members.length);
+    if (free === 0 || members.length === 0) return [];
+    const age = Date.now() - lobby.created_at;
+    const progress = Math.max(0, Math.min(1, (age - 1_200) / (PARTY_FILL_MS - 2_400)));
+    const count = Math.min(free, Math.floor(free * progress));
+    if (count === 0) return [];
+    const realPlayers = members.map((p) => ({ id: p.id, name: p.name, emoji: p.emoji, elo: p.elo, isBot: false }));
+    const avgElo = Math.round(members.reduce((s, p) => s + p.elo, 0) / members.length);
+    const avgPoints = Math.round(members.reduce((s, p) => s + p.points, 0) / members.length);
+    return standInRoster(lobby.lobby_id, realPlayers, count, avgElo, avgPoints);
+  }
+
+  /**
    * Fills a lobby with bots and hands out match tickets once it is full or
    * has been waiting `PARTY_FILL_MS`. Bots are generated fresh each time —
    * nothing about them is ever persisted beyond this one match.
@@ -1913,8 +1945,10 @@ export class Hub extends DurableObject {
       .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji, elo: p.elo, isBot: false }));
     if (realPlayers.length === 0) return;
 
-    const usedNames = new Set(realPlayers.map((p) => p.name.trim().toLowerCase()));
     const avgElo = Math.round(realPlayers.reduce((s, p) => s + p.elo, 0) / realPlayers.length);
+    const avgPoints = Math.round(realRows
+      .map((r) => this.getProfile(r.user_id)?.points ?? STARTING_POINTS)
+      .reduce((s, p) => s + p, 0) / realRows.length);
     // A host-forced start before the room is full shrinks around whoever
     // actually showed up, so a lone host isn't stuck against 10 bots when
     // they only invited two friends.
@@ -1922,9 +1956,11 @@ export class Hub extends DurableObject {
       ? Math.max(realPlayers.length, info.kind === "solo" || info.kind === "team10" ? realPlayers.length : info.teamACapacity + 1)
       : capacity;
     const botsNeeded = Math.max(0, effectiveCapacity - realPlayers.length);
-    const bots = generateBotRoster(botsNeeded, avgElo, usedNames, lobbyId);
+    const bots = standInRoster(lobbyId, realPlayers, botsNeeded, avgElo, avgPoints);
 
-    const allPlayers = shuffled([...realPlayers, ...bots]);
+    // Real players first, then stand-ins in the order they were seated in the
+    // lobby, so the waiting room and the game show the same roster.
+    const allPlayers = [...realPlayers, ...bots];
     if (info.kind === "team10") {
       balanceTeams(allPlayers);
     } else if (info.kind === "oneVsTen" || info.kind === "custom") {
@@ -1939,16 +1975,18 @@ export class Hub extends DurableObject {
       seed,
       rounds: 1,
       questionsPerRound: 20,
-      roundDuration: 10,
+      roundDuration: PARTY_ROUND_SECONDS,
       players: allPlayers,
     };
     const questions = this.gameQuestions(seed, base.rounds * base.questionsPerRound, ["all"], Math.trunc(allPlayers.reduce((sum, p) => sum + p.elo, 0) / allPlayers.length));
     this.saveRoomTicket(lobbyId, "party", { ...base, questions });
+    // Clients never learn who is simulated: every seat reads as a player.
+    const publicPlayers = allPlayers.map(publicPartyPlayer);
     const now = Date.now();
     for (const row of realRows) {
-      const you = allPlayers.find((p) => p.id === row.user_id);
+      const you = publicPlayers.find((p) => p.id === row.user_id);
       if (!you) continue;
-      const payload = JSON.stringify({ ...base, you });
+      const payload = JSON.stringify({ ...base, players: publicPlayers, you });
       this.ctx.storage.sql.exec(
         "UPDATE party_queue SET match_payload = ?, last_seen_at = ? WHERE user_id = ?",
         payload, now, row.user_id,
@@ -2005,15 +2043,37 @@ export class Hub extends DurableObject {
     const leftMidGame = new Set(payload.leftMidGame ?? []);
     const pointsChanges: Record<string, number> = {};
     const reputationChanges: Record<string, number> = {};
+    // Friends' custom rooms are for fun: reputation only, the ladder never moves.
+    const isLadderGame = !!payload.mode && !payload.mode.startsWith("custom:");
+
+    // Ladder level of every seat: real players' visible points, stand-ins'
+    // hidden skill from the stored ticket.
+    const ticketPlayers = payload.partyId
+      ? ((JSON.parse(this.ctx.storage.sql
+        .exec<{ payload: string }>("SELECT payload FROM room_tickets WHERE id = ? AND kind = 'party'", payload.partyId)
+        .toArray()[0]?.payload ?? "{}") as { players?: PartyPlayer[] }).players ?? [])
+      : [];
+    const levelOf = (userId: string): number => {
+      const row = this.playerRow(userId);
+      if (row) return row.points ?? STARTING_POINTS;
+      const seat = ticketPlayers.find((p) => p.id === userId);
+      return seat?.skill ?? STARTING_POINTS;
+    };
 
     if (payload.mode && isTeamMode(payload.mode)) {
-      let sumA = 0;
-      let sumB = 0;
-      for (const r of results) {
-        if (r.team === "A") sumA += r.score;
-        else if (r.team === "B") sumB += r.score;
-      }
-      const winner = sumA === sumB ? null : sumA > sumB ? "A" : "B";
+      // Sides are compared on their average score, so a lone challenger
+      // facing a team of nine can actually win.
+      const side = (team: string): { avgScore: number; avgLevel: number } => {
+        const members = results.filter((r) => r.team === team);
+        if (members.length === 0) return { avgScore: 0, avgLevel: STARTING_POINTS };
+        return {
+          avgScore: members.reduce((s, r) => s + r.score, 0) / members.length,
+          avgLevel: members.reduce((s, r) => s + levelOf(r.userId), 0) / members.length,
+        };
+      };
+      const a = side("A");
+      const b = side("B");
+      const winner = Math.round(a.avgScore) === Math.round(b.avgScore) ? null : a.avgScore > b.avgScore ? "A" : "B";
       for (const r of results) {
         if (r.isBot || !this.playerRow(r.userId)) continue;
         if (leftMidGame.has(r.userId)) {
@@ -2022,7 +2082,11 @@ export class Hub extends DurableObject {
           continue;
         }
         const won = winner !== null && r.team === winner;
-        const pts = winner === null ? TEAM_DRAW_POINTS : won ? TEAM_WIN_POINTS : TEAM_LOSE_POINTS;
+        const mine = r.team === "A" ? a : b;
+        const theirs = r.team === "A" ? b : a;
+        const expected = 1 / (1 + Math.pow(10, (theirs.avgLevel - mine.avgLevel) / 400));
+        const outcome = winner === null ? 0.5 : won ? 1 : 0;
+        const pts = isLadderGame ? ladderPointsChange(outcome, expected) : 0;
         const rep = PARTY_FINISH_REPUTATION + (won ? PARTY_WIN_REPUTATION_BONUS : 0);
         this.applyPartyResult(r.userId, pts, rep);
         pointsChanges[r.userId] = pts;
@@ -2030,6 +2094,7 @@ export class Hub extends DurableObject {
       }
     } else {
       const ranked = [...results].sort((a, b) => b.score - a.score);
+      const field = ranked.length;
       ranked.forEach((r, index) => {
         if (r.isBot || !this.playerRow(r.userId)) return;
         const rank = index + 1;
@@ -2038,7 +2103,14 @@ export class Hub extends DurableObject {
           reputationChanges[r.userId] = -PARTY_MIDGAME_LEAVE_PENALTY;
           return;
         }
-        const pts = partyRankPoints(rank);
+        // Free-for-all Elo: finishing above the place your level predicts
+        // pays, finishing below it costs.
+        const myLevel = levelOf(r.userId);
+        const others = ranked.filter((o) => o.userId !== r.userId);
+        const expected = others.length === 0 ? 0.5 : others
+          .reduce((s, o) => s + 1 / (1 + Math.pow(10, (levelOf(o.userId) - myLevel) / 400)), 0) / others.length;
+        const actual = field <= 1 ? 0.5 : 1 - (rank - 1) / (field - 1);
+        const pts = isLadderGame ? Math.round(40 * (actual - expected)) : 0;
         const rep = PARTY_FINISH_REPUTATION + (rank <= 3 ? PARTY_WIN_REPUTATION_BONUS : 0);
         this.applyPartyResult(r.userId, pts, rep);
         pointsChanges[r.userId] = pts;
@@ -2120,9 +2192,11 @@ export class Hub extends DurableObject {
     const newElo1 = clampElo(row1.elo + change1);
     const newElo2 = clampElo(row2.elo + change2);
 
-    // Visible points move separately, sized by the hidden-rating gap.
-    const pointsChange1 = ladderPointsChange(outcome1, expected1);
-    const pointsChange2 = ladderPointsChange(1 - outcome1, 1 - expected1);
+    // Visible points are their own Elo ladder: the gap that matters is the
+    // ladder gap, so beating a higher-ranked player pays more.
+    const ladderExpected1 = 1 / (1 + Math.pow(10, ((row2.points ?? STARTING_POINTS) - (row1.points ?? STARTING_POINTS)) / 400));
+    const pointsChange1 = Math.round(ladderPointsChange(outcome1, ladderExpected1) * placementBoost(row1));
+    const pointsChange2 = Math.round(ladderPointsChange(1 - outcome1, 1 - ladderExpected1) * placementBoost(row2));
     const newPoints1 = clampPoints(row1.points + pointsChange1);
     const newPoints2 = clampPoints(row2.points + pointsChange2);
 
@@ -2144,7 +2218,7 @@ export class Hub extends DurableObject {
   private settleFillerMatch(
     p1: { userId: string; score: number },
     p2: { userId: string; score: number },
-    filler: { id: string; elo: number; points?: number },
+    filler: { id: string; elo: number; points?: number; skill?: number },
     forfeitBy: string | undefined,
   ): Response {
     const human = p1.userId === filler.id ? p2 : p1;
@@ -2161,11 +2235,15 @@ export class Hub extends DurableObject {
     const expected = 1 / (1 + Math.pow(10, (filler.elo - row.elo) / 400));
     const change = Math.round(32 * (outcome - expected));
     const newElo = clampElo(row.elo + change);
-    const pointsChange = ladderPointsChange(outcome, expected);
+    // The stand-in plays at `skill` on the ladder: that is the level it
+    // represents for the points exchange.
+    const fillerLevel = filler.skill ?? filler.points ?? STARTING_POINTS;
+    const ladderExpected = 1 / (1 + Math.pow(10, (fillerLevel - (row.points ?? STARTING_POINTS)) / 400));
+    const pointsChange = Math.round(ladderPointsChange(outcome, ladderExpected) * placementBoost(row));
     const newPoints = clampPoints(row.points + pointsChange);
     this.applyResult(human.userId, newElo, newPoints, outcome);
 
-    const botPointsChange = ladderPointsChange(1 - outcome, 1 - expected);
+    const botPointsChange = ladderPointsChange(1 - outcome, 1 - ladderExpected);
     const botPoints = clampPoints((filler.points ?? filler.elo) + botPointsChange);
     return Response.json({
       eloChanges: { [human.userId]: pointsChange, [filler.id]: botPointsChange },
@@ -2751,8 +2829,13 @@ function ladderPointsChange(outcome: number, expected: number): number {
 }
 
 function clampPoints(points: number): number {
-  if (!Number.isFinite(points)) return 1000;
-  return Math.max(0, Math.min(100_000, Math.round(points)));
+  if (!Number.isFinite(points)) return STARTING_POINTS;
+  return Math.max(POINTS_FLOOR, Math.min(100_000, Math.round(points)));
+}
+
+/** First 10 ranked duels move faster, so a new player reaches their level quickly. */
+function placementBoost(row: { wins: number; losses: number; draws: number }): number {
+  return row.wins + row.losses + row.draws < 10 ? 1.5 : 1;
 }
 
 function rowToProfile(row: PlayerRow): PlayerProfile {
@@ -2800,7 +2883,113 @@ export type PartyPlayer = {
   elo: number;
   isBot: boolean;
   team?: "A" | "B";
+  /** Server-only: ladder level a stand-in plays at. Never sent to clients. */
+  skill?: number;
 };
+
+/** Client-facing seat: no stand-in flag, no hidden skill. */
+function publicPartyPlayer(p: PartyPlayer): PartyPlayer {
+  const seat: PartyPlayer = { id: p.id, name: p.name, emoji: p.emoji, elo: p.elo, isBot: false };
+  if (p.team) seat.team = p.team;
+  return seat;
+}
+
+/** Lobby-grid shape of a seated stand-in (same fields as a real profile). */
+function standInProfile(p: PartyPlayer): PlayerProfile {
+  return {
+    id: p.id,
+    name: p.name,
+    emoji: p.emoji,
+    elo: p.elo,
+    points: p.skill ?? STARTING_POINTS,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    friendCode: "",
+    reputation: 0,
+    dailyGoal: 3,
+  };
+}
+
+function clampSkill(points: number): number {
+  if (!Number.isFinite(points)) return STARTING_POINTS;
+  return Math.max(POINTS_FLOOR, Math.min(2000, Math.round(points)));
+}
+
+/** Deterministic PRNG (mulberry32) seeded from a string. */
+function seededRandom(seedText: string): () => number {
+  let h = 1779033703 ^ seedText.length;
+  for (let i = 0; i < seedText.length; i += 1) {
+    h = Math.imul(h ^ seedText.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  let a = h >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Faces a seated stand-in can wear: the same set players pick from. */
+const STAND_IN_EMOJIS = [
+  "🐙", "🦄", "🐼", "🦊", "🐸", "🐨", "🐯", "🦁", "🐺", "🦉", "🐳", "🐲",
+  "🤖", "👽", "🧠", "🔥", "🌼", "🤓", "📚", "😎", "🥰", "⭐️", "🎧", "🐱", "🙂", "😉",
+];
+
+/**
+ * The stand-ins of one lobby, generated deterministically from its id: the
+ * first N are always the same players, so the ones seated one by one in the
+ * waiting room are exactly the ones in the game.
+ */
+function standInRoster(lobbyId: string, realPlayers: PartyPlayer[], count: number, avgElo: number, avgPoints: number): PartyPlayer[] {
+  const rng = seededRandom(lobbyId);
+  const used = new Set(realPlayers.map((p) => p.name.trim().toLowerCase()));
+  const hex = (n: number): string => Array.from({ length: n }, () => Math.floor(rng() * 16).toString(16)).join("");
+  const roster: PartyPlayer[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const name = seededBotName(rng, used);
+    const emoji = STAND_IN_EMOJIS[Math.floor(rng() * STAND_IN_EMOJIS.length)] ?? "🧠";
+    const eloJitter = Math.round((rng() - 0.5) * 240);
+    const skillJitter = Math.round((rng() - 0.5) * 160);
+    roster.push({
+      id: `${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}`.toUpperCase(),
+      name,
+      emoji,
+      elo: clampElo(avgElo + eloJitter),
+      isBot: true,
+      skill: clampSkill(avgPoints + skillJitter),
+    });
+  }
+  return roster;
+}
+
+function seededBotName(rng: () => number, used: Set<string>): string {
+  const choose = <T,>(items: readonly T[]): T => items[Math.floor(rng() * items.length)]!;
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const first = choose(PLAYER_FIRST_NAMES);
+    const roll = rng();
+    const candidate = roll < 0.4
+      ? first
+      : roll < 0.65
+        ? `${first}${Math.floor(rng() * 99) + 1}`
+        : roll < 0.8
+          ? `${first} ${choose(NAME_INITIALS.split(""))}.`
+          : roll < 0.9
+            ? `${first.toLowerCase()}_${choose(["92", "95", "98", "01", "03", "05", "07", "09", "11"])}`
+            : `${first}${choose(BOT_WORDS)}`;
+    const key = candidate.toLowerCase();
+    if (!used.has(key)) {
+      used.add(key);
+      return candidate;
+    }
+  }
+  const fallback = `Joueur${Math.floor(rng() * 9999)}`;
+  used.add(fallback.toLowerCase());
+  return fallback;
+}
 
 const PARTY_FINISH_REPUTATION = 1;
 const PARTY_WIN_REPUTATION_BONUS = 2;

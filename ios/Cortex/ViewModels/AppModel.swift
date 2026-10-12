@@ -57,7 +57,7 @@ final class AppModel {
         self.layout = layout
         self.store = ProgressStore()
         self.badges = BadgeStore()
-        self.bundledData = ContentService.bundledData()
+        self.bundledData = ContentService.bootData()
         self.orderedDisciplines = []
         self.ringsByDiscipline = [:]
         rebuild(catalog: catalog, layout: layout)

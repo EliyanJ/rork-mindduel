@@ -75,6 +75,35 @@ export function pickQuestions(catalog: GameCatalog, seed: string, count: number,
   return result;
 }
 
+/**
+ * How a simulated player at a given ladder level performs, chess.com-style:
+ * Bronze stand-ins miss a lot and answer late, Maître ones are near-perfect
+ * and fast, so reaching the top takes real knowledge and speed.
+ * `accuracy` is the chance of a correct answer, `speed` the share of the
+ * answer window used before answering (0 = instantly, 1 = at the buzzer).
+ */
+export function standInLevel(points: number): { accuracy: number; speed: number } {
+  const curve: Array<[number, number, number]> = [
+    [100, 0.28, 0.72],
+    [400, 0.4, 0.62],
+    [700, 0.57, 0.5],
+    [1000, 0.73, 0.38],
+    [1250, 0.85, 0.27],
+    [1500, 0.93, 0.18],
+    [2000, 0.96, 0.1],
+  ];
+  const p = Math.max(curve[0]![0], Math.min(curve[curve.length - 1]![0], points));
+  for (let i = 1; i < curve.length; i += 1) {
+    const [x1, a1, s1] = curve[i]!;
+    const [x0, a0, s0] = curve[i - 1]!;
+    if (p <= x1) {
+      const t = (p - x0) / (x1 - x0);
+      return { accuracy: a0 + (a1 - a0) * t, speed: s0 + (s1 - s0) * t };
+    }
+  }
+  return { accuracy: 0.96, speed: 0.1 };
+}
+
 /** Never accepts correctness or timing claimed by the client. */
 export function verifyAnswer(question: GameQuestion | undefined, answer: unknown, startedAt: number | undefined, receivedAt: number, durationMs: number): { correct: boolean; timeMs: number; reason?: string } {
   const elapsed = startedAt === undefined ? durationMs : Math.max(0, receivedAt - startedAt);

@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var model = AppModel()
     @State private var onboardingStore = OnboardingStore()
     @State private var showSplash = true
+    @State private var isContentSettled: Bool = false
     @State private var selectedTab: AppTab = .parcours
     @State private var isMoreMenuOpen: Bool = false
     @State private var moreSheet: MoreSheet?
@@ -18,6 +19,7 @@ struct ContentView: View {
     @AppStorage("hasSeenAppTour") private var hasSeenAppTour: Bool = false
     @Environment(OnlineModel.self) private var online
     @Environment(StoreViewModel.self) private var store
+    @Environment(AvatarStore.self) private var avatarStore
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -61,6 +63,14 @@ struct ContentView: View {
         .onChange(of: online.auth.user?.id, initial: true) { _, userId in
             Task { await store.identify(userId: userId) }
         }
+        // The avatar picked in the profile is what other players see (lobbies,
+        // leagues, in-game rosters): keep the server emoji in sync with it.
+        .onChange(of: avatarStore.config.representativeEmoji, initial: true) { _, _ in
+            syncAvatarEmoji()
+        }
+        .onChange(of: online.profile?.id) { _, _ in
+            syncAvatarEmoji()
+        }
         // Rewarded videos (and the EU consent form) only start once the
         // onboarding is over, never on top of the first screens.
         .onChange(of: onboardingStore.isCompleted, initial: true) { _, isCompleted in
@@ -72,8 +82,12 @@ struct ContentView: View {
         .task {
             checkWelcomeBack()
             await updates.refresh()
-            guard !updates.requiresUpdate else { return }
+            guard !updates.requiresUpdate else {
+                isContentSettled = true
+                return
+            }
             await model.refreshFromBackend()
+            isContentSettled = true
         }
         // Reminders are rebuilt every time the app comes forward: that is what
         // lets today's remaining slots disappear once the player has practised.
@@ -137,7 +151,7 @@ struct ContentView: View {
             }
 
             if showSplash {
-                SplashView {
+                SplashView(isReady: { isContentSettled }) {
                     withAnimation(.easeOut(duration: 0.2)) {
                         showSplash = false
                     }
@@ -179,6 +193,12 @@ struct ContentView: View {
         selectedTab = .parcours
         isMoreMenuOpen = false
         withAnimation(.easeIn(duration: 0.3)) { isTourPresented = true }
+    }
+
+    private func syncAvatarEmoji() {
+        let emoji = avatarStore.config.representativeEmoji
+        guard let profile = online.profile, profile.emoji != emoji else { return }
+        Task { await online.updateProfile(name: nil, emoji: emoji) }
     }
 
     private func closeStreakOffer() {

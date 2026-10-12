@@ -8,8 +8,20 @@ enum PathLayoutService {
     private static let remoteURL = "\(Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL)/api/path-layout"
 
     /// Synchronous default used at launch: never blocks on the network.
+    /// Uses the last published layout received (so ring positions match the
+    /// saved progress from the first frame), else the built-in defaults.
     static func loadLayout() -> PathLayout {
-        PathDefaults.layout
+        if let url = cacheURL,
+           let data = try? Data(contentsOf: url),
+           let remote = try? JSONDecoder().decode(PathLayout.self, from: data) {
+            return merged(remote)
+        }
+        return PathDefaults.layout
+    }
+
+    private static var cacheURL: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("path-layout-cache.json")
     }
 
     /// Fetches the published layout, fully merged with the built-in defaults.
@@ -29,6 +41,10 @@ enum PathLayoutService {
             return nil
         }
         guard let remote = try? JSONDecoder().decode(PathLayout.self, from: data) else { return nil }
+        if let url = cacheURL {
+            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? data.write(to: url, options: .atomic)
+        }
         print("[PathLayoutService] Organisation du parcours chargée depuis le backend")
         return merged(remote)
     }

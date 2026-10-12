@@ -9,9 +9,38 @@ import Foundation
 enum ContentService {
     private static let remoteURL = "\(Config.EXPO_PUBLIC_RORK_FUNCTIONS_URL)/api/content"
 
-    /// Instant catalogue: the version compiled into the app bundle.
+    /// Instant catalogue: the last copy received from the backend when there
+    /// is one (so the very first frame already matches the player's saved
+    /// rings), otherwise the version compiled into the app bundle.
     static func loadCatalog() -> ContentCatalog {
-        loadBundledCatalog()
+        if let data = cachedData(),
+           let catalog = try? JSONDecoder().decode(ContentCatalog.self, from: data),
+           !catalog.disciplines.isEmpty {
+            return catalog
+        }
+        return loadBundledCatalog()
+    }
+
+    /// Raw bytes the app booted on (cached remote copy or bundle).
+    static func bootData() -> Data? {
+        cachedData() ?? bundledData()
+    }
+
+    private static var cacheURL: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("content-cache.json")
+    }
+
+    private static func cachedData() -> Data? {
+        guard let url = cacheURL else { return nil }
+        return try? Data(contentsOf: url)
+    }
+
+    /// Keeps the latest backend catalogue for the next launch.
+    static func storeCache(_ data: Data) {
+        guard let url = cacheURL else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: url, options: .atomic)
     }
 
     /// Raw bundled payload, kept around so a background refresh can tell
@@ -43,6 +72,7 @@ enum ContentService {
             return nil
         }
         guard let catalog = try? JSONDecoder().decode(ContentCatalog.self, from: data) else { return nil }
+        storeCache(data)
         print("[ContentService] Catalogue chargé depuis le backend")
         return (catalog, data)
     }

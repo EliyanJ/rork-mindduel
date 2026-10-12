@@ -86,7 +86,7 @@ struct CustomPartySetupView: View {
             counterRow(title: "Alliés (en plus de toi)", value: $allies, range: 0...9)
             counterRow(title: "Adversaires", value: $opponents, range: 1...19)
 
-            Text("Une fois créée, partage le code avec tes amis pour qu'ils te rejoignent. Les places encore vides sont comblées par des bots quand tu démarres.")
+            Text("Une fois créée, partage le code avec tes amis pour qu'ils te rejoignent. Les places encore libres sont complétées quand tu démarres.")
                 .font(.system(.caption, design: .rounded, weight: .semibold))
                 .foregroundStyle(Theme.inkMuted)
                 .multilineTextAlignment(.center)

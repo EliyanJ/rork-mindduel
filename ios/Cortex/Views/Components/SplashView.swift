@@ -3,6 +3,10 @@ import SwiftUI
 /// Branded launch screen shown for a couple of seconds before the app
 /// reveals itself — the logo settles in, holds, then flies off screen.
 struct SplashView: View {
+    /// Polled once the logo has settled: the splash holds (at most ~1.5 s
+    /// more) until the fresh path is ready, so the app never flashes a stale
+    /// path for a split second.
+    var isReady: () -> Bool = { true }
     let onFinished: () -> Void
 
     @State private var logoScale: CGFloat = 0.8
@@ -51,6 +55,11 @@ struct SplashView: View {
                 underlineWidth = 46
             }
             try? await Task.sleep(for: .seconds(1.05))
+            var waited = 0
+            while !isReady() && waited < 15 {
+                try? await Task.sleep(for: .milliseconds(100))
+                waited += 1
+            }
             withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                 isExiting = true
                 logoScale = 1.12

@@ -4,7 +4,7 @@
 // settles ELO via the Hub DO when the match ends.
 
 import { DurableObject } from "cloudflare:workers";
-import { flagAnswer, verifyAnswer, type GameQuestion } from "./game-security";
+import { flagAnswer, standInLevel, verifyAnswer, type GameQuestion } from "./game-security";
 import { isLegacyExpired, legacyAnswer, LEGACY_DEADLINE_MS } from "./security-rollout";
 
 type Env = { DO: Fetcher & { setAlarm(className: string, id: string, time: number): Promise<void> } };
@@ -16,6 +16,8 @@ type PlayerInfo = {
   elo: number;
   /** Server-simulated opponent (queue filler). Never sent to clients. */
   isBot?: boolean;
+  /** Server-only ladder level the simulated opponent plays at. */
+  skill?: number;
 };
 
 type RoundAnswer = {
@@ -43,6 +45,8 @@ type MatchState = {
 type Attachment = { userId: string };
 
 const REVEAL_MS = 2_600;
+/** Every 2 questions the app shows the ranking page: the next round waits for it. */
+const LEADERBOARD_PAUSE_MS = 16_400;
 const COUNTDOWN_MS = 3_200;
 const GRACE_MS = 1_200;
 /** The app hides the choices for this long at the start of every round. */
@@ -129,7 +133,7 @@ export class MatchRoom extends DurableObject<Env> {
       if (s.phase === "playing") {
         if (s.round < 0) this.armTimer(COUNTDOWN_MS, () => this.startRound(0));
         else this.armTimer(Math.max(0, (s.roundStartedAt ?? Date.now()) + s.roundDuration * 1000 + GRACE_MS - Date.now()), () => this.closeRound(s.round));
-      } else if (s.phase === "reveal") this.armTimer(REVEAL_MS, () => this.startRound(s.round + 1));
+      } else if (s.phase === "reveal") this.armTimer(REVEAL_MS, () => { s.phase = "playing"; this.startRound(s.round + 1); });
     }
     return this.state;
   }
@@ -203,9 +207,12 @@ export class MatchRoom extends DurableObject<Env> {
       if (Math.random() < 0.04) continue; // occasionally runs out of time
       const human = state.players.find((p) => !p.isBot);
       const lead = (state.scores[bot.id] ?? 0) - (human ? state.scores[human.id] ?? 0 : 0);
-      const rubberBand = lead > 400 ? -0.12 : lead < -400 ? 0.06 : 0;
-      const successProb = clamp(0.42 + (bot.elo - 1000) / 1500 + rubberBand, 0.3, 0.9);
-      const speed = clamp(0.6 - (bot.elo - 1000) / 2500 + (Math.random() - 0.5) * 0.45, 0.06, 0.95);
+      const rubberBand = lead > 400 ? -0.1 : lead < -400 ? 0.05 : 0;
+      const level = bot.skill !== undefined
+        ? standInLevel(bot.skill)
+        : { accuracy: 0.42 + (bot.elo - 1000) / 1500, speed: 0.6 - (bot.elo - 1000) / 2500 };
+      const successProb = clamp(level.accuracy + rubberBand, 0.2, 0.97);
+      const speed = clamp(level.speed + (Math.random() - 0.5) * 0.4, 0.04, 0.95);
       const window = Math.max(1_000, durationMs - CLIENT_READING_MS - 400);
       const answerAt = CLIENT_READING_MS + 500 + speed * window;
       const question = state.questions?.[index];
@@ -325,9 +332,11 @@ export class MatchRoom extends DurableObject<Env> {
     state.phase = "reveal";
     this.persist();
 
-    this.broadcast({ type: "reveal", index, answers: roundAnswers, scores: state.scores });
+    const isLast = index + 1 >= state.questionCount;
+    const pauseMs = (index + 1) % 2 === 0 && !isLast ? LEADERBOARD_PAUSE_MS : REVEAL_MS;
+    this.broadcast({ type: "reveal", index, answers: roundAnswers, scores: state.scores, pauseMs });
 
-    this.armTimer(REVEAL_MS, () => {
+    this.armTimer(pauseMs, () => {
       const s = this.state;
       if (!s || s.phase === "finished") return;
       s.phase = "playing";

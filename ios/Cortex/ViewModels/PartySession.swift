@@ -106,7 +106,12 @@ final class PartySession {
 
     static let readingBeat: Double = 8
 
+    /// Seconds left to answer once the choices are visible.
+    var answerWindow: Double { max(1, roundDuration - Self.readingBeat) }
+
     private var previousBoardRanks: [String: Int] = [:]
+    private var previousBoardScores: [String: Int] = [:]
+    private var leaderboardTask: Task<Void, Never>?
     private var scoresAtRoundStart: [String: Int] = [:]
     private var socket: URLSessionWebSocketTask?
     private var queueTask: Task<Void, Never>?
@@ -174,6 +179,7 @@ final class PartySession {
         timerTask?.cancel()
         surgeTask?.cancel()
         voteProgressTask?.cancel()
+        leaderboardTask?.cancel()
         SoundManager.shared.stopAmbience()
         let closingSocket = socket
         socket = nil
@@ -491,7 +497,8 @@ final class PartySession {
             wasFastestCorrect = false
         }
 
-        updateLeaderboard(revealIndex: index)
+        let pauseSeconds = (raw["pauseMs"] as? Double).map { $0 / 1000 }
+        updateLeaderboard(revealIndex: index, pauseSeconds: pauseSeconds)
         phase = .reveal
     }
 
@@ -536,7 +543,7 @@ final class PartySession {
 
     /// Recomputes the top 5 every 2 questions, and fires the "surge" callout
     /// when someone outside the top 5 just posted the biggest gain this round.
-    private func updateLeaderboard(revealIndex: Int) {
+    private func updateLeaderboard(revealIndex: Int, pauseSeconds: Double?) {
         guard let ticket else { return }
         let ranked = ticket.players
             .map { player -> BoardEntry in
@@ -569,23 +576,44 @@ final class PartySession {
             }
         }
 
-        if (revealIndex + 1) % 2 == 0 {
-            let newTop = Array(ranked.prefix(5))
-            leaderboardEntries = newTop.map {
-                QuizLeaderboardEntry(id: $0.id, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: $0.isYou, previousRank: previousBoardRanks[$0.id])
-            }
-            for (index, entry) in newTop.enumerated() {
-                previousBoardRanks[entry.id] = index + 1
-            }
-            topBoard = newTop
+        // The server pauses the game while the ranking page is up (`pauseMs`).
+        // Older servers don't: the page then keeps its former, shorter length.
+        let isRankingRound = (revealIndex + 1) % 2 == 0 && revealIndex + 1 < totalQuestions
+        guard isRankingRound else { return }
+        let newTop = Array(ranked.prefix(5))
+        // Small rooms list everyone; big ones the top 5 plus the player's own
+        // card, so they can always watch it climb.
+        var shown = ranked.count <= 10 ? ranked : newTop
+        if let mine = ranked.first(where: \.isYou), !shown.contains(where: \.isYou) {
+            shown.append(mine)
+        }
+        let overallRank = Dictionary(uniqueKeysWithValues: ranked.enumerated().map { ($0.element.id, $0.offset + 1) })
+        leaderboardEntries = shown.map {
+            QuizLeaderboardEntry(
+                id: $0.id, name: $0.name, emoji: $0.emoji, score: $0.score, isYou: $0.isYou,
+                previousRank: previousBoardRanks[$0.id],
+                previousScore: previousBoardScores[$0.id] ?? 0,
+                rank: overallRank[$0.id]
+            )
+        }
+        for (index, entry) in ranked.enumerated() {
+            previousBoardRanks[entry.id] = index + 1
+            previousBoardScores[entry.id] = entry.score
+        }
+        topBoard = newTop
+        let pause = pauseSeconds ?? 9.3
+        let visible = max(4, pause - 2.4)
+        leaderboardTask?.cancel()
+        leaderboardTask = Task { [weak self] in
+            // Let the answer reveal breathe before the ranking page slides in.
+            try? await Task.sleep(for: .seconds(1.8))
+            guard let self, !Task.isCancelled, self.phase == .reveal else { return }
             SoundManager.shared.startLeaderboardMusic()
-            withAnimation(.spring(duration: 0.7)) { showLeaderboard = true }
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(7.5))
-                guard let self, self.showLeaderboard else { return }
-                withAnimation(.spring(duration: 0.5)) { self.showLeaderboard = false }
-                SoundManager.shared.stopLeaderboardMusic()
-            }
+            withAnimation(.spring(duration: 0.7)) { self.showLeaderboard = true }
+            try? await Task.sleep(for: .seconds(visible))
+            guard !Task.isCancelled, self.showLeaderboard else { return }
+            withAnimation(.spring(duration: 0.5)) { self.showLeaderboard = false }
+            SoundManager.shared.stopLeaderboardMusic()
         }
     }
 
