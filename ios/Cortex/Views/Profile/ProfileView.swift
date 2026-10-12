@@ -23,6 +23,7 @@ struct ProfileView: View {
                             signedOutCard
                         }
                         recapCard
+                        BadgesSection()
                         StreakCalendarView(
                             history: model.store.streakHistory(),
                             currentStreak: model.store.currentStreak,

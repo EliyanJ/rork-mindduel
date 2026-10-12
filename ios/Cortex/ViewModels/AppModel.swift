@@ -31,6 +31,7 @@ struct PathLesson: Identifiable, Hashable {
 final class AppModel {
     private(set) var catalog: ContentCatalog
     let store: ProgressStore
+    let badges: BadgeStore
     /// Published ordering of disciplines / chapters / rings.
     private(set) var layout: PathLayout
     /// Disciplines in path order.
@@ -55,10 +56,51 @@ final class AppModel {
         self.catalog = catalog
         self.layout = layout
         self.store = ProgressStore()
+        self.badges = BadgeStore()
         self.bundledData = ContentService.bundledData()
         self.orderedDisciplines = []
         self.ringsByDiscipline = [:]
         rebuild(catalog: catalog, layout: layout)
+        // Progress made before badges existed is credited quietly.
+        badges.award(qualifiedBadges())
+    }
+
+    // MARK: - Badges
+
+    /// Badges whose artwork exists, in collection order.
+    var visibleBadges: [Badge] {
+        Badge.all.filter(\.hasArtwork)
+    }
+
+    /// Cleared vs. required rings toward a badge.
+    func badgeProgress(_ badge: Badge) -> (done: Int, required: Int) {
+        switch badge.requirement {
+        case .theme(let disciplineId, let tier):
+            let progress = themeRingProgress(disciplineId: disciplineId)
+            let required = tier.requiredRings(total: progress.total)
+            return (min(progress.done, required), required == .max ? 0 : required)
+        }
+    }
+
+    func themeName(for badge: Badge) -> String {
+        switch badge.requirement {
+        case .theme(let disciplineId, _):
+            return discipline(withId: disciplineId)?.name ?? "ce thème"
+        }
+    }
+
+    /// Visible badges whose condition is currently met.
+    private func qualifiedBadges() -> [Badge] {
+        visibleBadges.filter { badge in
+            let progress = badgeProgress(badge)
+            return progress.required > 0 && progress.done >= progress.required
+        }
+    }
+
+    /// Credits any badge just earned and returns the new ones (for the
+    /// celebration screen), rarest last.
+    func awardNewBadges() -> [Badge] {
+        badges.award(qualifiedBadges()).sorted { $0.rarity < $1.rarity }
     }
 
     /// Pulls the latest catalogue and published path layout from the backend,

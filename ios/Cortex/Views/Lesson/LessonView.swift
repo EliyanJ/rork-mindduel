@@ -183,6 +183,7 @@ struct LessonView: View {
         case rewards
         case streak
         case unlock(UnlockCelebrationView.Kind)
+        case badge(Badge)
     }
 
     @ViewBuilder
@@ -204,6 +205,13 @@ struct LessonView: View {
             )
         case .unlock(let kind):
             UnlockCelebrationView(kind: kind, onClaim: advancePostLesson)
+        case .badge(let badge):
+            BadgeUnlockView(
+                badge: badge,
+                condition: badge.conditionText(themeName: model.themeName(for: badge)),
+                onContinue: advancePostLesson
+            )
+            .id(badge.id)
         }
     }
 
@@ -227,6 +235,7 @@ struct LessonView: View {
         if let snapshot = launch.unlockSnapshot, let kind = snapshot.resolveUnlockKind(model: model) {
             queue.append(.unlock(kind))
         }
+        queue.append(contentsOf: model.awardNewBadges().map { .badge($0) })
         postScreenQueue = queue
     }
 
