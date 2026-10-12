@@ -119,7 +119,13 @@ struct OnboardingView: View {
                         onFinish: goNext
                     )
                 case .offer:
-                    PremiumOfferView(source: "onboarding", closeTitle: "Plus tard", onClose: goNext)
+                    PremiumOfferView(
+                        source: "onboarding",
+                        closeTitle: "Plus tard",
+                        planTopics: model.catalog.disciplines.filter { selectedTopicIds.contains($0.id) },
+                        dailyGoal: dailyGoal,
+                        onClose: goNext
+                    )
                 case .account:
                     OnboardingAccountStep(dailyGoal: dailyGoal, onFinished: finish)
                 }
@@ -203,10 +209,17 @@ struct OnboardingView: View {
         case .diagnosticPropose, .diagnosticQuiz, .diagnosticResult:
             return false
         case .offer:
-            return Monetization.isEnabled && !storeViewModel.isPremium
+            return isOfferShown
+        case .plan:
+            // The offer screen now carries the personalised plan card.
+            return !isOfferShown
         default:
             return true
         }
+    }
+
+    private var isOfferShown: Bool {
+        Monetization.isEnabled && !storeViewModel.isPremium
     }
 
     private func goBack() {
