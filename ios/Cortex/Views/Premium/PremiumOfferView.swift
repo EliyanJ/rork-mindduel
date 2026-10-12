@@ -49,6 +49,7 @@ struct PremiumOfferView: View {
                                 planRow(package)
                             }
                         }
+                        comparisonTable
                         if let selected, let trial = store.freeTrial(for: selected) {
                             timeline(selected, trial: trial)
                         }
@@ -135,7 +136,7 @@ struct PremiumOfferView: View {
             Image("MascotTrophy")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 120, height: 120)
+                .frame(width: 100, height: 100)
                 .offset(y: isMascotUp ? -5 : 3)
                 .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: isMascotUp)
                 .onAppear { isMascotUp = true }
@@ -224,6 +225,188 @@ struct PremiumOfferView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    // MARK: - Comparison table
+
+    private enum CompareCell {
+        case check, cross, unlimited
+        case text(String)
+    }
+
+    private struct CompareColumn: Identifiable {
+        let id: String
+        let title: String
+        let package: Package?
+        let cells: [CompareCell]
+    }
+
+    private static let compareRows: [String] = [
+        "Leçons par jour",
+        "Cœurs",
+        "Choix des thèmes",
+        "Duels",
+        "Parties classées",
+        "Tests de passage",
+        "Essai gratuit",
+        "Engagement",
+        "Prix par mois",
+        "Économie"
+    ]
+
+    private static let rowHeight: CGFloat = 44
+
+    private var compareColumns: [CompareColumn] {
+        var columns: [CompareColumn] = [
+            CompareColumn(
+                id: "free",
+                title: "Gratuit",
+                package: nil,
+                cells: [.text("2"), .text("3"), .cross, .text("3 éclairs"), .text("1 / jour"), .text("Vidéo"), .cross, .text("—"), .text("0 €"), .text("—")]
+            )
+        ]
+        if let monthly = store.monthlyPackage {
+            columns.append(CompareColumn(
+                id: monthly.identifier,
+                title: "Mensuel",
+                package: monthly,
+                cells: premiumCells(monthly, commitment: "Aucun", savings: nil)
+            ))
+        }
+        if let annual = store.annualPackage {
+            columns.append(CompareColumn(
+                id: annual.identifier,
+                title: "Annuel",
+                package: annual,
+                cells: premiumCells(annual, commitment: "1 an", savings: store.annualSavingsPercent)
+            ))
+        }
+        return columns
+    }
+
+    private func premiumCells(_ package: Package, commitment: String, savings: Int?) -> [CompareCell] {
+        let product = package.storeProduct
+        let isAnnual = package.identifier == store.annualPackage?.identifier
+        let monthly = isAnnual ? (product.localizedPricePerMonth ?? product.localizedPriceString) : product.localizedPriceString
+        let trial: CompareCell = store.freeTrial(for: package).map { .text(PaywallView.durationText($0.subscriptionPeriod)) } ?? .cross
+        return [
+            .unlimited, .unlimited, .check, .unlimited, .unlimited, .check,
+            trial,
+            .text(commitment),
+            .text(monthly),
+            savings.map { .text("−\($0) %") } ?? .text("—")
+        ]
+    }
+
+    private var comparisonTable: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("COMPARE LES FORMULES")
+                .font(.system(.caption, design: .rounded, weight: .black))
+                .tracking(1)
+                .foregroundStyle(Theme.inkMuted)
+            HStack(alignment: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Color.clear.frame(height: 52)
+                    ForEach(Array(Self.compareRows.enumerated()), id: \.offset) { index, row in
+                        Text(row)
+                            .font(.system(.footnote, design: .rounded, weight: .heavy))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, minHeight: Self.rowHeight, maxHeight: Self.rowHeight, alignment: .leading)
+                            .overlay(alignment: .top) {
+                                if index > 0 { Rectangle().fill(Theme.line.opacity(0.6)).frame(height: 1) }
+                            }
+                    }
+                }
+                .padding(.leading, 14)
+                ForEach(compareColumns) { column in
+                    compareColumnView(column)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.trailing, 6)
+            .background(RoundedRectangle(cornerRadius: 20).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 1.5))
+        }
+    }
+
+    private func compareColumnView(_ column: CompareColumn) -> some View {
+        let isSelected = column.package != nil && column.id == selected?.identifier
+        let isAnnual = column.package?.identifier == store.annualPackage?.identifier
+        return Button {
+            guard let package = column.package else { return }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                selectedId = package.identifier
+            }
+        } label: {
+            VStack(spacing: 0) {
+                VStack(spacing: 3) {
+                    if isAnnual {
+                        Text("TOP")
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .foregroundStyle(isSelected ? Theme.primary : .white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(isSelected ? Color.white : Theme.success))
+                    }
+                    Text(column.title)
+                        .font(.system(size: 13, weight: .black, design: .rounded))
+                        .foregroundStyle(isSelected ? .white : (column.package == nil ? Theme.inkMuted : Theme.ink))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(
+                    UnevenRoundedRectangle(topLeadingRadius: 14, topTrailingRadius: 14)
+                        .fill(isSelected ? Theme.primary : .clear)
+                )
+                ForEach(Array(column.cells.enumerated()), id: \.offset) { _, cell in
+                    cellView(cell, isPremium: column.package != nil, isSelected: isSelected)
+                        .frame(height: Self.rowHeight)
+                }
+            }
+            .frame(width: 70)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isSelected ? Theme.primary.opacity(0.1) : .clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isSelected ? Theme.primary : .clear, lineWidth: 2.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(column.package == nil)
+        .accessibilityLabel(column.title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private func cellView(_ cell: CompareCell, isPremium: Bool, isSelected: Bool) -> some View {
+        switch cell {
+        case .check:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Theme.success)
+        case .cross:
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(Theme.inkMuted.opacity(0.6))
+        case .unlimited:
+            Image(systemName: "infinity")
+                .font(.system(size: 18, weight: .black))
+                .foregroundStyle(isSelected ? Theme.primary : Theme.success)
+        case .text(let value):
+            Text(value)
+                .font(.system(size: 13, weight: isPremium ? .black : .bold, design: .rounded))
+                .foregroundStyle(isPremium ? (isSelected ? Theme.primary : Theme.ink) : Theme.inkMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .monospacedDigit()
+                .padding(.horizontal, 4)
+        }
     }
 
     private func timeline(_ package: Package, trial: StoreProductDiscount) -> some View {
