@@ -135,6 +135,15 @@ final class AppModel {
     /// Set from a sheet or screen to switch the main tab (e.g. "Voir mes missions").
     var requestedTab: AppTab?
 
+    /// Set when the profile should open scrolled to the streak calendar.
+    var isStreakCalendarRequested: Bool = false
+
+    /// Opens the profile tab directly on the streak calendar.
+    func openStreakCalendar() {
+        isStreakCalendarRequested = true
+        requestedTab = .plus
+    }
+
     /// Switches to the Missions tab once the caller's own sheet has closed.
     func openMissions() {
         Task { @MainActor in

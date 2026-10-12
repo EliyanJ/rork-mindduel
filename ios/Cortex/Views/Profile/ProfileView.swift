@@ -15,17 +15,34 @@ struct ProfileView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            ScrollView {
-                VStack(spacing: 20) {
-                    friendsRow
-                    if !online.isSignedIn {
-                        signedOutCard
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 20) {
+                        friendsRow
+                        if !online.isSignedIn {
+                            signedOutCard
+                        }
+                        recapCard
+                        StreakCalendarView(
+                            history: model.store.streakHistory(),
+                            currentStreak: model.store.currentStreak,
+                            freezes: model.store.streakFreezes
+                        )
+                        .id(Self.streakAnchor)
                     }
-                    recapCard
-                    streakCard
+                    .padding(16)
+                    .padding(.bottom, 32)
                 }
-                .padding(16)
-                .padding(.bottom, 32)
+                .onChange(of: model.isStreakCalendarRequested, initial: true) { _, isRequested in
+                    guard isRequested else { return }
+                    model.isStreakCalendarRequested = false
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(200))
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                            proxy.scrollTo(Self.streakAnchor, anchor: .top)
+                        }
+                    }
+                }
             }
         }
         .background(Theme.background)
@@ -284,59 +301,5 @@ struct ProfileView: View {
 
     // MARK: - Streak
 
-    private var streakCard: some View {
-        let streak = model.store.currentStreak
-        return VStack(spacing: 16) {
-            HStack(spacing: 14) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 38, weight: .bold))
-                    .foregroundStyle(streak > 0 ? Theme.primary : Theme.inkMuted)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(streak) jour\(streak > 1 ? "s" : "") de suite")
-                        .font(.system(.title3, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.ink)
-                    Text(streak > 0 ? "Ne casse pas ta série !" : "Termine une leçon pour allumer la flamme")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(Theme.inkMuted)
-                }
-                Spacer()
-            }
-            weekRow
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 22).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.line, lineWidth: 1.5))
-    }
-
-    private var weekRow: some View {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        // Today on the left, past days extending to the right so the streak
-        // visually grows from left to right as the user keeps it alive.
-        let days: [Date] = (0..<7).compactMap { offset in
-            calendar.date(byAdding: .day, value: -offset, to: today)
-        }
-        return HStack(spacing: 8) {
-            ForEach(days, id: \.self) { day in
-                let isActive = model.store.progress.activeDays.contains(day)
-                VStack(spacing: 5) {
-                    Text(dayLetter(day))
-                        .font(.system(.caption2, design: .rounded, weight: .heavy))
-                        .foregroundStyle(Theme.inkMuted)
-                    Image(systemName: isActive ? "flame.fill" : "circle")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(isActive ? Theme.primary : Theme.line)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
-    private func dayLetter(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "fr_FR")
-        formatter.dateFormat = "EEEEE"
-        return formatter.string(from: date).uppercased()
-    }
+    private static let streakAnchor = "streakCalendar"
 }

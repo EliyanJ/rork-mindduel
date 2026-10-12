@@ -1,8 +1,17 @@
 import SwiftUI
 
-/// "Boutique": everything diamonds can buy, opened from the diamond counter.
+/// Shop sections the header counters can jump straight to.
+enum ShopSection: String, Hashable {
+    case hearts
+    case lessonBolts
+}
+
+/// "Boutique": everything diamonds can buy, opened from the diamond counter
+/// (or from the bolts / hearts counters, scrolled to their section).
 struct ShopView: View {
     let progressStore: ProgressStore
+    /// Section to scroll to when the shop opens; nil shows the top.
+    var initialSection: ShopSection? = nil
     /// Called after the shop closes itself to go to the Missions tab.
     let onOpenMissions: () -> Void
 
@@ -12,26 +21,43 @@ struct ShopView: View {
     @State private var isWatchingAd: Bool = false
     @State private var toast: String?
     @State private var toastTask: Task<Void, Never>?
+    @State private var highlighted: ShopSection?
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    balanceHeader
-                    section("SÉRIE") { streakRows }
-                    section("CŒURS") { heartRows }
-                    section("LEÇONS") { lessonRow }
-                    section("GAGNER DES DIAMANTS") { earnRows }
-                    Label("Les éclairs de duel se rechargent uniquement avec une vidéo, depuis l'onglet Duel.", systemImage: "info.circle")
-                        .font(.system(.footnote, design: .rounded, weight: .semibold))
-                        .foregroundStyle(Theme.inkMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 26) {
+                        balanceHeader
+                        section("SÉRIE") { streakRows }
+                        section("CŒURS", id: .hearts) {
+                            heartsExplainer
+                        } content: { heartRows }
+                        section("ÉCLAIRS DE LEÇON", id: .lessonBolts) {
+                            boltsExplainer
+                        } content: { lessonRow }
+                        section("GAGNER DES DIAMANTS") { earnRows }
+                        Label("Les éclairs de duel se rechargent uniquement avec une vidéo, depuis l'onglet Duel.", systemImage: "info.circle")
+                            .font(.system(.footnote, design: .rounded, weight: .semibold))
+                            .foregroundStyle(Theme.inkMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 32)
+                .scrollIndicators(.hidden)
+                .task {
+                    guard let initialSection else { return }
+                    try? await Task.sleep(for: .milliseconds(250))
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                        proxy.scrollTo(initialSection, anchor: .top)
+                    }
+                    highlighted = initialSection
+                    try? await Task.sleep(for: .seconds(1.6))
+                    withAnimation(.easeOut(duration: 0.4)) { highlighted = nil }
+                }
             }
-            .scrollIndicators(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle("Boutique")
             .navigationBarTitleDisplayMode(.inline)
@@ -122,17 +148,66 @@ struct ShopView: View {
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        section(title, id: nil, header: { EmptyView() }, content: content)
+    }
+
+    /// A titled group of rows, optionally preceded by an explainer and
+    /// tagged with an id so the shop can open scrolled to it.
+    private func section<Header: View, Content: View>(
+        _ title: String,
+        id: ShopSection?,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let isHighlighted = id != nil && highlighted == id
+        return VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.system(.footnote, design: .rounded, weight: .heavy))
                 .tracking(0.8)
                 .foregroundStyle(Theme.inkMuted)
+            header()
             VStack(spacing: 0) {
                 content()
             }
             .background(RoundedRectangle(cornerRadius: 20).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.line, lineWidth: 2))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(isHighlighted ? Theme.primary : Theme.line, lineWidth: isHighlighted ? 3 : 2)
+            )
+            .scaleEffect(isHighlighted ? 1.015 : 1)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isHighlighted)
         }
+        .id(id.map { AnyHashable($0) } ?? AnyHashable(title))
+    }
+
+    // MARK: - Explainers
+
+    private var heartsExplainer: some View {
+        ResourceExplainer(
+            icon: "heart.fill",
+            color: Theme.danger,
+            title: store.isPremium ? "Cœurs illimités avec Premium" : "\(ProgressStore.energyMax) cœurs par jour",
+            lines: [
+                .init(icon: "xmark.circle.fill", text: "Chaque mauvaise réponse en leçon te coûte 1 cœur."),
+                .init(icon: "hand.raised.fill", text: "À 0 cœur, tu ne peux plus commencer de leçon jusqu'à la recharge."),
+                .init(icon: "moon.stars.fill", text: "Tous tes cœurs reviennent à minuit."),
+                .init(icon: "arrow.clockwise.circle.fill", text: "Recharge plus tôt : 1 cœur pour \(ProgressStore.heartCost) 💎, le plein pour \(ProgressStore.energyRefillCost) 💎, +1 cœur par vidéo ou avec la mission « Gagne 1 duel ».")
+            ]
+        )
+    }
+
+    private var boltsExplainer: some View {
+        ResourceExplainer(
+            icon: "bolt.fill",
+            color: Theme.lessonBolt,
+            title: store.isPremium ? "Leçons illimitées avec Premium" : "\(ProgressStore.freeLessonDailyLimit) éclairs de leçon par jour",
+            lines: [
+                .init(icon: "book.fill", text: "Chaque leçon terminée utilise 1 éclair."),
+                .init(icon: "hand.raised.fill", text: "Sans éclair, tu ne peux plus lancer de nouvelle leçon aujourd'hui."),
+                .init(icon: "moon.stars.fill", text: "Ils se rechargent à minuit."),
+                .init(icon: "arrow.clockwise.circle.fill", text: "Recharge plus tôt : +1 éclair pour \(ProgressStore.extraLessonCost) 💎 (\(ProgressStore.extraLessonDailyMax) max par jour) ou avec la mission « Termine 2 épreuves ».")
+            ]
+        )
     }
 
     // MARK: - Rows
@@ -187,6 +262,19 @@ struct ShopView: View {
             action: premiumStatus ?? .price(ProgressStore.energyRefillCost)
         ) {
             buy(cost: ProgressStore.energyRefillCost, done: "Cœurs rechargés ❤️") { progressStore.refillEnergyWithRubis() }
+        }
+        if !store.isPremium {
+            divider
+            let canWatch = progressStore.canWatchRewardedAd()
+            ShopRow(
+                icon: "play.rectangle.fill",
+                color: Theme.danger,
+                title: "Regarder une vidéo",
+                subtitle: "+1 cœur, gratuit",
+                action: isFull ? .status("Déjà plein") : (isWatchingAd ? .loading : (canWatch ? .label("Regarder") : .status("Demain")))
+            ) {
+                watchHeartAd()
+            }
         }
     }
 
@@ -260,6 +348,21 @@ struct ShopView: View {
         }
     }
 
+    private func watchHeartAd() {
+        guard !isWatchingAd else { return }
+        Haptics.medium()
+        isWatchingAd = true
+        AdsManager.shared.showRewarded(from: TopViewControllerFinder.topViewController()) { rewarded in
+            isWatchingAd = false
+            guard rewarded else { return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                progressStore.grantEnergyFromAd()
+            }
+            Haptics.success()
+            showToast("+1 cœur ❤️")
+        }
+    }
+
     private func watchAd() {
         guard !isWatchingAd else { return }
         Haptics.medium()
@@ -273,6 +376,52 @@ struct ShopView: View {
             Haptics.success()
             showToast("+\(ProgressStore.rewardedAdLivres) 💎")
         }
+    }
+}
+
+/// Short "how it works" card above a resource's rows.
+private struct ResourceExplainer: View {
+    struct Line: Hashable {
+        let icon: String
+        let text: String
+    }
+
+    let icon: String
+    let color: Color
+    let title: String
+    let lines: [Line]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(color))
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.system(.headline, design: .rounded, weight: .heavy))
+                    .foregroundStyle(Theme.ink)
+            }
+            ForEach(lines, id: \.self) { line in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: line.icon)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(color)
+                        .frame(width: 18)
+                        .accessibilityHidden(true)
+                    Text(line.text)
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                        .foregroundStyle(Theme.ink.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 18).fill(color.opacity(0.1)))
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -201,6 +201,7 @@ final class ProgressStore {
               nextStreakRepairDate(reference: reference) == nil,
               progress.livresBalance >= broken.cost else { return false }
         progress.livresBalance -= broken.cost
+        recordProtectedDays(reference: reference)
         progress.lastActiveDay = Self.startOfYesterday(reference)
         progress.lastStreakRepairAt = reference
         save()
@@ -236,10 +237,77 @@ final class ProgressStore {
         let missed = missedDays(reference: reference)
         guard missed > 0, progress.streak > 0, streakFreezes >= missed else { return 0 }
         progress.streakFreezes = streakFreezes - missed
+        recordProtectedDays(reference: reference)
         progress.lastActiveDay = Self.startOfYesterday(reference)
         save()
         Analytics.capture("streak_freeze_used", ["count": missed, "streak": progress.streak])
         return missed
+    }
+
+    /// Remembers the skipped days (from the day after the last active day up
+    /// to yesterday) that a protection or repair is about to cover.
+    private func recordProtectedDays(reference: Date) {
+        guard let last = progress.lastActiveDay else { return }
+        let calendar = Calendar.current
+        let yesterday = Self.startOfYesterday(reference)
+        var day = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last)) ?? yesterday
+        while day <= yesterday {
+            if !progress.protectedDays.contains(where: { calendar.isDate($0, inSameDayAs: day) }) {
+                progress.protectedDays.append(day)
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+    }
+
+    // MARK: - Streak history
+
+    /// Real activity history, one entry per day played, as recorded on this
+    /// device since the first lesson.
+    struct StreakHistory {
+        let activeDays: Set<DateComponents>
+        let protectedDays: Set<DateComponents>
+        let firstDay: Date?
+        let bestStreak: Int
+
+        func isActive(_ date: Date, calendar: Calendar = .current) -> Bool {
+            activeDays.contains(Self.key(date, calendar))
+        }
+
+        func isProtected(_ date: Date, calendar: Calendar = .current) -> Bool {
+            protectedDays.contains(Self.key(date, calendar))
+        }
+
+        static func key(_ date: Date, _ calendar: Calendar) -> DateComponents {
+            calendar.dateComponents([.year, .month, .day], from: date)
+        }
+    }
+
+    func streakHistory(calendar: Calendar = .current) -> StreakHistory {
+        let active = Set(progress.activeDays.map { StreakHistory.key($0, calendar) })
+        let protected = Set(progress.protectedDays.map { StreakHistory.key($0, calendar) })
+            .subtracting(active)
+        let allDays = (progress.activeDays + progress.protectedDays)
+            .map { calendar.startOfDay(for: $0) }
+        let sorted = Array(Set(allDays)).sorted()
+        var best = 0
+        var run = 0
+        var previous: Date?
+        for day in sorted {
+            if let previous, calendar.dateComponents([.day], from: previous, to: day).day == 1 {
+                run += 1
+            } else {
+                run = 1
+            }
+            best = max(best, run)
+            previous = day
+        }
+        return StreakHistory(
+            activeDays: active,
+            protectedDays: protected,
+            firstDay: progress.activeDays.min(),
+            bestStreak: max(best, currentStreak)
+        )
     }
 
     // MARK: - Daily rollover

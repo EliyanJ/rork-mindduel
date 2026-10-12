@@ -250,6 +250,9 @@ nonisolated struct UserProgress: Codable {
     var streakFreezes: Int
     /// Last time a broken streak was repaired with diamonds (1 per week).
     var lastStreakRepairAt: Date?
+    /// Days that kept the streak alive without being played (protection or
+    /// repair). Recorded from this version on; shown apart in the calendar.
+    var protectedDays: [Date]
 
     // MARK: - Multi-level progression (v2)
     /// Key: "disciplineId_chapterId_level" → ChapterProgress
@@ -280,6 +283,7 @@ nonisolated struct UserProgress: Codable {
         case xp, streak, lastActiveDay, activeDays, chapterRecords, reviewItems, elo, duelsPlayed, duelsWon
         case livresBalance, lastLivreAwardDay, energy, energyRegenAt
         case dailyUsage, duelPoints, streakFreezes, lastStreakRepairAt
+        case protectedDays
         case chapterProgress
     }
 
@@ -301,8 +305,10 @@ nonisolated struct UserProgress: Codable {
         duelPoints: Int,
         streakFreezes: Int,
         lastStreakRepairAt: Date?,
+        protectedDays: [Date] = [],
         chapterProgress: [String: ChapterProgress]
     ) {
+        self.protectedDays = protectedDays
         self.xp = xp
         self.streak = streak
         self.lastActiveDay = lastActiveDay
@@ -346,6 +352,7 @@ nonisolated struct UserProgress: Codable {
         duelPoints = try container.decodeIfPresent(Int.self, forKey: .duelPoints) ?? 3
         streakFreezes = try container.decodeIfPresent(Int.self, forKey: .streakFreezes) ?? 0
         lastStreakRepairAt = try container.decodeIfPresent(Date.self, forKey: .lastStreakRepairAt)
+        protectedDays = try container.decodeIfPresent([Date].self, forKey: .protectedDays) ?? []
         chapterProgress = try container.decodeIfPresent([String: ChapterProgress].self, forKey: .chapterProgress) ?? [:]
     }
 }

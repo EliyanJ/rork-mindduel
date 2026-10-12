@@ -7,7 +7,6 @@ struct HomeView: View {
     @State private var lockedRingPending: PathRing?
     @State private var cooldownRing: PathRing?
     @State private var isEnergyOutPresented = false
-    @State private var isBoltsSheetPresented = false
     @State private var isMenuPresented = false
     @State private var isPathScrolledToBottom = false
     @State private var factIntro: FactIntro?
@@ -17,7 +16,7 @@ struct HomeView: View {
     @State private var placementLesson: PathLesson?
     @State private var advanceChoiceLesson: PathLesson?
     @State private var isPaywallPresented = false
-    @State private var isShopPresented = false
+    @State private var shopLaunch: ShopLaunch?
 
     /// Lesson currently on display: the menu pick when it still exists,
     /// otherwise the current lesson of whichever path is active — a single
@@ -82,12 +81,6 @@ struct HomeView: View {
             )
             .presentationDetents([.height(340)])
         }
-        .sheet(isPresented: $isBoltsSheetPresented) {
-            UnlockWithLivresView(kind: .lesson, progressStore: model.store, onUnlocked: {}, onOpenMissions: {
-                isBoltsSheetPresented = false
-                model.openMissions()
-            })
-        }
         .sheet(isPresented: $isEnergyOutPresented) {
             EnergyRefillView(
                 progressStore: model.store,
@@ -101,8 +94,8 @@ struct HomeView: View {
             )
             .presentationDetents([.large])
         }
-        .sheet(isPresented: $isShopPresented) {
-            ShopView(progressStore: model.store) {
+        .sheet(item: $shopLaunch) { launch in
+            ShopView(progressStore: model.store, initialSection: launch.section) {
                 model.openMissions()
             }
         }
@@ -227,14 +220,14 @@ struct HomeView: View {
     // MARK: - Headers
 
     /// Duolingo-style top row: diamonds, lesson bolts, hearts and streak,
-    /// evenly spread. Bolts and hearts open their refill sheet when tapped;
-    /// Premium shows them as unlimited.
+    /// evenly spread. Diamonds open the shop, bolts and hearts open it on
+    /// their own section, the flame opens the streak calendar in the profile.
     private var statsHeader: some View {
         let isPremium = store.isPremium
         return HStack(spacing: 0) {
             Button {
                 Haptics.tap()
-                isShopPresented = true
+                shopLaunch = ShopLaunch(section: nil)
             } label: {
                 HeaderStat(icon: "diamond.fill", color: Theme.livres, value: "\(model.store.livresBalance)", isEmpty: model.store.livresBalance == 0, label: "Diamants")
             }
@@ -242,21 +235,30 @@ struct HomeView: View {
             .accessibilityHint("Ouvre la boutique")
             Button {
                 Haptics.tap()
-                if !isPremium { isBoltsSheetPresented = true }
+                shopLaunch = ShopLaunch(section: .lessonBolts)
             } label: {
                 let bolts = model.store.remainingFreeLessons()
                 HeaderStat(icon: "bolt.fill", color: Theme.lessonBolt, value: isPremium ? "∞" : "\(bolts)", isEmpty: !isPremium && bolts == 0, label: "Éclairs de leçon")
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Ouvre la boutique sur les éclairs")
             Button {
                 Haptics.tap()
-                if !isPremium { isEnergyOutPresented = true }
+                shopLaunch = ShopLaunch(section: .hearts)
             } label: {
                 let hearts = model.store.energy
                 HeaderStat(icon: "heart.fill", color: Theme.danger, value: isPremium ? "∞" : "\(hearts)", isEmpty: !isPremium && hearts == 0, label: "Cœurs")
             }
             .buttonStyle(.plain)
-            HeaderStat(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)", isEmpty: model.store.currentStreak == 0, label: "Série")
+            .accessibilityHint("Ouvre la boutique sur les cœurs")
+            Button {
+                Haptics.tap()
+                model.openStreakCalendar()
+            } label: {
+                HeaderStat(icon: "flame.fill", color: Theme.primary, value: "\(model.store.currentStreak)", isEmpty: model.store.currentStreak == 0, label: "Série")
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Ouvre le calendrier de ta série")
         }
         .tourAnchor(.stats)
         .padding(.horizontal, 24)
@@ -562,4 +564,10 @@ private struct HeaderStat: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label) : \(value)")
     }
+}
+
+/// Which shop section a header counter asked for.
+private struct ShopLaunch: Identifiable {
+    let section: ShopSection?
+    let id = UUID()
 }
