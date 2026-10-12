@@ -140,7 +140,12 @@ final class LessonSession {
                 disciplineId: current.disciplineId
             ))
         }
-        store.recordAnswer(questionId: question.id, disciplineId: current.disciplineId, correct: correct)
+        store.recordAnswer(
+            questionId: question.id,
+            disciplineId: current.disciplineId,
+            correct: correct,
+            responseTime: Date.now.timeIntervalSince(questionShownAt)
+        )
         AnswerTelemetry.shared.record(AnswerTelemetry.Event(
             questionId: question.id,
             correct: correct,
@@ -229,6 +234,9 @@ final class LessonSession {
             }
         }
         streakAfterCompletion = store.currentStreak
+        let hour = Calendar.current.component(.hour, from: .now)
+        if hour < 7 { store.setBadgeFlag(.earlyBird) }
+        if hour >= 23 { store.setBadgeFlag(.nightOwl) }
         earnedRewards = Self.lessonRewards(store: store, xp: xpEarned, ringDiamonds: ringDiamonds, isPerfect: correctCount == items.count, accuracy: accuracy)
         Analytics.capture("round_completed", [
             "discipline": disciplineId ?? "mixte",

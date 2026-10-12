@@ -466,7 +466,8 @@ final class PartySession {
         store.recordAnswer(
             questionId: question.id,
             disciplineId: questionDiscipline[question.id] ?? "",
-            correct: lastPlayerCorrect
+            correct: lastPlayerCorrect,
+            responseTime: playerAnswerTime
         )
         AnswerTelemetry.shared.record(AnswerTelemetry.Event(
             questionId: question.id,
@@ -643,6 +644,8 @@ final class PartySession {
         online.applyPartyResult(pointsDelta: pointsDelta, reputationDelta: reputationDelta)
         phase = .finished
         let won = mode.isTeam ? (winningTeam != nil && winningTeam == you?.team) : myRank <= 3
+        let isArenaWin = mode.isTeam ? won : myRank == 1
+        if isArenaWin, ticket.players.count >= 10 { store.setBadgeFlag(.arenaKing) }
         store.recordCasualDuel(won: won)
         if won {
             winRewards = store.grantDuelWin(xp: nil, rankPoints: mode.isCustom ? nil : pointsDelta)

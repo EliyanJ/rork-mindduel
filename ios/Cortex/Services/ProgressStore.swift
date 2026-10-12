@@ -720,6 +720,7 @@ final class ProgressStore {
         if kind == .recap {
             record.lockedUntil = score >= Self.ringMasteryScore ? nil : Self.startOfNextDay(after: reference)
         }
+        if score >= 1 { progress.perfectRings += 1 }
         progress.chapterRecords[ringId] = record
         save()
         return diamondsEarned
@@ -748,7 +749,11 @@ final class ProgressStore {
     /// Spaced repetition with ease factor (SM-2 inspired).
     /// Correct answers space out: 1 → 6 → interval × easeFactor, capped at 180 days.
     /// Wrong answers reset to due immediately with a lowered ease factor.
-    func recordAnswer(questionId: String, disciplineId: String, correct: Bool, date: Date = .now) {
+    func recordAnswer(questionId: String, disciplineId: String, correct: Bool, responseTime: Double? = nil, date: Date = .now) {
+        if correct {
+            progress.lifetimeCorrect += 1
+            if let responseTime, responseTime < Self.fastAnswerSeconds { progress.fastCorrect += 1 }
+        }
         var item = progress.reviewItems[questionId] ?? ReviewItem(
             questionId: questionId,
             disciplineId: disciplineId,
@@ -786,6 +791,20 @@ final class ProgressStore {
             item.dueDate = date
         }
         progress.reviewItems[questionId] = item
+        save()
+    }
+
+    /// Answers faster than this count toward the "Éclair" badge.
+    static let fastAnswerSeconds: Double = 2
+
+    func hasBadgeFlag(_ flag: BadgeFlag) -> Bool {
+        progress.badgeFlags.contains(flag.rawValue)
+    }
+
+    /// Records a one-off achievement (early lesson, win against a friend…).
+    func setBadgeFlag(_ flag: BadgeFlag) {
+        guard !hasBadgeFlag(flag) else { return }
+        progress.badgeFlags.append(flag.rawValue)
         save()
     }
 

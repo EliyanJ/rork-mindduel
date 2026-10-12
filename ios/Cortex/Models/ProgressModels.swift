@@ -258,6 +258,14 @@ nonisolated struct UserProgress: Codable {
     /// Key: "disciplineId_chapterId_level" → ChapterProgress
     var chapterProgress: [String: ChapterProgress]
 
+    // MARK: - Badge counters (lifetime, recorded from the badges release on)
+    var lifetimeCorrect: Int = 0
+    /// Correct answers given in under 2 seconds.
+    var fastCorrect: Int = 0
+    /// Rings finished without a single mistake.
+    var perfectRings: Int = 0
+    var badgeFlags: [String] = []
+
     static let initial = UserProgress(
         xp: 0,
         streak: 0,
@@ -285,6 +293,7 @@ nonisolated struct UserProgress: Codable {
         case dailyUsage, duelPoints, streakFreezes, lastStreakRepairAt
         case protectedDays
         case chapterProgress
+        case lifetimeCorrect, fastCorrect, perfectRings, badgeFlags
     }
 
     init(
@@ -354,5 +363,9 @@ nonisolated struct UserProgress: Codable {
         lastStreakRepairAt = try container.decodeIfPresent(Date.self, forKey: .lastStreakRepairAt)
         protectedDays = try container.decodeIfPresent([Date].self, forKey: .protectedDays) ?? []
         chapterProgress = try container.decodeIfPresent([String: ChapterProgress].self, forKey: .chapterProgress) ?? [:]
+        lifetimeCorrect = try container.decodeIfPresent(Int.self, forKey: .lifetimeCorrect) ?? 0
+        fastCorrect = try container.decodeIfPresent(Int.self, forKey: .fastCorrect) ?? 0
+        perfectRings = try container.decodeIfPresent(Int.self, forKey: .perfectRings) ?? 0
+        badgeFlags = try container.decodeIfPresent([String].self, forKey: .badgeFlags) ?? []
     }
 }

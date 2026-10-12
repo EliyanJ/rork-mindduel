@@ -48,6 +48,16 @@ struct ContentView: View {
         .onChange(of: store.isPremium, initial: true) { _, isPremium in
             model.store.hasUnlimitedDuels = isPremium
         }
+        // Duels and league climbs can earn badges outside a lesson: they are
+        // celebrated here once the match screen is closed.
+        .onChange(of: model.store.progress.duelsPlayed) { _, _ in
+            model.queueNewBadges()
+        }
+        .onChange(of: online.profile?.displayPoints, initial: true) { _, points in
+            guard let points, points >= RankLeague.maitre.range.lowerBound else { return }
+            model.store.setBadgeFlag(.masterLeague)
+            model.queueNewBadges()
+        }
         .onChange(of: online.auth.user?.id, initial: true) { _, userId in
             Task { await store.identify(userId: userId) }
         }
@@ -109,6 +119,21 @@ struct ContentView: View {
                 }
                 .transition(.opacity.combined(with: .scale(scale: 1.04)))
                 .zIndex(5)
+            }
+
+            if let badge = model.pendingBadgeCelebrations.first, !showSplash, onboardingStore.isCompleted {
+                BadgeUnlockView(
+                    badge: badge,
+                    condition: badge.conditionText(themeName: model.themeName(for: badge)),
+                    onContinue: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            _ = model.pendingBadgeCelebrations.removeFirst()
+                        }
+                    }
+                )
+                .id(badge.id)
+                .transition(.opacity.combined(with: .scale(scale: 1.04)))
+                .zIndex(7)
             }
 
             if showSplash {

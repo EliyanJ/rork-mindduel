@@ -220,7 +220,8 @@ final class DuelSession {
         store.recordAnswer(
             questionId: question.id,
             disciplineId: questionDiscipline[question.id] ?? "",
-            correct: playerCorrect
+            correct: playerCorrect,
+            responseTime: playerAnswerTime
         )
         AnswerTelemetry.shared.record(AnswerTelemetry.Event(
             questionId: question.id,

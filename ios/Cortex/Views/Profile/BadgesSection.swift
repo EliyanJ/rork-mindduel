@@ -84,9 +84,16 @@ struct BadgesSection: View {
                                             .overlay(Circle().stroke(Theme.card, lineWidth: 2))
                                     }
                                 }
+                            if !badge.hasNameInArt {
+                                Text(badge.name)
+                                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(model.badges.isEarned(badge) ? Theme.ink : Theme.inkMuted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                            }
                             if !model.badges.isEarned(badge) {
                                 let progress = model.badgeProgress(badge)
-                                Text("\(progress.done)/\(progress.required)")
+                                Text(badge.progressUnit == nil ? "À débloquer" : "\(progress.done)/\(progress.required)")
                                     .font(.system(size: 11, weight: .heavy, design: .rounded))
                                     .foregroundStyle(Theme.inkMuted)
                                     .monospacedDigit()
@@ -157,11 +164,11 @@ struct BadgeDetailSheet: View {
                 Label("Obtenu le \(date.formatted(.dateTime.day().month(.wide).year()))", systemImage: "checkmark.seal.fill")
                     .font(.system(.footnote, design: .rounded, weight: .heavy))
                     .foregroundStyle(Theme.success)
-            } else if progress.required > 0 {
+            } else if progress.required > 0, let unit = badge.progressUnit {
                 VStack(spacing: 6) {
                     ProgressView(value: Double(progress.done), total: Double(progress.required))
                         .tint(badge.rarity.color)
-                    Text("\(progress.done) / \(progress.required) ronds réussis")
+                    Text("\(progress.done) / \(progress.required) \(unit)")
                         .font(.system(.footnote, design: .rounded, weight: .heavy))
                         .foregroundStyle(Theme.inkMuted)
                         .monospacedDigit()

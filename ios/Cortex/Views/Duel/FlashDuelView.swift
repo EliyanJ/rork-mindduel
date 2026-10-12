@@ -283,7 +283,8 @@ private final class FlashSession {
         store.recordAnswer(
             questionId: question.id,
             disciplineId: questionDiscipline[question.id] ?? "",
-            correct: correct
+            correct: correct,
+            responseTime: elapsed
         )
         if correct { Haptics.success(); SoundManager.shared.playCorrect() } else { Haptics.error(); SoundManager.shared.playWrong() }
         settleRivals()

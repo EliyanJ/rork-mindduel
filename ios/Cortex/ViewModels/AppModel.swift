@@ -72,21 +72,67 @@ final class AppModel {
         Badge.all.filter(\.hasArtwork)
     }
 
-    /// Cleared vs. required rings toward a badge.
+    /// Badges earned outside a lesson (duels, leagues), waiting to be
+    /// celebrated by the root view.
+    var pendingBadgeCelebrations: [Badge] = []
+
+    /// Progress toward a badge, capped at what it requires.
     func badgeProgress(_ badge: Badge) -> (done: Int, required: Int) {
+        let progress = store.progress
+        func capped(_ done: Int, _ required: Int) -> (done: Int, required: Int) {
+            (min(done, required), required)
+        }
         switch badge.requirement {
         case .theme(let disciplineId, let tier):
-            let progress = themeRingProgress(disciplineId: disciplineId)
-            let required = tier.requiredRings(total: progress.total)
-            return (min(progress.done, required), required == .max ? 0 : required)
+            let rings = themeRingProgress(disciplineId: disciplineId)
+            let required = tier.requiredRings(total: rings.total)
+            return required == .max ? (0, 0) : capped(rings.done, required)
+        case .chaptersInThemes(let count):
+            return capped(themesWithAFinishedChapter(), count)
+        case .allThemes(let tier):
+            let reached = orderedDisciplines.filter { isThemeTierReached($0.id, tier) }.count
+            return capped(reached, max(orderedDisciplines.count, 1))
+        case .streak(let days):
+            return capped(store.streakHistory().bestStreak, days)
+        case .duelWins(let count):
+            return capped(progress.duelsWon, count)
+        case .perfectRings(let count):
+            return capped(progress.perfectRings, count)
+        case .correctAnswers(let count):
+            return capped(progress.lifetimeCorrect, count)
+        case .fastAnswers(let count):
+            return capped(progress.fastCorrect, count)
+        case .flag(let flag):
+            return (store.hasBadgeFlag(flag) ? 1 : 0, 1)
         }
     }
 
+    /// Theme name used in theme-tier condition lines.
     func themeName(for badge: Badge) -> String {
-        switch badge.requirement {
-        case .theme(let disciplineId, _):
-            return discipline(withId: disciplineId)?.name ?? "ce thème"
+        guard case .theme(let disciplineId, _) = badge.requirement else { return "" }
+        return discipline(withId: disciplineId)?.name ?? "ce thème"
+    }
+
+    private func isThemeTierReached(_ disciplineId: String, _ tier: BadgeTier) -> Bool {
+        let rings = themeRingProgress(disciplineId: disciplineId)
+        let required = tier.requiredRings(total: rings.total)
+        return required != .max && rings.done >= required
+    }
+
+    /// Themes in which at least one chapter has every ring cleared.
+    private func themesWithAFinishedChapter() -> Int {
+        let finished = lessons.filter { lesson in
+            !lesson.rings.isEmpty && lesson.rings.allSatisfy { store.isRingPassed($0.id) }
         }
+        return Set(finished.map(\.disciplineId)).count
+    }
+
+    /// Checks badges after a duel or a league change and queues the new ones
+    /// for the root celebration overlay.
+    func queueNewBadges() {
+        let fresh = awardNewBadges()
+        guard !fresh.isEmpty else { return }
+        pendingBadgeCelebrations.append(contentsOf: fresh)
     }
 
     /// Visible badges whose condition is currently met.

@@ -424,7 +424,8 @@ final class OnlineDuelSession {
         store.recordAnswer(
             questionId: question.id,
             disciplineId: questionDiscipline[question.id] ?? "",
-            correct: myCorrect
+            correct: myCorrect,
+            responseTime: playerAnswerTime
         )
         // The server is authoritative on correctness here, so the telemetry uses
         // its verdict rather than re-deriving it on the client.
@@ -515,6 +516,10 @@ final class OnlineDuelSession {
         }
         if won {
             winRewards = store.grantDuelWin(xp: max(5, playerScore / 10), rankPoints: isRanked ? eloChange : nil)
+            if online.friends.contains(where: { $0.id == opp.id }) { store.setBadgeFlag(.friendWin) }
+        }
+        if isRanked, let newElo, newElo >= RankLeague.maitre.range.lowerBound {
+            store.setBadgeFlag(.masterLeague)
         }
 
         phase = .finished
