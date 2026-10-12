@@ -71,7 +71,7 @@ struct NewsFeedView: View {
                 kind: .update,
                 date: Self.day(2026, 10, 8),
                 title: "Minduel Premium est là",
-                body: "Leçons illimitées, choix libre des thèmes, mode classé et duels sans limite. Essai gratuit de 7 jours sur l'offre annuelle.",
+                body: "Leçons illimitées, choix libre des thèmes, mode classé et duels sans limite. Essai gratuit de 7 jours, en annuel comme en mensuel.",
                 image: "MascotGift",
                 isSystemImage: false,
                 background: Theme.pastel(Theme.gold, strength: 0.7),
