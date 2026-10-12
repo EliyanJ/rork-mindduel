@@ -6,6 +6,27 @@ import SwiftUI
 nonisolated enum AvatarMode: String, Codable {
     case face
     case emoji
+    case illustration
+}
+
+/// Hand-drawn kawaii portraits bundled in the asset catalog
+/// (`AvatarKawaii01` … `AvatarKawaii15`).
+nonisolated struct AvatarIllustration: Identifiable, Hashable {
+    let id: String
+    let emoji: String
+
+    var imageName: String { id }
+
+    static let all: [AvatarIllustration] = [
+        ("01", "📕"), ("02", "🌼"), ("03", "🤓"), ("04", "📚"), ("05", "😉"),
+        ("06", "😜"), ("07", "🐱"), ("08", "🤔"), ("09", "🧕"), ("10", "🎧"),
+        ("11", "💜"), ("12", "😎"), ("13", "🥰"), ("14", "📖"), ("15", "⭐️")
+    ].map { AvatarIllustration(id: "AvatarKawaii\($0.0)", emoji: $0.1) }
+
+    static func named(_ id: String?) -> AvatarIllustration? {
+        guard let id else { return nil }
+        return all.first { $0.id == id }
+    }
 }
 
 nonisolated enum AvatarEyeStyle: String, Codable, CaseIterable, Identifiable {
@@ -56,6 +77,8 @@ nonisolated struct AvatarConfig: Codable, Equatable {
     var mouthStyle: AvatarMouthStyle
     var backgroundColorHex: String
     var emoji: String
+    /// Asset name of the chosen kawaii portrait when `mode == .illustration`.
+    var illustrationId: String?
 
     static let emojiChoices: [String] = [
         "🐙", "🦄", "🐼", "🦊", "🐸", "🐨", "🐯", "🦁",
@@ -78,6 +101,10 @@ nonisolated struct AvatarConfig: Codable, Equatable {
     /// A single emoji standing in for this avatar wherever only plain text
     /// can be shown (server profile field, opponent rosters, etc.).
     var representativeEmoji: String {
-        mode == .emoji ? emoji : "🙂"
+        switch mode {
+        case .emoji: return emoji
+        case .illustration: return AvatarIllustration.named(illustrationId)?.emoji ?? "🙂"
+        case .face: return "🙂"
+        }
     }
 }

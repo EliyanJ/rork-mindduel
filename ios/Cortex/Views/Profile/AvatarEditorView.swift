@@ -22,21 +22,28 @@ struct AvatarEditorView: View {
                     AvatarView(config: draft, size: 132)
                         .shadow(color: .black.opacity(0.08), radius: 14, y: 6)
                         .padding(.top, 12)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: draft)
 
                     Picker("Mode", selection: $draft.mode) {
+                        Text("Persos").tag(AvatarMode.illustration)
                         Text("Visage").tag(AvatarMode.face)
                         Text("Emoji").tag(AvatarMode.emoji)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal, 24)
 
-                    if draft.mode == .face {
+                    switch draft.mode {
+                    case .illustration:
+                        illustrationGrid
+                    case .face:
                         faceEditor
-                    } else {
+                    case .emoji:
                         emojiGrid
                     }
 
-                    backgroundPicker
+                    if draft.mode != .illustration {
+                        backgroundPicker
+                    }
                 }
                 .padding(.bottom, 32)
             }
@@ -100,6 +107,29 @@ struct AvatarEditorView: View {
             }
         }
         .padding(.horizontal, 24)
+    }
+
+    private var illustrationGrid: some View {
+        section("Choisis ton perso") {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+                ForEach(AvatarIllustration.all) { item in
+                    IllustrationTile(
+                        imageName: item.imageName,
+                        isSelected: draft.mode == .illustration && draft.illustrationId == item.id
+                    ) {
+                        Haptics.tap()
+                        draft.illustrationId = item.id
+                        draft.mode = .illustration
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .onAppear {
+            if draft.illustrationId == nil {
+                draft.illustrationId = AvatarIllustration.all.first?.id
+            }
+        }
     }
 
     private var emojiGrid: some View {
@@ -169,5 +199,45 @@ struct AvatarEditorView: View {
         case .shy: return "☺️"
         case .laugh: return "😂"
         }
+    }
+}
+
+/// One kawaii portrait in the picker grid: square art, orange ring and a
+/// check badge when chosen, with a small pop on selection.
+private struct IllustrationTile: View {
+    let imageName: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    Image(imageName)
+                        .resizable()
+                        .scaledToFill()
+                        .allowsHitTesting(false)
+                }
+                .clipShape(.rect(cornerRadius: 20))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(isSelected ? Theme.primary : Theme.line, lineWidth: isSelected ? 4 : 1.5)
+                )
+                .overlay(alignment: .topTrailing) {
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24, weight: .bold))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, Theme.primary)
+                            .padding(6)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .scaleEffect(isSelected ? 1.04 : 1)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

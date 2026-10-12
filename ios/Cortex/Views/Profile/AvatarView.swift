@@ -10,7 +10,14 @@ struct AvatarView: View {
     var body: some View {
         ZStack {
             Circle().fill(Color(hex: config.backgroundColorHex))
-            if config.mode == .emoji {
+            if config.mode == .illustration, let illustration = AvatarIllustration.named(config.illustrationId) {
+                Image(illustration.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .accessibilityHidden(true)
+            } else if config.mode == .emoji {
                 Text(config.emoji)
                     .font(.system(size: size * 0.52))
             } else {
