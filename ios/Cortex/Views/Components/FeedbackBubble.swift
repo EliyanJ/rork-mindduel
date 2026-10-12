@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Movable feedback entry point; sends only the fields explicitly entered by the player.
+/// Feedback entry point pinned to the left edge at mid-height, clear of the
+/// navigation bars; sends only the fields explicitly entered by the player.
 struct FeedbackBubble: View {
-    @State private var position: CGPoint? = nil
-    @State private var dragOrigin: CGPoint? = nil
     @State private var isPresented: Bool = false
     @State private var message: String = ""
     @State private var replyEmail: String = ""
@@ -13,34 +12,34 @@ struct FeedbackBubble: View {
     @State private var didSend: Bool = false
 
     var body: some View {
-        GeometryReader { geometry in
-            let initial = CGPoint(x: max(28, geometry.size.width - 44), y: max(28, geometry.size.height - 130))
-            Button { isPresented = true } label: {
-                Image(systemName: "questionmark.bubble.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(Theme.primary, in: Circle())
-                    .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
-            }
-            .accessibilityLabel("Donner un avis sur Minduel")
-            .accessibilityHint("Ouvre le formulaire de retour. La bulle peut être déplacée.")
-            .position(position ?? initial)
-            .simultaneousGesture(DragGesture(minimumDistance: 10)
-                .onChanged { value in
-                    let origin = dragOrigin ?? position ?? initial
-                    dragOrigin = origin
-                    position = CGPoint(
-                        x: min(max(28, origin.x + value.translation.width), max(28, geometry.size.width - 28)),
-                        y: min(max(28, origin.y + value.translation.height), max(28, geometry.size.height - 100))
-                    )
+        HStack(spacing: 0) {
+            Button {
+                Haptics.tap()
+                isPresented = true
+            } label: {
+                VStack(spacing: 6) {
+                    Image(systemName: "ladybug.fill")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(isBeta ? "BÊTA" : "AVIS")
+                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .tracking(1.2)
+                        .fixedSize()
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 14, height: 40)
                 }
-                .onEnded { _ in dragOrigin = nil })
-            .onChange(of: geometry.size) { _, size in
-                guard let current = position else { return }
-                position = CGPoint(x: min(max(28, current.x), max(28, size.width - 28)), y: min(max(28, current.y), max(28, size.height - 100)))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 78)
+                .background(Theme.primary, in: UnevenRoundedRectangle(bottomTrailingRadius: 12, topTrailingRadius: 12))
+                .shadow(color: .black.opacity(0.16), radius: 6, x: 2, y: 2)
+                .frame(width: 44, height: 78, alignment: .leading)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isBeta ? "Signaler un bug ou donner un avis sur la bêta" : "Donner un avis sur Minduel")
+            .accessibilityHint("Ouvre le formulaire de retour.")
+            Spacer(minLength: 0)
         }
+        .frame(maxHeight: .infinity)
         .sheet(isPresented: $isPresented) {
             NavigationStack {
                 Form {
@@ -99,7 +98,9 @@ struct FeedbackBubble: View {
             request.httpMethod = "POST"
             request.timeoutInterval = 25
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(withJSONObject: ["message": message, "replyEmail": replyEmail, "category": category])
+            let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+            let context = "Minduel \(AppVersion.current) (\(build))\(isBeta ? " · TestFlight" : "") · iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.model)"
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["message": message, "replyEmail": replyEmail, "category": category, "context": context])
             let (_, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw URLError(.badServerResponse) }
             didSend = true

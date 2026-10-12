@@ -994,12 +994,15 @@ export class Hub extends DurableObject {
 
   private async sendFeedback(request: Request): Promise<Response> {
     const env = this.env as { RESEND_API_KEY?: string; FEEDBACK_FROM?: string; FEEDBACK_TO?: string };
-    if (!env.RESEND_API_KEY || !env.FEEDBACK_FROM || !env.FEEDBACK_TO) {
+    // Resend's shared sender delivers to the account owner's own inbox, which is
+    // exactly where feedback goes; a verified domain can override it.
+    const from = env.FEEDBACK_FROM || "Minduel Retours <onboarding@resend.dev>";
+    if (!env.RESEND_API_KEY || !env.FEEDBACK_TO) {
       return Response.json({ error: "Le formulaire sera disponible prochainement." }, { status: 503 });
     }
     const text = await request.text();
     if (text.length > 20000) return Response.json({ error: "Message trop long" }, { status: 413 });
-    let body: { message?: unknown; replyEmail?: unknown; category?: unknown };
+    let body: { message?: unknown; replyEmail?: unknown; category?: unknown; context?: unknown };
     try { body = JSON.parse(text); } catch { return Response.json({ error: "Message invalide" }, { status: 400 }); }
     if (!body || typeof body !== "object") return Response.json({ error: "Message invalide" }, { status: 400 });
     const message = typeof body.message === "string" ? body.message.trim() : "";
@@ -1021,9 +1024,16 @@ export class Hub extends DurableObject {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: env.FEEDBACK_FROM, to: [env.FEEDBACK_TO],
-          subject: `Minduel — ${body.category}`,
-          text: message,
+          from, to: [env.FEEDBACK_TO],
+          subject: `[${body.category}] Minduel — ${message.replace(/\s+/g, " ").slice(0, 60)}`,
+          text: [
+            `Type : ${body.category}`,
+            `Appareil : ${typeof body.context === "string" ? body.context.slice(0, 200) : (request.headers.get("X-App-Version") ?? "inconnu")}`,
+            `Réponse à : ${replyEmail || "non fourni"}`,
+            `Reçu le : ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}`,
+            "",
+            message,
+          ].join("\n"),
           ...(replyEmail ? { reply_to: replyEmail } : {}),
         }),
         signal: AbortSignal.timeout(15000),
